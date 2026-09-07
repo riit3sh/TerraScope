@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terrascope.local/schema/parcel-record.json",
+  "title": "ParcelRecord",
+  "description": "A TerraScope land due-diligence record for an analysis parcel.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "parcel_id": { "type": ["string", "null"], "format": "uuid" },
+    "location": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "latitude": { "type": ["number", "null"], "minimum": -90, "maximum": 90 },
+        "longitude": { "type": ["number", "null"], "minimum": -180, "maximum": 180 },
+        "address": { "type": ["string", "null"] },
+        "village": { "type": ["string", "null"] },
+        "district": { "type": ["string", "null"] },
+        "state": { "type": ["string", "null"] },
+        "pincode": { "type": ["string", "null"] }
+      }
+    },
+    "geometry": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "Polygon" },
+        "coordinates": { "$ref": "#/$defs/polygonCoordinates" }
+      }
+    },
+    "geometry_metadata": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "area_m2": { "type": ["number", "null"], "minimum": 0 },
+        "area_acres": { "type": ["number", "null"], "minimum": 0 },
+        "perimeter_m": { "type": ["number", "null"], "minimum": 0 },
+        "boundary_source": {
+          "type": ["string", "null"],
+          "enum": ["user_drawn", "imported", "estimated", "unknown", null]
+        },
+        "boundary_verified": { "type": ["boolean", "null"] }
+      }
+    },
+    "land_records": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "survey_number": { "type": ["string", "null"] },
+        "ownership_type": {
+          "type": ["string", "null"],
+          "enum": ["freehold", "leasehold", "disputed", "unknown", null]
+        },
+        "title_clear": { "type": ["boolean", "null"] },
+        "encumbrance_flag": { "type": ["boolean", "null"] },
+        "source_document_ids": {
+          "type": ["array", "null"],
+          "items": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "rera": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "is_rera_project": { "type": ["boolean", "null"] },
+        "rera_registration_number": { "type": ["string", "null"] },
+        "promoter_name": { "type": ["string", "null"] },
+        "registered_completion_date": { "type": ["string", "null"], "format": "date" },
+        "source_url": { "type": ["string", "null"], "format": "uri" }
+      }
+    },
+    "satellite": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "imagery_dates": {
+          "type": ["array", "null"],
+          "items": { "type": ["string", "null"], "format": "date" }
+        },
+        "ndvi_trend": { "$ref": "#/$defs/timeSeries" },
+        "ndbi_trend": { "$ref": "#/$defs/timeSeries" },
+        "change_detected": { "type": ["boolean", "null"] },
+        "change_type": {
+          "type": ["string", "null"],
+          "enum": ["construction_growth", "vegetation_loss", "no_change", "insufficient_evidence", null]
+        },
+        "change_confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+      }
+    },
+    "infrastructure": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "nearest_road_distance_m": { "type": ["number", "null"], "minimum": 0 },
+        "nearest_road_type": { "type": ["string", "null"] },
+        "nearest_school_distance_m": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "risk": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "flood_risk_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "flood_risk_basis": { "type": ["string", "null"] },
+        "elevation_m": { "type": ["number", "null"] },
+        "legal_risk_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "accessibility_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }
+      }
+    },
+    "opportunity": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "growth_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "infra_growth_trend": {
+          "type": ["string", "null"],
+          "enum": ["rising", "stable", "declining", null]
+        }
+      }
+    },
+    "evaluation": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "profile": {
+          "type": ["string", "null"],
+          "enum": ["homebuyer", "developer", "investor", "conservative", "custom", null]
+        },
+        "property_type": {
+          "type": ["string", "null"],
+          "enum": ["residential", "commercial", "industrial", "mixed_use", null]
+        },
+        "investment_horizon": {
+          "type": ["string", "null"],
+          "enum": ["under_1y", "1_to_3y", "3_to_5y", "5_to_10y", "10_plus_y", null]
+        },
+        "weights": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "growth_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+            "legal_safety_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+            "accessibility_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+            "flood_safety_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }
+          }
+        },
+        "preferences": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "properties": {
+            "road_importance": {
+              "type": ["string", "null"],
+              "enum": ["low", "medium", "high", null]
+            },
+            "school_importance": {
+              "type": ["string", "null"],
+              "enum": ["low", "medium", "high", null]
+            },
+            "max_road_distance_m": { "type": ["number", "null"], "minimum": 0 },
+            "max_school_distance_m": { "type": ["number", "null"], "minimum": 0 },
+            "rera_requirement": {
+              "type": ["string", "null"],
+              "enum": ["strict", "important", "informational", null]
+            }
+          }
+        }
+      }
+    },
+    "score_breakdown": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "legal_safety_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "accessibility_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "flood_safety_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "growth_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "composite_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "weighted_contributions": {
+          "type": ["array", "null"],
+          "items": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "factor": { "type": ["string", "null"] },
+              "contribution": { "type": ["number", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": ["array", "null"],
+      "items": {
+        "type": ["object", "null"],
+        "additionalProperties": false,
+        "properties": {
+          "evidence_id": { "type": ["string", "null"] },
+          "source_type": { "type": ["string", "null"] },
+          "source_reference": { "type": ["string", "null"] },
+          "title": { "type": ["string", "null"] },
+          "observed_at": { "type": ["string", "null"], "format": "date-time" },
+          "freshness": {
+            "type": ["string", "null"],
+            "enum": ["live", "cached", "seed_data", "user_upload", "derived", null]
+          },
+          "summary": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "verdict": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "recommendation": {
+          "type": ["string", "null"],
+          "enum": ["BUY", "WAIT", "AVOID", null]
+        },
+        "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "reasoning_summary": { "type": ["string", "null"], "maxLength": 500 },
+        "citations": {
+          "type": ["array", "null"],
+          "items": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "claim": { "type": ["string", "null"] },
+              "source_type": { "type": ["string", "null"] },
+              "source_reference": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "last_updated": { "type": ["string", "null"], "format": "date-time" },
+        "data_completeness_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "analysis_date_from": { "type": ["string", "null"], "format": "date" },
+        "analysis_date_to": { "type": ["string", "null"], "format": "date" },
+        "analysis_snapshot_id": { "type": ["string", "null"] }
+      }
+    }
+  },
+  "$defs": {
+    "polygonCoordinates": {
+      "type": ["array", "null"],
+      "minItems": 1,
+      "items": {
+        "type": ["array", "null"],
+        "minItems": 4,
+        "items": {
+          "type": ["array", "null"],
+          "minItems": 2,
+          "maxItems": 3,
+          "items": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "timeSeries": {
+      "type": ["array", "null"],
+      "items": {
+        "type": ["object", "null"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": ["string", "null"], "format": "date" },
+          "value": { "type": ["number", "null"] }
+        }
+      }
+    }
+  }
+}

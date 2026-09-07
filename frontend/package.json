@@ -1,0 +1,27 @@
+{
+  "name": "terrascope-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@types/leaflet": "latest",
+    "@vitejs/plugin-react": "latest",
+    "leaflet": "latest",
+    "leaflet-draw": "latest",
+    "lucide-react": "latest",
+    "react-leaflet": "latest",
+    "recharts": "latest",
+    "vite": "latest",
+    "typescript": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwindcss": "latest",
+    "@tailwindcss/vite": "latest"
+  },
+  "devDependencies": {"@types/react": "latest", "@types/react-dom": "latest"}
+}

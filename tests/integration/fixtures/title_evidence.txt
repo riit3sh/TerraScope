@@ -1,0 +1,2 @@
+Certified document fixture for TerraScope integration testing.
+Survey No. 118/2A, Pune District. This uploaded evidence states that the title record should be reviewed against the current certified extract before a sale agreement is signed.
