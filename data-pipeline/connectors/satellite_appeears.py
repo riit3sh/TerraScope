@@ -58,7 +58,9 @@ class AppEEARSClient:
             self.layers["cloud"] = cloud_layer
         self.poll_seconds = float(os.getenv("NASA_APPEEARS_POLL_SECONDS", "10"))
         self.max_wait_seconds = float(os.getenv("NASA_APPEEARS_MAX_WAIT_SECONDS", "150"))
-        self._token: str | None = self.static_token or None
+        # Prefer an AppEEARS /login token generated from Earthdata credentials.
+        # A generic Earthdata/URS token is not interchangeable with this token.
+        self._token: str | None = self.static_token if not (self.username and self.password) else None
         self._session = requests.Session()
         self._cache: dict[str, Any] = self._load_cache()
 
@@ -109,6 +111,7 @@ class AppEEARSClient:
             f"{self.API_URL}/login",
             auth=(self.username, self.password),
             data={"grant_type": "client_credentials"},
+            headers={"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8", "Accept": "application/json"},
             timeout=20,
         )
         response.raise_for_status()
@@ -133,7 +136,9 @@ class AppEEARSClient:
                 LOGGER.warning("AppEEARS rate limited; retrying in %ss", delay)
                 time.sleep(delay)
                 continue
-            response.raise_for_status()
+            if response.status_code >= 400:
+                detail = response.text[:500].replace("\n", " ")
+                raise RuntimeError(f"AppEEARS request {method} {path} returned HTTP {response.status_code}: {detail}")
             return response
         raise RuntimeError(f"AppEEARS request failed after retries: {method} {path}")
 
