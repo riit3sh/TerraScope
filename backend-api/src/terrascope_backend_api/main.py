@@ -7,9 +7,10 @@ import os
 app = FastAPI(title="TerraScope Backend API")
 
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+allowed_origins = list(dict.fromkeys([frontend_url, "http://localhost:5173", "http://127.0.0.1:5173"]))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_url],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
