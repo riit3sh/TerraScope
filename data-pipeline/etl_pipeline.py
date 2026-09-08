@@ -15,7 +15,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from connectors.elevation_dem import ElevationClient
 from connectors.osm_infrastructure import InfrastructureClient
 from connectors.rera_ingest import load_rera_seed_dataset, match_parcel_to_rera
-from connectors.satellite_sentinelhub import SentinelHubClient
+from connectors.satellite_provider import get_satellite_client
 
 
 
@@ -131,7 +131,7 @@ def build_evidence_snapshot(
         raise ValueError("date_from must be on or before date_to.")
 
     infrastructure_client = InfrastructureClient()
-    satellite_client = SentinelHubClient()
+    satellite_client = get_satellite_client()
     elevation_client = ElevationClient()
     latitude, longitude = elevation_client.polygon_centroid(geojson_polygon)
     metrics = infrastructure_client.polygon_metrics(geojson_polygon)
@@ -161,8 +161,8 @@ def build_evidence_snapshot(
         {
             "evidence_id": f"{snapshot_id}:satellite",
             "source_type": "satellite",
-            "source_reference": "CDSE Sentinel-2 L2A",
-            "title": "Sentinel-2 change series",
+            "source_reference": getattr(satellite_client, "source_reference", "Satellite evidence provider"),
+            "title": f"{getattr(satellite_client, 'source_reference', 'Satellite')} change series",
             "observed_at": now,
             "freshness": "derived",
             "summary": f"{len(change_series)} polygon-masked observations collected for the requested interval.",

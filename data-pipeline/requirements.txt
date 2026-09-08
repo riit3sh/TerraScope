@@ -7,3 +7,5 @@ pandas==2.2.3
 jsonschema==4.26.0
 sqlalchemy==2.0.41
 geoalchemy2==0.17.1
+numpy==2.2.3
+rasterio==1.4.3

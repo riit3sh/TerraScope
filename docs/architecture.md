@@ -14,7 +14,7 @@ graph TD
     evaluation[Fast Evaluation Layer]
     settings[Slider / profile / property type / horizon / preference changes]
 
-    copernicus[Copernicus Data Space / Sentinel Hub]
+    appeears[NASA AppEEARS / HLS]
     osm[OpenStreetMap Overpass / Nominatim]
     elevation[Open-Elevation]
     groq[Groq API]
@@ -29,7 +29,7 @@ graph TD
     evidence -->|read-only input| ml
     ml -->|store evaluation and verdict history| postgres
 
-    pipeline --> copernicus
+    pipeline --> appeears
     pipeline --> osm
     pipeline --> elevation
     pipeline --> rera
@@ -44,7 +44,7 @@ graph TD
     subgraph COLLECTION[Immutable Evidence Snapshot]
         pipeline
         evidence
-        copernicus
+        appeears
         osm
         elevation
         rera

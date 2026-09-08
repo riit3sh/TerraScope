@@ -14,6 +14,12 @@ TerraScope Review 2 runs entirely from a laptop. There are no Render, Vercel, or
 
    Grounded explanations use Groq. Set `GROQ_API_KEY` and optionally `GROQ_MODEL`.
 
+   Satellite evidence uses NASA AppEEARS by default. Set `NASA_APPEEARS_USERNAME` and
+   `NASA_APPEEARS_PASSWORD` to your Earthdata Login credentials, or set
+   `NASA_APPEEARS_TOKEN` if your AppEEARS setup provides a token. Confirm the HLS
+   product/layer names in the AppEEARS catalog and update the `NASA_APPEEARS_*_LAYER`
+   values if needed.
+
 3. Start the complete stack from the repository root:
 
    ```powershell
@@ -50,7 +56,10 @@ Nominatim is called only after the user submits the address search form. There i
 
 ### Satellite evidence reuse
 
-The SentinelHub client caches results using the polygon hash, date range, and satellite parameters. Repeat an analysis with the identical GeoJSON polygon and identical date interval to confirm the cached satellite evidence is reused and the external archive is not reprocessed.
+The AppEEARS client caches results using the polygon hash, date range, product, and
+layer parameters. Repeat an analysis with the identical GeoJSON polygon and identical
+date interval to confirm the cached satellite evidence is reused and the external
+archive is not reprocessed.
 
 ## Stop The Demo
 
