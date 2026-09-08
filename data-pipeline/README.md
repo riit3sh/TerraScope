@@ -17,7 +17,8 @@ Required environment variables:
 
 - `DATABASE_URL` — PostgreSQL/PostGIS connection string.
 - `SATELLITE_PROVIDER` — use `appeears` for NASA AppEEARS (the local default), or `cdse` for the legacy Copernicus connector.
-- `NASA_APPEEARS_USERNAME` and `NASA_APPEEARS_PASSWORD` — Earthdata Login credentials for AppEEARS. Prefer these for the demo. `NASA_APPEEARS_TOKEN`, if used, must be the token returned by AppEEARS `/api/login`; a generic Earthdata/URS token is not interchangeable.
+- `NASA_APPEEARS_TOKEN` — optional AppEEARS bearer token. When set, it takes precedence over username/password and is sent directly to AppEEARS.
+- `NASA_APPEEARS_USERNAME` and `NASA_APPEEARS_PASSWORD` — fallback Earthdata Login credentials used to obtain an AppEEARS token through `/api/login`.
 - `NASA_APPEEARS_PRODUCT`, `NASA_APPEEARS_B04_LAYER`, `NASA_APPEEARS_B08_LAYER`, and `NASA_APPEEARS_B11_LAYER` — AppEEARS catalog values for the HLS product and red/NIR/SWIR layers.
 - `NOMINATIM_USER_AGENT` — descriptive User-Agent for explicit geocoding/reverse-geocoding.
 

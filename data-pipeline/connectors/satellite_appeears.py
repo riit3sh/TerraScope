@@ -59,9 +59,8 @@ class AppEEARSClient:
             self.layers["cloud"] = cloud_layer
         self.poll_seconds = float(os.getenv("NASA_APPEEARS_POLL_SECONDS", "10"))
         self.max_wait_seconds = float(os.getenv("NASA_APPEEARS_MAX_WAIT_SECONDS", "150"))
-        # Prefer an AppEEARS /login token generated from Earthdata credentials.
-        # A generic Earthdata/URS token is not interchangeable with this token.
-        self._token: str | None = self.static_token if not (self.username and self.password) else None
+        # An explicitly supplied AppEEARS bearer token takes precedence over login credentials.
+        self._token: str | None = self.static_token or None
         self._session = requests.Session()
         self._cache: dict[str, Any] = self._load_cache()
 
@@ -101,6 +100,10 @@ class AppEEARSClient:
         return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
     def _authenticate(self, force: bool = False) -> str:
+        if self.static_token:
+            if force:
+                raise RuntimeError("AppEEARS bearer token was rejected (401). Generate a fresh token from AppEEARS and update NASA_APPEEARS_TOKEN.")
+            return self.static_token
         if self._token and not force:
             return self._token
         if not self.username or not self.password:
