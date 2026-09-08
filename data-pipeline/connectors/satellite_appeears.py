@@ -167,11 +167,15 @@ class AppEEARSClient:
                 },
                 "layers": layers,
                 "output": {"projection": "geographic", "format": {"type": "geotiff"}},
-                "geo": {"type": "Feature", "properties": {}, "geometry": polygon},
+                "geo": {
+                    "type": "FeatureCollection",
+                    "features": [{"type": "Feature", "properties": {}, "geometry": polygon}],
+                },
             },
         }
         payload = self._request("POST", "/task", json=body, timeout=30).json()
-        task_id = self._find_value(payload, ("task_id", "taskId", "id", "task"))
+        task_id = payload[0] if isinstance(payload, list) and payload and isinstance(payload[0], (str, int)) else None
+        task_id = task_id or self._find_value(payload, ("task_id", "taskId", "id", "task"))
         if isinstance(task_id, dict):
             task_id = self._find_value(task_id, ("task_id", "taskId", "id"))
         if not task_id:
@@ -204,7 +208,7 @@ class AppEEARSClient:
                 filename = item.get("file_name") or item.get("filename") or str(file_id)
             if not file_id:
                 continue
-            response = self._request("GET", f"/download/{task_id}/{file_id}", timeout=60)
+            response = self._request("GET", f"/bundle/{task_id}/{file_id}", timeout=60)
             outputs.append((str(filename), response.content))
         if not outputs:
             raise RuntimeError(f"AppEEARS task {task_id} completed without downloadable files.")
@@ -300,4 +304,3 @@ class AppEEARSClient:
             return rows
         indices = [round(i * (len(rows) - 1) / 7) for i in range(8)]
         return [rows[index] for index in indices]
-
