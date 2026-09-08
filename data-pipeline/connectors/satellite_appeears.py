@@ -16,6 +16,7 @@ import os
 import re
 import time
 import zipfile
+import base64
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
@@ -44,7 +45,7 @@ class AppEEARSClient:
     CACHE_PATH = Path(os.getenv("TERRASCOPE_SATELLITE_CACHE_PATH", ".cache/terrascope_satellite.json"))
 
     def __init__(self) -> None:
-        self.username = os.getenv("NASA_APPEEARS_USERNAME", "")
+        self.username = os.getenv("NASA_APPEEARS_USERNAME", "").strip()
         self.password = os.getenv("NASA_APPEEARS_PASSWORD", "")
         self.static_token = os.getenv("NASA_APPEEARS_TOKEN", "")
         self.product = os.getenv("NASA_APPEEARS_PRODUCT", "HLSS30.020")
@@ -107,13 +108,23 @@ class AppEEARSClient:
                 "AppEEARS credentials missing. Set NASA_APPEEARS_USERNAME and NASA_APPEEARS_PASSWORD "
                 "or NASA_APPEEARS_TOKEN."
             )
+        basic = base64.b64encode(f"{self.username}:{self.password}".encode("utf-8")).decode("ascii")
         response = self._session.post(
             f"{self.API_URL}/login",
-            auth=(self.username, self.password),
-            data={"grant_type": "client_credentials"},
-            headers={"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8", "Accept": "application/json"},
+            data="grant_type=client_credentials",
+            headers={
+                "Authorization": f"Basic {basic}",
+                "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                "Accept": "application/json",
+            },
             timeout=20,
         )
+        if response.status_code == 401:
+            raise RuntimeError(
+                "AppEEARS login rejected the credentials (401). Use the exact NASA Earthdata Login "
+                "username and password that can sign in at appeears.earthdatacloud.nasa.gov; "
+                "an Earthdata API token is not a password."
+            )
         response.raise_for_status()
         payload = response.json()
         token = payload.get("token") or payload.get("access_token")
