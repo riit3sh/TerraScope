@@ -50,9 +50,9 @@ Inside Compose, the backend calls `http://data-pipeline:8001` and `http://ml-mod
 
 The parcel workspace uses Leaflet with OpenStreetMap tiles and keeps the OpenStreetMap attribution visible in the map control. Do not crop or hide the attribution during the demo.
 
-### Explicit Nominatim search
+### Nominatim search and suggestions
 
-Nominatim is called only after the user submits the address search form. There is no autocomplete and no request per keystroke. The browser-side search result should be treated as the explicit geocoding request for that parcel; repeated searches should use the application’s cached/local result rather than issuing a request on every input event.
+Search suggestions are debounced by 650 ms, cached in the browser and backend, restricted to India, and guarded to one uncached Nominatim request per second. The main demo path is tuned for Tamil Nadu locations such as Vellore and Chennai. Selecting a suggestion reuses its coordinates and opens the parcel workspace without a second geocoding request.
 
 ### Satellite evidence reuse
 

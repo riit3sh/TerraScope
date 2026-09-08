@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
+import time
 from datetime import date
 from typing import Any
 
@@ -25,7 +27,9 @@ from .store import (
 
 router = APIRouter()
 init_store()
-_geocode_cache: dict[str, dict[str, Any] | None] = {}
+_geocode_cache: dict[str, list[dict[str, Any]]] = {}
+_geocode_lock = asyncio.Lock()
+_last_geocode_request_at = 0.0
 
 
 class AnalyzeRequest(BaseModel):
@@ -69,35 +73,40 @@ def _downstream_error(response: httpx.Response, service: str) -> HTTPException:
 
 
 @router.get("/api/v1/search/geocode")
-async def geocode_search(q: str) -> dict[str, Any] | None:
-    """Explicit search-only Nominatim proxy with a small process-local cache."""
+async def geocode_search(q: str) -> list[dict[str, Any]]:
+    """India-focused Nominatim suggestions with caching and a one-request/second guard."""
+    global _last_geocode_request_at
     query = q.strip()
-    if not query:
-        raise HTTPException(status_code=400, detail="Search text is required.")
+    if len(query) < 2:
+        return []
     cache_key = query.casefold()
     if cache_key in _geocode_cache:
         return _geocode_cache[cache_key]
     user_agent = os.getenv("NOMINATIM_USER_AGENT", "terrascope-local-demo/1.0")
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                "https://nominatim.openstreetmap.org/search",
-                params={"q": query, "format": "json", "limit": 1},
-                headers={"Accept": "application/json", "User-Agent": user_agent},
-                timeout=httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=3.0),
-            )
-            response.raise_for_status()
-            results = response.json()
-    except httpx.TimeoutException as error:
-        raise HTTPException(status_code=504, detail="Address search timed out. Try a more specific place.") from error
-    except httpx.HTTPError as error:
-        raise HTTPException(status_code=502, detail=f"Address search failed: {error}") from error
-    result = None
-    if results:
-        item = results[0]
-        result = {"lat": float(item["lat"]), "lon": float(item["lon"]), "display_name": item["display_name"]}
-    _geocode_cache[cache_key] = result
-    return result
+    async with _geocode_lock:
+        if cache_key in _geocode_cache:
+            return _geocode_cache[cache_key]
+        delay = 1.0 - (time.monotonic() - _last_geocode_request_at)
+        if delay > 0:
+            await asyncio.sleep(delay)
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    "https://nominatim.openstreetmap.org/search",
+                    params={"q": query, "format": "jsonv2", "addressdetails": 1, "countrycodes": "in", "limit": 5},
+                    headers={"Accept": "application/json", "User-Agent": user_agent},
+                    timeout=httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=3.0),
+                )
+                _last_geocode_request_at = time.monotonic()
+                response.raise_for_status()
+                results = response.json()
+        except httpx.TimeoutException as error:
+            raise HTTPException(status_code=504, detail="Address search timed out. Try a more specific place.") from error
+        except httpx.HTTPError as error:
+            raise HTTPException(status_code=502, detail=f"Address search failed: {error}") from error
+    suggestions = [{"lat": float(item["lat"]), "lon": float(item["lon"]), "display_name": item["display_name"]} for item in results]
+    _geocode_cache[cache_key] = suggestions
+    return suggestions
 
 
 @router.post("/api/v1/parcels/analyze")
