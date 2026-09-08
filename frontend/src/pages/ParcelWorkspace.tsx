@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Layers3, MapPinned, Pencil, Plus, RotateCcw, SlidersHorizontal, Sparkles, Upload, X } from 'lucide-react'
 import { MapContainer, TileLayer, Polygon, CircleMarker, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'; import 'leaflet-draw/dist/leaflet.draw.css'
+import 'leaflet/dist/leaflet.css'; import 'leaflet-draw'; import 'leaflet-draw/dist/leaflet.draw.css'
 import { buildAnalysis, EvaluationSettings, GeoJSONPolygon, ParcelRecord, uploadEvidence } from '../lib/api'
 
 type Point = [number, number]
