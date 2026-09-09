@@ -62,8 +62,8 @@ class AppEEARSClient:
         configured_max_wait_seconds = float(os.getenv("NASA_APPEEARS_MAX_WAIT_SECONDS", "150"))
         # Local demos must not block the UI on an asynchronous public task that may never finish.
         # Set SATELLITE_DEMO_FALLBACK=false to opt into the full configured live wait.
-        self.poll_seconds = min(configured_poll_seconds, 5.0) if self.demo_fallback else configured_poll_seconds
-        self.max_wait_seconds = min(configured_max_wait_seconds, 30.0) if self.demo_fallback else configured_max_wait_seconds
+        self.poll_seconds = min(configured_poll_seconds, 2.0) if self.demo_fallback else configured_poll_seconds
+        self.max_wait_seconds = min(configured_max_wait_seconds, 10.0) if self.demo_fallback else configured_max_wait_seconds
         # An explicitly supplied AppEEARS bearer token takes precedence over login credentials.
         self._token: str | None = self.static_token or None
         self._session = requests.Session()
