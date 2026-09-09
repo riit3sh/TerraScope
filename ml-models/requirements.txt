@@ -5,4 +5,5 @@ pytest==8.3.4
 jsonschema==4.26.0
 chromadb>=0.5,<1
 sentence-transformers>=3,<6
+torch==2.5.1+cpu
 requests>=2.32,<3

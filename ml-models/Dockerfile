@@ -7,6 +7,6 @@ COPY ml-models/rag_pipeline ./rag_pipeline
 COPY ml-models/scoring_engine ./scoring_engine
 COPY ml-models/pipeline.py ./pipeline.py
 COPY docs/schema ./docs/schema
-RUN pip install --no-cache-dir -r requirements.txt && pip install --no-cache-dir .
+RUN pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt && pip install --no-cache-dir .
 EXPOSE 8002
 CMD ["uvicorn", "pipeline:app", "--host", "0.0.0.0", "--port", "8002"]
