@@ -64,7 +64,7 @@ def generate_grounded_answer(question: str, parcel_id: str) -> dict[str, Any]:
     response = requests.post(
         GROQ_API_URL,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": MODEL_NAME, "max_tokens": 700, "temperature": 0, "messages": [{"role": "user", "content": _prompt(question, context)}]},
+        json={"model": MODEL_NAME, "max_completion_tokens": 700, "temperature": 0, "messages": [{"role": "user", "content": _prompt(question, context)}]},
         timeout=60,
     )
     response.raise_for_status()
@@ -101,7 +101,7 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
     response = requests.post(
         GROQ_API_URL,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": MODEL_NAME, "max_tokens": 300, "temperature": 0, "messages": [{"role": "user", "content": prompt}]},
+        json={"model": MODEL_NAME, "max_completion_tokens": 600, "temperature": 0, "messages": [{"role": "user", "content": prompt}]},
         timeout=20,
     )
     response.raise_for_status()
