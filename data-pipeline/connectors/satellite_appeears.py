@@ -137,6 +137,18 @@ class AppEEARSClient:
         self._token = str(token)
         return self._token
 
+    def _static_token_issuer(self) -> str | None:
+        """Return a JWT issuer without logging or exposing the token itself."""
+        if not self.static_token or self.static_token.count(".") != 2:
+            return None
+        try:
+            encoded = self.static_token.split(".")[1]
+            encoded += "=" * ((4 - len(encoded) % 4) % 4)
+            payload = json.loads(base64.urlsafe_b64decode(encoded).decode("utf-8"))
+            return str(payload.get("iss")) if payload.get("iss") else None
+        except (ValueError, TypeError, json.JSONDecodeError, UnicodeDecodeError):
+            return None
+
     def _request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
         for attempt in range(4):
             token = self._authenticate()
@@ -301,6 +313,9 @@ class AppEEARSClient:
         cached = self._cache.get(key)
         if cached is not None:
             return [dict(record) for record in cached]
+        issuer = self._static_token_issuer()
+        if issuer and "urs.earthdata.nasa.gov" in issuer:
+            raise RuntimeError("The supplied NASA Earthdata URS token is not an AppEEARS task token; use AppEEARS login credentials for live satellite data.")
         task_id = self._submit_task(polygon, start, end)
         self._wait_for_task(task_id)
         series = self._parse_outputs(polygon, self._download_files(task_id), start)

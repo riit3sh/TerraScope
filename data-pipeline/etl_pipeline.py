@@ -12,7 +12,7 @@ from uuid import uuid4
 import pandas as pd
 from jsonschema import Draft202012Validator, FormatChecker
 
-from connectors.elevation_dem import ElevationClient
+from connectors.elevation_dem import ElevationClient, ElevationError
 from connectors.osm_infrastructure import InfrastructureClient
 from connectors.rera_ingest import load_rera_seed_dataset, match_parcel_to_rera
 from connectors.satellite_provider import get_satellite_client
@@ -145,13 +145,22 @@ def build_evidence_snapshot(
 
     change_series = satellite_client.get_change_series(geojson_polygon, start, end)
     amenities = infrastructure_client.nearest_amenities(geojson_polygon)
-    elevation_m = elevation_client.get_elevation(latitude, longitude)
-    regional_baseline = float(os.getenv("REGIONAL_BASELINE_ELEVATION_M", str(elevation_m)))
-    flood_proxy = elevation_client.estimate_flood_risk_proxy(
-        latitude,
-        longitude,
-        regional_baseline_elevation_m=regional_baseline,
-    )
+    try:
+        elevation_m = elevation_client.get_elevation(latitude, longitude)
+    except ElevationError as error:
+        # Elevation is optional evidence; do not block the parcel report or invent a score.
+        elevation_m = None
+        flood_proxy = {
+            "score": None,
+            "basis": f"Representative elevation unavailable at the polygon centroid: {error}",
+        }
+    else:
+        regional_baseline = float(os.getenv("REGIONAL_BASELINE_ELEVATION_M", str(elevation_m)))
+        flood_proxy = elevation_client.estimate_flood_risk_proxy(
+            latitude,
+            longitude,
+            regional_baseline_elevation_m=regional_baseline,
+        )
 
     rera_df = _load_rera_or_empty()
     rera = match_parcel_to_rera(location["district"], rera_df)
