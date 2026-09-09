@@ -152,6 +152,13 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
             "weighted_contributions",
         )
     }
+    # Include the authoritative rule-based verdict in the facts sent to Groq.
+    evaluated["verdict"] = {
+        "recommendation": result["recommendation"],
+        "confidence": result["confidence"],
+        "reasoning_summary": result["reasoning_summary"],
+        "citations": [],
+    }
     # Groq explains the deterministic result; it never computes or changes the scores.
     ai_explanation: dict[str, Any] = {"answer_text": "", "citations": []}
     try:
