@@ -25,10 +25,12 @@ def _prompt(question: str, context: list[dict[str, Any]]) -> str:
         f"[source: {item['metadata']['source_reference']}]\n{item['text']}"
         for item in context
     )
+    if not context_text:
+        context_text = "[source: none]\nNo retrieved context is available."
     return (
         "Answer ONLY using the provided context. Cite every claim with [source: X]. "
         "If the context is insufficient, say so explicitly.\n\n"
-        f"Context:\n{context_text or '[source: none]\nNo retrieved context is available.'}\n\n"
+        f"Context:\n{context_text}\n\n"
         f"Question: {question}"
     )
 
