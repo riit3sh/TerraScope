@@ -65,35 +65,6 @@ class AppEEARSClient:
         self._session = requests.Session()
         self._cache: dict[str, Any] = self._load_cache()
 
-    def _demo_series(self, polygon: dict[str, Any], start: str, end: str) -> list[dict[str, Any]]:
-        """Return deterministic local evidence when AppEEARS is unavailable.
-
-        This is intentionally a local-demo fallback, not a substitute for satellite
-        observations. It keeps the Review 2 workflow usable while credentials are
-        being configured and is labeled as derived evidence in the snapshot.
-        """
-        start_day = date.fromisoformat(start)
-        end_day = date.fromisoformat(end)
-        span = max((end_day - start_day).days, 0)
-        count = min(8, max(4, span // 30 + 1))
-        seed = int(hashlib.sha256(json.dumps(polygon, sort_keys=True).encode()).hexdigest()[:8], 16)
-        growth = (seed % 3) == 0
-        rows: list[dict[str, Any]] = []
-        for index in range(count):
-            offset = round(span * index / max(count - 1, 1))
-            day = start_day.fromordinal(start_day.toordinal() + offset)
-            progress = index / max(count - 1, 1)
-            ndvi = 0.54 - (0.16 * progress if growth else 0.02 * progress)
-            ndbi = 0.08 + (0.20 * progress if growth else 0.01 * progress)
-            rows.append({
-                "date": day.isoformat(),
-                "ndvi": round(ndvi, 6),
-                "ndbi": round(ndbi, 6),
-                "usable_pixel_count": 1,
-                "cloud_coverage": 0.0,
-            })
-        return rows
-
     @staticmethod
     def _date_string(value: date | datetime | str) -> str:
         if isinstance(value, datetime):
@@ -210,10 +181,10 @@ class AppEEARSClient:
             "task_type": "area",
             "task_name": f"terrascope-{hashlib.sha1(json.dumps(polygon, sort_keys=True).encode()).hexdigest()[:10]}",
             "params": {
-                "dates": {
+                "dates": [{
                     "startDate": date.fromisoformat(start).strftime("%m-%d-%Y"),
                     "endDate": date.fromisoformat(end).strftime("%m-%d-%Y"),
-                },
+                }],
                 "layers": layers,
                 "output": {"projection": "geographic", "format": {"type": "geotiff"}},
                 "geo": {
@@ -354,8 +325,8 @@ class AppEEARSClient:
             if not self.demo_fallback:
                 raise
             LOGGER.warning("Live AppEEARS unavailable; using local demo satellite evidence: %s", exc)
-            rows = self._demo_series(geojson_polygon, start, end)
-            self.source_reference = "NASA AppEEARS HLS (local demo fallback)"
+            rows = []
+            self.source_reference = "NASA AppEEARS HLS (unavailable)"
         if len(rows) <= 8:
             return rows
         indices = [round(i * (len(rows) - 1) / 7) for i in range(8)]
