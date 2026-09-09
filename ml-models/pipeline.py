@@ -152,6 +152,14 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
             "weighted_contributions",
         )
     }
+    # Groq explains the deterministic result; it never computes or changes the scores.
+    ai_explanation: dict[str, Any] = {"answer_text": "", "citations": []}
+    try:
+        from rag_pipeline.reason import generate_evaluation_explanation
+
+        ai_explanation = generate_evaluation_explanation(evaluated)
+    except Exception as error:
+        LOGGER.warning("Groq evaluation explanation unavailable; using deterministic summary: %s", error)
     citations = list(_section(evaluated, "verdict").get("citations", []) or [])
     citations.extend(
         {
@@ -164,10 +172,18 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
             rag_documents if rag_documents is not None else uploaded_documents,
         )
     )
+    citations.extend(
+        {
+            "claim": citation["claim"],
+            "source_type": "ai_explanation",
+            "source_reference": citation["source_reference"],
+        }
+        for citation in ai_explanation.get("citations", [])
+    )
     evaluated["verdict"] = {
         "recommendation": result["recommendation"],
         "confidence": result["confidence"],
-        "reasoning_summary": result["reasoning_summary"],
+        "reasoning_summary": ai_explanation.get("answer_text") or result["reasoning_summary"],
         "citations": citations,
     }
     _validate_snapshot(evaluated)
