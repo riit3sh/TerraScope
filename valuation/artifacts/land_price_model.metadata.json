@@ -1,0 +1,118 @@
+{
+  "model_version": "1.0.0+44a6037ed821",
+  "model_code_version": "1.0.0",
+  "data_version": "44a6037ed821",
+  "trained_at": "2026-09-26T16:06:15Z",
+  "is_synthetic": true,
+  "source_csv": "synthetic_land_prices.csv",
+  "import_report": {
+    "rows_read": 1200,
+    "rows_kept": 1200,
+    "dropped": {},
+    "duplicate_properties_collapsed": 0
+  },
+  "validation": {
+    "strategy": "temporal",
+    "description": "temporal: trained on or before 2024-04-02, tested after",
+    "train_rows": 960,
+    "holdout_rows": 240,
+    "baseline": {
+      "mae_inr_per_sqft": 2315.75,
+      "rmse_inr_per_sqft": 3999.45,
+      "median_absolute_percentage_error": 21.29
+    },
+    "model": {
+      "mae_inr_per_sqft": 1271.78,
+      "rmse_inr_per_sqft": 2915.24,
+      "median_absolute_percentage_error": 11.79
+    },
+    "model_beats_baseline": true,
+    "interval": {
+      "lower_quantile": 0.1,
+      "upper_quantile": 0.9,
+      "measured_holdout_coverage_pct": 63.7,
+      "nominal_coverage_pct": 80.0,
+      "reportable": true
+    }
+  },
+  "coverage": {
+    "rows": 1200,
+    "districts": [
+      "Ahmedabad",
+      "Aurangabad",
+      "Bengaluru Urban",
+      "Bhopal",
+      "Bhubaneswar",
+      "Chandigarh",
+      "Chennai",
+      "Coimbatore",
+      "Dehradun",
+      "Ernakulam",
+      "Gurugram",
+      "Guwahati",
+      "Hubballi",
+      "Hyderabad",
+      "Indore",
+      "Jaipur",
+      "Kolkata",
+      "Kozhikode",
+      "Lucknow",
+      "Madurai",
+      "Mangaluru",
+      "Mumbai Suburban",
+      "Mysuru",
+      "Nagpur",
+      "Nashik",
+      "New Delhi",
+      "Noida",
+      "Patna",
+      "Pune",
+      "Salem",
+      "Surat",
+      "Thane",
+      "Thiruvananthapuram",
+      "Tiruchirappalli",
+      "Tirupati",
+      "Vellore",
+      "Vijayawada",
+      "Visakhapatnam",
+      "Warangal",
+      "YSR Kadapa"
+    ],
+    "states": [
+      "Andhra Pradesh",
+      "Assam",
+      "Bihar",
+      "Chandigarh",
+      "Delhi",
+      "Gujarat",
+      "Haryana",
+      "Karnataka",
+      "Kerala",
+      "Madhya Pradesh",
+      "Maharashtra",
+      "Odisha",
+      "Rajasthan",
+      "Tamil Nadu",
+      "Telangana",
+      "Uttar Pradesh",
+      "Uttarakhand",
+      "West Bengal"
+    ],
+    "land_uses": [
+      "agricultural",
+      "commercial",
+      "industrial",
+      "mixed_use",
+      "residential"
+    ],
+    "price_basis_counts": {
+      "transaction": 854,
+      "asking": 346
+    },
+    "observation_date_from": "2021-01-01",
+    "observation_date_to": "2024-12-31",
+    "area_sqft_p05": 1200.0,
+    "area_sqft_p95": 10890.0
+  }
+}
