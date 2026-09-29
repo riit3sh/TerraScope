@@ -14,6 +14,12 @@ import requests
 LOGGER = logging.getLogger(__name__)
 
 
+# Below this absolute elevation a parcel is treated as lowland/deltaic, which
+# carries flood exposure regardless of how it sits against nearby terrain.
+LOWLAND_ELEVATION_M = 60.0
+LOWLAND_MAX_POINTS = 35.0
+
+
 class ElevationError(RuntimeError):
     """Raised when Open-Elevation cannot provide a usable result."""
 
@@ -78,6 +84,79 @@ class ElevationClient:
 
         raise ElevationError("Open-Elevation lookup failed.")
 
+    def get_elevations(self, points: list[tuple[float, float]]) -> list[float | None]:
+        """Look up many points in one request; unusable entries come back as None."""
+        if not points:
+            return []
+        for latitude, longitude in points:
+            self._validate_coordinate(latitude, longitude)
+        locations = "|".join(f"{lat:.7f},{lon:.7f}" for lat, lon in points)
+        try:
+            response = self.session.get(
+                self.API_URL, params={"locations": locations}, timeout=self.REQUEST_TIMEOUT_SECONDS * 3
+            )
+            response.raise_for_status()
+            results = response.json().get("results")
+        except (requests.RequestException, ValueError) as error:
+            raise ElevationError(f"Open-Elevation batch lookup failed: {error}") from error
+        if not isinstance(results, list):
+            raise ElevationError("Open-Elevation batch response did not contain results.")
+        values: list[float | None] = []
+        for item in results:
+            value = item.get("elevation") if isinstance(item, dict) else None
+            values.append(
+                float(value) if isinstance(value, (int, float)) and math.isfinite(float(value)) else None
+            )
+        return values
+
+    def sample_terrain(
+        self,
+        lat: float,
+        lon: float,
+        radius_km: float = 5.0,
+        rings: int = 2,
+        per_ring: int = 8,
+    ) -> dict[str, Any]:
+        """Sample a ring of surrounding points to characterise the local terrain.
+
+        The flood proxy needs something to compare the parcel against. Comparing
+        it with its own elevation (the previous default) always produced exactly
+        50, so every parcel scored identically. Sampling the land around it gives
+        a real signal: sitting low in a basin reads differently from a ridge.
+        """
+        self._validate_coordinate(lat, lon)
+        degrees_per_km_lat = 1.0 / 110.574
+        degrees_per_km_lon = 1.0 / (111.320 * max(0.2, math.cos(math.radians(lat))))
+        points: list[tuple[float, float]] = [(lat, lon)]
+        for ring in range(1, rings + 1):
+            distance = radius_km * ring / rings
+            for step in range(per_ring):
+                bearing = 2 * math.pi * step / per_ring
+                sample_lat = lat + distance * math.cos(bearing) * degrees_per_km_lat
+                sample_lon = lon + distance * math.sin(bearing) * degrees_per_km_lon
+                if -90 <= sample_lat <= 90 and -180 <= sample_lon <= 180:
+                    points.append((sample_lat, sample_lon))
+
+        elevations = self.get_elevations(points)
+        centre = elevations[0] if elevations else None
+        neighbours = [value for value in elevations[1:] if value is not None]
+        if centre is None or len(neighbours) < 4:
+            raise ElevationError("Open-Elevation did not return enough surrounding samples.")
+        ordered = sorted(neighbours)
+        median = (
+            ordered[len(ordered) // 2]
+            if len(ordered) % 2
+            else (ordered[len(ordered) // 2 - 1] + ordered[len(ordered) // 2]) / 2.0
+        )
+        return {
+            "elevation_m": centre,
+            "baseline_m": median,
+            "sample_count": len(neighbours),
+            "radius_km": radius_km,
+            "min_m": ordered[0],
+            "max_m": ordered[-1],
+        }
+
     @staticmethod
     def _validate_polygon(geojson_polygon: dict[str, Any]) -> None:
         if not isinstance(geojson_polygon, dict) or geojson_polygon.get("type") != "Polygon":
@@ -131,34 +210,57 @@ class ElevationClient:
         self,
         lat: float,
         lon: float,
-        regional_baseline_elevation_m: float,
+        regional_baseline_elevation_m: float | None = None,
     ) -> dict[str, Any]:
         """Return a coarse elevation-relative flood-risk proxy.
 
-        This is not a hydrological model. It only compares one representative
-        point's elevation with a regional baseline; a real deployment should
-        use CWC flood atlas data and additional hydrological inputs.
+        This is not a hydrological model. It compares the parcel's elevation with
+        the surrounding terrain; a real deployment should use CWC flood atlas
+        data and additional hydrological inputs.
 
-        The point lookup is performed through this client's session.
+        When no baseline is supplied, one is derived from the land around the
+        parcel. An explicit ``regional_baseline_elevation_m`` still wins, so a
+        deployment with a real regional datum can pass it in.
         """
         ElevationClient._validate_coordinate(lat, lon)
-        if not math.isfinite(float(regional_baseline_elevation_m)):
-            raise ValueError("regional_baseline_elevation_m must be finite.")
-        elevation = self.get_elevation(lat, lon)
-        if not math.isfinite(float(elevation)):
-            raise ValueError("point elevation must be finite.")
+        terrain = self.sample_terrain(lat, lon)
+        elevation = terrain["elevation_m"]
+        if regional_baseline_elevation_m is not None and math.isfinite(float(regional_baseline_elevation_m)):
+            baseline = float(regional_baseline_elevation_m)
+            source = "the configured regional baseline"
+        else:
+            baseline = float(terrain["baseline_m"])
+            source = (
+                f"the median of {terrain['sample_count']} surrounding samples "
+                f"within {terrain['radius_km']:.0f} km"
+            )
 
-        metres_below_baseline = float(regional_baseline_elevation_m) - float(elevation)
-        # Baseline equals 50. Every metre below adds two points; clamp to 0-100.
-        score = int(round(max(0.0, min(100.0, 50.0 + 2.0 * metres_below_baseline))))
+        metres_below_baseline = baseline - float(elevation)
+        relief = max(1.0, float(terrain["max_m"]) - float(terrain["min_m"]))
+        # Scale by local relief: 5 m below baseline means far more on a flood
+        # plain than in hill country, so flat terrain moves the score faster.
+        sensitivity = max(1.0, min(8.0, 60.0 / relief))
+        relative_component = sensitivity * metres_below_baseline
+        # Relative height alone misreads a coast: sampling the sea drags the
+        # baseline to 0 m and a deltaic parcel then looks elevated. Low absolute
+        # elevation is itself a flood signal, so lowland carries its own term.
+        lowland_component = max(0.0, min(1.0, (LOWLAND_ELEVATION_M - float(elevation)) / LOWLAND_ELEVATION_M)) * LOWLAND_MAX_POINTS
+        score = int(round(max(0.0, min(100.0, 50.0 + relative_component + lowland_component))))
         relation = "below" if metres_below_baseline >= 0 else "above"
         basis = (
-            f"Representative point elevation is {float(elevation):.1f} m, "
-            f"{abs(metres_below_baseline):.1f} m {relation} the regional baseline of "
-            f"{float(regional_baseline_elevation_m):.1f} m. The resulting {score}/100 score "
-            "is a coarse elevation-relative proxy, not a hydrological model; real deployment should use CWC flood atlas data."
+            f"Parcel elevation {float(elevation):.1f} m, {abs(metres_below_baseline):.1f} m {relation} "
+            f"{source} ({baseline:.1f} m); local relief {relief:.0f} m"
+            + (f"; lowland adjustment +{lowland_component:.0f}" if lowland_component >= 0.5 else "")
+            + f". The resulting {score}/100 score is a coarse elevation-relative proxy, "
+            "not a hydrological model; real deployment should use CWC flood atlas data."
         )
-        return {"score": score, "basis": basis}
+        return {
+            "score": score,
+            "basis": basis,
+            "elevation_m": float(elevation),
+            "baseline_m": baseline,
+            "relief_m": relief,
+        }
 
 
 if __name__ == "__main__":
