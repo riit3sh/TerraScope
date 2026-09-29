@@ -69,8 +69,9 @@ def load_artifact(path: str | Path | None = None) -> dict[str, Any]:
         if not target.exists():
             raise ValuationUnavailable(
                 "model_not_trained",
-                f"No valuation model artifact at {target}. Train one with "
-                "`python -m valuation.train <price_csv>` (see valuation/README.md).",
+                # Operator instructions live in docs/SETUP_VALUATION.md, not in a
+                # user-facing report. This string is rendered in the UI.
+                "No valuation model is loaded, so no price is available for this parcel.",
             )
         import joblib
 
@@ -141,10 +142,8 @@ def estimate_value(
         raise ValuationUnavailable(
             "synthetic_model_only",
             (
-                "The only trained valuation model was fitted on synthetic demo rows, not real "
-                "market prices, so no price is quoted. Train on a real price CSV with "
-                "`python -m valuation.train <csv>`, or set VALUATION_ALLOW_SYNTHETIC=true "
-                "to show clearly labelled demo figures."
+                "The only valuation model available was fitted on synthetic demo rows, not real "
+                "market prices, so no price is quoted for this parcel."
             ),
         )
     support = _support(artifact, latitude, longitude)

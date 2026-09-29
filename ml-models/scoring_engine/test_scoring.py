@@ -18,7 +18,8 @@ def parcel(**overrides):
             "nearest_road_type": "primary",
             "nearest_school_distance_m": 300,
         },
-        "risk": {"flood_risk_score": 10},
+        "risk": {"flood_risk_score": 10},  # stands in for an integrated flood hazard source
+        "evidence": [{"source_type": "satellite", "source_reference": "NASA AppEEARS HLS", "freshness": "derived"}],
         "opportunity": {"growth_score": 85},
         "location": {"district": "Pune"},
         "geometry": {"type": "Polygon"},
@@ -40,6 +41,16 @@ def test_flood_prone_parcel_passes_through_risk_as_low_flood_safety():
     flood_prone = compute_evaluation(parcel(risk={"flood_risk_score": 95}), get_default_profile("conservative"))
     assert flood_prone["flood_safety_score"] == 5
     assert flood_prone["composite_score"] < safe["composite_score"]
+
+
+def test_terrain_indicator_alone_never_produces_a_flood_score():
+    """Only an integrated hazard source may populate flood safety."""
+    terrain_only = compute_evaluation(
+        parcel(risk={"terrain_relative_elevation_score": 55, "elevation_m": 138.4}),
+        get_default_profile("conservative"),
+    )
+    assert terrain_only["flood_safety_score"] is None
+    assert terrain_only["recommendation"] == "INSUFFICIENT_EVIDENCE"
 
 
 def test_encumbered_title_triggers_hard_avoid():
@@ -80,13 +91,16 @@ def test_identical_evidence_can_produce_profile_specific_results():
     assert homebuyer["composite_score"] != investor["composite_score"]
 
 
-def test_missing_data_reduces_confidence():
+def test_missing_data_lowers_evidence_coverage_not_a_confidence_number() -> None:
+    """Confidence was never a probability; coverage replaces it."""
     complete = compute_evaluation(parcel(), get_default_profile("conservative"))
     incomplete = compute_evaluation(
         {"risk": {"flood_risk_score": None}, "satellite": {"change_type": "insufficient_evidence"}},
         get_default_profile("conservative"),
     )
-    assert incomplete["confidence"] < complete["confidence"]
+    assert complete["confidence"] is None and incomplete["confidence"] is None
+    assert incomplete["assessed_weight_pct"] < complete["assessed_weight_pct"]
+    assert incomplete["recommendation"] == "INSUFFICIENT_EVIDENCE"
 
 
 def test_sensitivity_reports_changed_factors_and_magnitude():
@@ -98,10 +112,12 @@ def test_sensitivity_reports_changed_factors_and_magnitude():
 
 
 
-def test_missing_land_records_are_named_as_unverified_in_the_reasoning() -> None:
-    """A high legal-safety number with no records behind it must say so."""
+def test_missing_land_records_produce_no_legal_score_at_all() -> None:
+    """Previously this emitted a high legal-safety number with a caveat."""
     evaluation = {"profile": "homebuyer", "property_type": "residential", "weights": {}, "preferences": {}}
     unverified = compute_verdict({"land_records": None}, evaluation)
-    assert "land records not provided" in unverified["reasoning_summary"]
+    assert unverified["legal_safety_score"] is None
+    assert unverified["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert "Insufficient evidence" in unverified["reasoning_summary"]
     verified = compute_verdict({"land_records": {"title_clear": True, "encumbrance_flag": False}}, evaluation)
     assert "land records not provided" not in verified["reasoning_summary"]

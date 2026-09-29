@@ -184,8 +184,11 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
     evaluated["evaluation"] = deepcopy(evaluation)
     result = compute_evaluation(evaluated, evaluation)
     risk = evaluated.setdefault("risk", {}) or {}
-    risk["legal_risk_score"] = round(100.0 - result["legal_safety_score"], 2)
-    risk.setdefault("flood_risk_score", round(100.0 - result["flood_safety_score"], 2))
+    # An unassessed factor stays null everywhere; it is never back-filled with a
+    # derived number, because that is what made unknowns look like real scores.
+    legal = result["legal_safety_score"]
+    risk["legal_risk_score"] = round(100.0 - legal, 2) if legal is not None else None
+    risk["flood_assessment_status"] = "assessed" if result["flood_safety_score"] is not None else "unavailable"
     evaluated["risk"] = risk
     opportunity = evaluated.setdefault("opportunity", {}) or {}
     opportunity["growth_score"] = result["growth_score"]
@@ -199,12 +202,15 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
             "growth_score",
             "composite_score",
             "weighted_contributions",
+            "factors",
+            "assessed_weight_pct",
+            "unassessed_factors",
         )
     }
     # Include the authoritative rule-based verdict in the facts sent to Groq.
     evaluated["verdict"] = {
         "recommendation": result["recommendation"],
-        "confidence": result["confidence"],
+        "confidence": result["confidence"],  # deliberately null: see scoring_engine
         "reasoning_summary": result["reasoning_summary"],
         "citations": [],
     }
@@ -235,7 +241,7 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
     )
     evaluated["verdict"] = {
         "recommendation": result["recommendation"],
-        "confidence": result["confidence"],
+        "confidence": result["confidence"],  # deliberately null: see scoring_engine
         "reasoning_summary": ai_explanation.get("answer_text") or result["reasoning_summary"],
         "citations": citations,
     }

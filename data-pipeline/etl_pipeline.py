@@ -207,7 +207,7 @@ def build_evidence_snapshot(
             # Only an explicitly configured datum overrides the sampled terrain.
             # Defaulting this to the parcel's own elevation made every delta zero,
             # so every parcel scored exactly 50.
-            proxy = elevation_client.estimate_flood_risk_proxy(
+            proxy = elevation_client.estimate_terrain_relative_elevation(
                 latitude,
                 longitude,
                 float(configured) if configured not in (None, "") else None,
@@ -316,7 +316,7 @@ def build_evidence_snapshot(
             "evidence_id": f"{snapshot_id}:elevation",
             "source_type": "open_elevation",
             "source_reference": "Open-Elevation API",
-            "title": "Representative elevation",
+            "title": "Representative elevation (terrain indicator, not flood risk)",
             "observed_at": now,
             "freshness": "live",
             "summary": _elevation_summary(elevation_m, flood_proxy),
@@ -359,8 +359,15 @@ def build_evidence_snapshot(
         "satellite": satellite_facts,
         "infrastructure": amenities,
         "risk": {
-            "flood_risk_score": flood_proxy["score"],
-            "flood_risk_basis": flood_proxy["basis"],
+            # No flood hazard dataset is integrated, so flood risk stays unknown.
+            # The elevation comparison below is a terrain indicator, not flooding:
+            # it says nothing about rainfall, drainage, rivers or the coast, and
+            # writing it into flood_risk_score presented it as a flood probability.
+            "flood_risk_score": None,
+            "flood_risk_basis": None,
+            "flood_assessment_status": "unavailable",
+            "terrain_relative_elevation_score": flood_proxy["score"],
+            "terrain_basis": flood_proxy["basis"],
             "elevation_m": elevation_m,
             "legal_risk_score": None,
             "accessibility_score": None,

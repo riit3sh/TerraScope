@@ -206,17 +206,19 @@ class ElevationClient:
             "basis": "Representative elevation sampled at the user-defined polygon centroid; not parcel-wide terrain sampling.",
         }
 
-    def estimate_flood_risk_proxy(
+    def estimate_terrain_relative_elevation(
         self,
         lat: float,
         lon: float,
         regional_baseline_elevation_m: float | None = None,
     ) -> dict[str, Any]:
-        """Return a coarse elevation-relative flood-risk proxy.
+        """Return where the parcel sits relative to the surrounding terrain.
 
-        This is not a hydrological model. It compares the parcel's elevation with
-        the surrounding terrain; a real deployment should use CWC flood atlas
-        data and additional hydrological inputs.
+        THIS IS NOT A FLOOD ASSESSMENT. It compares one elevation point with the
+        land around it. It uses no rainfall, drainage, watercourse, river-stage,
+        coastal or flood-hazard-map data, and therefore cannot distinguish
+        coastal, fluvial and pluvial flooding, nor establish that an inland
+        parcel is safe. It is exposed as a labelled terrain indicator only.
 
         When no baseline is supplied, one is derived from the land around the
         parcel. An explicit ``regional_baseline_elevation_m`` still wins, so a
@@ -251,8 +253,9 @@ class ElevationClient:
             f"Parcel elevation {float(elevation):.1f} m, {abs(metres_below_baseline):.1f} m {relation} "
             f"{source} ({baseline:.1f} m); local relief {relief:.0f} m"
             + (f"; lowland adjustment +{lowland_component:.0f}" if lowland_component >= 0.5 else "")
-            + f". The resulting {score}/100 score is a coarse elevation-relative proxy, "
-            "not a hydrological model; real deployment should use CWC flood atlas data."
+            + f". This {score}/100 figure is a RELATIVE TERRAIN POSITION indicator only. "
+            "It is not a flood probability: it uses no rainfall, drainage, watercourse, "
+            "river-stage or coastal data, and no flood hazard map. Do not read it as flood risk."
         )
         return {
             "score": score,
@@ -277,7 +280,7 @@ if __name__ == "__main__":
     }
     client = ElevationClient()
     representative = client.get_polygon_representative_elevation(pune_sample_polygon)
-    flood_proxy = client.estimate_flood_risk_proxy(
+    flood_proxy = client.estimate_terrain_relative_elevation(
         representative["latitude"],
         representative["longitude"],
         regional_baseline_elevation_m=560.0,

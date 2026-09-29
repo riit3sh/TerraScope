@@ -1,10 +1,6 @@
 # TerraScope local development status
 
-Last updated: 2026-09-29 · branch `sai/terrascope-progress` (from `origin/main`) · pushed to https://github.com/riit3sh/TerraScope
-
-This work was developed in a local folder unpacked from a ZIP, whose Git history is unrelated to the
-team repository. It was transferred onto a fresh branch cut from `origin/main` rather than merged, and
-no teammate's file was deleted in the process.
+Last updated: 2026-09-28 · branch `feature/local-completion` (from `dev`) · no remote configured, nothing pushed.
 
 ## Run it
 

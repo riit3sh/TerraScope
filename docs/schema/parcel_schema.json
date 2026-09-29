@@ -383,6 +383,31 @@
           ],
           "minimum": 0,
           "maximum": 100
+        },
+        "terrain_relative_elevation_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "terrain_basis": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "flood_assessment_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "assessed",
+            "unavailable",
+            null
+          ]
         }
       }
     },
@@ -638,6 +663,100 @@
               }
             }
           }
+        },
+        "factors": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "factor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "score": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "assessed",
+                  "indicative",
+                  "unavailable",
+                  "not_integrated",
+                  null
+                ]
+              },
+              "basis": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "limitations": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "weight_pct": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100
+              },
+              "checklist": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "assessed_weight_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "unassessed_factors": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
         }
       }
     },
@@ -723,6 +842,7 @@
             "BUY",
             "WAIT",
             "AVOID",
+            "INSUFFICIENT_EVIDENCE",
             null
           ]
         },

@@ -5,6 +5,11 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+try:
+    from ._verdict import build_verdict
+except ImportError:  # pragma: no cover - supports direct script execution
+    from _verdict import build_verdict
+
 
 # Every tunable scoring value lives here so Review 2 behavior is easy to audit.
 LEGAL_TITLE_NOT_CLEAR_PENALTY = 40
@@ -159,58 +164,20 @@ def _data_confidence(record: dict[str, Any]) -> float:
     return max(0.0, min(1.0, present / len(sections)))
 
 
-def _reasoning_summary(
-    scores: dict[str, float], legal_risk: float, composite: float, recommendation: str, rera_penalty: float, records_missing: bool
-) -> str:
-    # Missing records carry only a small penalty, so say plainly that the legal
-    # score is not backed by any title or encumbrance record.
-    unverified = "; land records not provided, so legal safety is unverified" if records_missing else ""
-    return (
-        f"{recommendation}: composite {composite:.1f}; legal risk {legal_risk:.1f} "
-        f"(legal safety {scores['legal_safety_score']:.1f}{unverified}); accessibility {scores['accessibility_score']:.1f}; "
-        f"growth {scores['growth_score']:.1f}; flood safety {scores['flood_safety_score']:.1f}; "
-        f"RERA penalty {rera_penalty:.1f}."
-    )[:500]
-
-
 def compute_verdict(record: dict[str, Any], evaluation: dict[str, Any]) -> dict[str, Any]:
-    """Apply the hard legal-risk override, then threshold the weighted composite."""
-    scoring_record = {**record, "evaluation": evaluation}
-    legal_risk = legal_risk_score(scoring_record)
-    rera = apply_rera_requirement(record, evaluation)
-    effective_legal_risk = min(100.0, legal_risk + rera["penalty"])
-    scores = {
-        "legal_safety_score": 100.0 - effective_legal_risk,
-        "accessibility_score": accessibility_score(scoring_record, _section(evaluation, "preferences")),
-        "flood_safety_score": 100.0 - (flood_and_terrain_risk_score(scoring_record) if flood_and_terrain_risk_score(scoring_record) is not None else 50.0),
-        "growth_score": growth_opportunity_score(scoring_record),
-    }
-    weights = _normalized_weights(evaluation)
-    contributions = [
-        {"factor": key.removesuffix("_score"), "contribution": round(scores[key] * weights[f"{key.removesuffix('_score')}_pct"] / 100.0, 2)}
-        for key in scores
-    ]
-    composite = round(sum(item["contribution"] for item in contributions), 2)
-    if effective_legal_risk > HARD_LEGAL_RISK_THRESHOLD:
-        recommendation = "AVOID"
-    elif composite >= BUY_COMPOSITE_THRESHOLD:
-        recommendation = "BUY"
-    elif composite >= WAIT_COMPOSITE_THRESHOLD:
-        recommendation = "WAIT"
-    else:
-        recommendation = "AVOID"
-    confidence = round(max(0.0, min(1.0, _data_confidence(record) * (0.6 + 0.4 * abs(composite - 50.0) / 50.0))), 3)
-    return {
-        **scores,
-        "weighted_contributions": contributions,
-        "composite_score": composite,
-        "recommendation": recommendation,
-        "confidence": confidence,
-        "reasoning_summary": _reasoning_summary(
-            scores, effective_legal_risk, composite, recommendation, rera["penalty"],
-            records_missing=not isinstance(record.get("land_records"), dict),
-        ),
-    }
+    """Assess each factor from evidence, and withhold a verdict when it is thin."""
+    return build_verdict(
+        record,
+        evaluation,
+        weights=_normalized_weights(evaluation),
+        legal_risk_score=legal_risk_score,
+        apply_rera_requirement=apply_rera_requirement,
+        accessibility_score=accessibility_score,
+        growth_opportunity_score=growth_opportunity_score,
+        hard_legal_risk_threshold=HARD_LEGAL_RISK_THRESHOLD,
+        buy_threshold=BUY_COMPOSITE_THRESHOLD,
+        wait_threshold=WAIT_COMPOSITE_THRESHOLD,
+    )
 
 
 def compute_evaluation(record: dict[str, Any], evaluation: dict[str, Any]) -> dict[str, Any]:
@@ -267,6 +234,14 @@ def evaluate_sensitivity(
     for factor in ("legal_safety_score", "accessibility_score", "growth_score", "flood_safety_score"):
         baseline_value = baseline[factor]
         changed_value = changed[factor]
+        # An unassessed factor has no value to compare; report it rather than
+        # subtracting None, and never treat "unknown" as "unchanged at 50".
+        if baseline_value is None or changed_value is None:
+            factors.append({
+                "factor": factor, "baseline": baseline_value,
+                "changed": changed_value, "delta": None, "status": "unassessed",
+            })
+            continue
         delta = round(changed_value - baseline_value, 2)
         if delta:
             factors.append({"factor": factor, "baseline": baseline_value, "changed": changed_value, "delta": delta})
@@ -274,6 +249,10 @@ def evaluate_sensitivity(
         "verdict_changed": baseline["recommendation"] != changed["recommendation"],
         "baseline_recommendation": baseline["recommendation"],
         "changed_recommendation": changed["recommendation"],
-        "composite_delta": round(changed["composite_score"] - baseline["composite_score"], 2),
+        "composite_delta": (
+            round(changed["composite_score"] - baseline["composite_score"], 2)
+            if baseline["composite_score"] is not None and changed["composite_score"] is not None
+            else None
+        ),
         "factors": factors,
     }

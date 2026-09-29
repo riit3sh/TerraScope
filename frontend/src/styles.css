@@ -153,3 +153,29 @@
 }
 .saved-more{display:block;margin:12px auto 0;color:#b8f36a;background:transparent;border:0;font:11px 'DM Mono';letter-spacing:.1em;text-transform:uppercase;padding:6px}
 .saved-more:hover{text-decoration:underline}
+
+/* ---- Evidence status: what is actually assessed ---- */
+.evidence-status{padding:46px 0;border-bottom:1px solid #2a3738}
+.evidence-status h2{font-size:28px;letter-spacing:-.05em;line-height:1.12;margin:14px 0 0}
+.insufficient-note{margin:22px 0 0;padding:14px 16px;background:#241e12;border:1px solid #6d5526;color:#f8c15c;font-size:12px;line-height:1.7}
+.factor-list{display:grid;gap:10px;margin-top:22px}
+.factor{padding:16px 18px;background:#111a1b;border:1px solid #2d3b3c;border-left:2px solid #3a4a4b}
+.factor.assessed{border-left-color:#b8f36a}
+.factor.indicative{border-left-color:#f8c15c}
+.factor.unavailable,.factor.not_integrated{border-left-color:#ff9b8e}
+.factor-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.factor-head strong{font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+.factor-head em{margin-left:auto;font-style:normal;color:#75847e;font:10px 'DM Mono'}
+.factor-badge{font:10px 'DM Mono';letter-spacing:.1em;text-transform:uppercase;padding:4px 8px;border:1px solid #35413e;color:#a4b2ab}
+.factor-badge.assessed{color:#b8f36a;border-color:#3d5a33}
+.factor-badge.indicative{color:#f8c15c;border-color:#6d5526}
+.factor-badge.unavailable,.factor-badge.not_integrated{color:#ff9b8e;border-color:#6d3a33}
+.factor p{margin:10px 0 6px;color:#c0cdc7;font-size:13px;line-height:1.65}
+.factor small{color:#75847e;font-size:11px;line-height:1.6;display:block}
+.checklist{margin:12px 0 0;padding-left:18px;color:#8b9a94;font-size:11px;line-height:1.9}
+.checklist li::marker{color:#f8c15c}
+.terrain-note{margin-top:20px;padding:14px 16px;border:1px dashed #33433f;color:#8b9a94;font-size:11px;line-height:1.7}
+.terrain-note strong{color:#c0cdc7}
+.score-line.unassessed strong{color:#7e8c87;font-size:12px}
+.score-status{display:block;margin-top:6px;color:#75847e;font:9px 'DM Mono';letter-spacing:.1em;text-transform:uppercase}
+@media(max-width:560px){.evidence-status{padding:32px 0}.factor-head em{margin-left:0}}

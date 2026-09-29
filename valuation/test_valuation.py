@@ -242,4 +242,9 @@ def test_synthetic_model_prices_nothing_unless_demo_mode_is_enabled(monkeypatch:
     with pytest.raises(ValuationUnavailable) as refused:
         estimate_value(18.52, 73.85, 2000)
     assert refused.value.reason == "synthetic_model_only"
-    assert "VALUATION_ALLOW_SYNTHETIC" in refused.value.detail
+    # The refusal text is shown in the report, so it must stay free of operator
+    # instructions; those belong in docs/SETUP_VALUATION.md.
+    detail = refused.value.detail
+    for leak in ("VALUATION_ALLOW_SYNTHETIC", "python -m valuation.train", "README.md", "--synthetic"):
+        assert leak not in detail, f"operator instruction {leak!r} leaked into the user-facing report"
+    assert "no price is quoted" in detail
