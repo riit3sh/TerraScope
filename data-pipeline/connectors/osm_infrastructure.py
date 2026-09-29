@@ -189,7 +189,10 @@ class InfrastructureClient:
             f"{latitude:.7f},{longitude:.7f});"
             for tag in self.TAGS
         ]
-        return "[out:json][timeout:25];(\n" + "\n".join(statements) + "\n);out center tags;"
+        # `out geom` returns every node of each way. `out center` returned only the
+        # way's midpoint, so a 2 km road running past the plot was measured to its
+        # middle rather than to the point where it actually passes.
+        return "[out:json][timeout:25];(\n" + "\n".join(statements) + "\n);out geom tags;"
 
     def _overpass_endpoints(self) -> list[str]:
         configured = os.getenv("OVERPASS_URLS") or os.getenv("OVERPASS_URL")
@@ -257,6 +260,52 @@ class InfrastructureClient:
             return float(center["lon"]), float(center["lat"])
         return None
 
+    @staticmethod
+    def _closest_point_on_element(
+        origin: tuple[float, float], element: dict[str, Any]
+    ) -> tuple[float, tuple[float, float]] | None:
+        """Nearest point on a way's geometry, in metres, with that point.
+
+        Falls back to the element's own node or centre when no geometry is
+        returned. Distances are still straight-line, not road-network travel.
+        """
+        origin_lon, origin_lat = origin
+        geometry = element.get("geometry")
+        if not isinstance(geometry, list) or len(geometry) < 2:
+            point = InfrastructureClient._element_point(element)
+            if point is None:
+                return None
+            return InfrastructureClient._haversine_meters(origin, point), point
+
+        # Local equirectangular metres about the origin: over a few km the error
+        # is far below the precision anyone should read into these distances.
+        scale_lon = 111_320.0 * math.cos(math.radians(origin_lat))
+        scale_lat = 110_574.0
+
+        def to_xy(node: dict[str, Any]) -> tuple[float, float]:
+            return ((node["lon"] - origin_lon) * scale_lon, (node["lat"] - origin_lat) * scale_lat)
+
+        best_distance = float("inf")
+        best_xy = (0.0, 0.0)
+        previous = to_xy(geometry[0])
+        for node in geometry[1:]:
+            current = to_xy(node)
+            ax, ay = previous
+            bx, by = current
+            dx, dy = bx - ax, by - ay
+            if dx == 0.0 and dy == 0.0:
+                candidate = (ax, ay)
+            else:
+                t = max(0.0, min(1.0, (-ax * dx - ay * dy) / (dx * dx + dy * dy)))
+                candidate = (ax + t * dx, ay + t * dy)
+            distance = math.hypot(candidate[0], candidate[1])
+            if distance < best_distance:
+                best_distance, best_xy = distance, candidate
+            previous = current
+
+        closest = (origin_lon + best_xy[0] / scale_lon, origin_lat + best_xy[1] / scale_lat)
+        return best_distance, closest
+
     def nearest_amenities(
         self,
         geojson_polygon: dict[str, Any],
@@ -277,15 +326,17 @@ class InfrastructureClient:
         payload = self._request_overpass(query)
         # Keep the matched element's position: the map plots real amenity
         # locations rather than decorative markers at made-up offsets.
-        nearest: dict[str, tuple[float, str | None, tuple[float, float]]] = {}
+        nearest: dict[str, tuple[float, str | None, tuple[float, float], dict[str, Any]]] = {}
         for element in payload.get("elements", []):
             if not isinstance(element, dict):
                 continue
-            point = self._element_point(element)
             tags = element.get("tags", {})
-            if point is None or not isinstance(tags, dict):
+            if not isinstance(tags, dict):
                 continue
-            distance = self._haversine_meters(representative_point, point)
+            measured = self._closest_point_on_element(representative_point, element)
+            if measured is None:
+                continue
+            distance, point = measured
             if distance > radius_meters:
                 continue
             for tag in self.TAGS:
@@ -295,18 +346,36 @@ class InfrastructureClient:
                 category = tag["name"]
                 category_type = str(tag_value) if tag["type_tag"] else None
                 if category not in nearest or distance < nearest[category][0]:
-                    nearest[category] = (distance, category_type, point)
+                    nearest[category] = (distance, category_type, point, tags)
 
+        road_tags = nearest["road"][3] if "road" in nearest else {}
+        school_tags = nearest["school"][3] if "school" in nearest else {}
+        # OpenStreetMap can say a way passes nearby. It cannot say the parcel has a
+        # legal right of way onto it, or that any physical connection exists, so
+        # proximity is reported as proximity and access is left unverified.
+        access_tag = road_tags.get("access")
         result = {
             "nearest_road_distance_m": round(nearest["road"][0], 2) if "road" in nearest else None,
             "nearest_road_type": nearest["road"][1] if "road" in nearest else None,
+            "nearest_road_name": road_tags.get("name") or road_tags.get("ref"),
+            "nearest_road_access_tag": access_tag,
+            "nearest_road_surface": road_tags.get("surface"),
             "nearest_school_distance_m": round(nearest["school"][0], 2) if "school" in nearest else None,
+            "nearest_school_name": school_tags.get("name"),
+            "distance_measurement": "straight_line_to_nearest_point_on_osm_geometry",
+            "road_access_verified": False,
+            "road_access_note": (
+                "Proximity only. This is the straight-line distance to the nearest point on an "
+                "OpenStreetMap way, not a routed travel distance, and it is not evidence of a legal "
+                "right of way or of a physical connection to the parcel."
+                + (f" The way is tagged access={access_tag}." if access_tag else "")
+            ),
             **{
                 f"nearest_{category}_{axis}": (
                     round(nearest[category][2][index], 6) if category in nearest else None
                 )
                 for category in ("road", "school")
-                # _element_point returns (longitude, latitude).
+                # points are (longitude, latitude).
                 for axis, index in (("lat", 1), ("lon", 0))
             },
         }

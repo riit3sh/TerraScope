@@ -78,6 +78,11 @@ def legal_risk_score(record: dict[str, Any]) -> float:
     return float(min(100, risk))
 
 
+def _positive_number(value: Any, fallback: float) -> float:
+    """Use a caller-supplied cap only when it is a usable positive number."""
+    return float(value) if isinstance(value, (int, float)) and value > 0 else fallback
+
+
 def _distance_score(distance: Any, max_useful_distance: float) -> float | None:
     if not isinstance(distance, (int, float)):
         return None
@@ -94,8 +99,13 @@ def accessibility_score(record: dict[str, Any], preferences: dict[str, Any] | No
     })
     road_importance = property_weights["road"] * IMPORTANCE_MULTIPLIERS.get(preferences.get("road_importance"), 1.0)
     school_importance = property_weights["school"] * IMPORTANCE_MULTIPLIERS.get(preferences.get("school_importance"), 1.0)
-    road_score = _distance_score(infrastructure.get("nearest_road_distance_m"), MAX_USEFUL_ROAD_DISTANCE_M)
-    school_score = _distance_score(infrastructure.get("nearest_school_distance_m"), MAX_USEFUL_SCHOOL_DISTANCE_M)
+    # The UI has always sent these; they were accepted and then ignored, so moving
+    # the slider changed nothing. They now set the distance at which the score
+    # reaches zero, falling back to the module defaults when absent.
+    road_cap = _positive_number(preferences.get("max_road_distance_m"), MAX_USEFUL_ROAD_DISTANCE_M)
+    school_cap = _positive_number(preferences.get("max_school_distance_m"), MAX_USEFUL_SCHOOL_DISTANCE_M)
+    road_score = _distance_score(infrastructure.get("nearest_road_distance_m"), road_cap)
+    school_score = _distance_score(infrastructure.get("nearest_school_distance_m"), school_cap)
     weighted = [(road_score, road_importance), (school_score, school_importance)]
     available = [(score, weight) for score, weight in weighted if score is not None]
     if not available:

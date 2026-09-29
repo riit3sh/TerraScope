@@ -338,6 +338,48 @@
           ],
           "minimum": -180,
           "maximum": 180
+        },
+        "nearest_road_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_road_access_tag": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_road_surface": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_school_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "distance_measurement": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "road_access_note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "road_access_verified": {
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
       }
     },
