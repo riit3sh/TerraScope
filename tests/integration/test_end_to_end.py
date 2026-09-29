@@ -134,3 +134,7 @@ def test_uploaded_text_becomes_retrievable_parcel_evidence(client: httpx.Client)
     assert parcel.status_code == 200
     uploaded = parcel.json()["uploaded_documents"]
     assert any(item["source_reference"] == fixture.name and item["source_type"] == "user_upload" for item in uploaded)
+    evaluated = evaluate(client, snapshot, EVALUATIONS[0])
+    ledger = [item for item in evaluated["evidence"] if item["source_type"] == "user_upload"]
+    assert [item["source_reference"] for item in ledger] == [fixture.name]
+    assert all(item["freshness"] == "user_upload" for item in ledger)
