@@ -9,15 +9,21 @@ from typing import Any
 
 import requests
 
-try:
+# Only fall back to sibling imports when run as a script; inside the package a
+# failed import (e.g. chromadb missing) must surface as itself.
+if __package__:
     from .retrieve import retrieve_context
-except ImportError:  # pragma: no cover - supports direct script execution.
+else:  # pragma: no cover - direct script execution.
     from retrieve import retrieve_context
 
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 SOURCE_TAG_PATTERN = re.compile(r"\[source:\s*([^\]]+)\]")
+# AI output is optional decoration on a deterministic verdict, so these stay well
+# inside the caller's budget: a slow Groq must degrade, never stall the report.
+GROUNDED_TIMEOUT_SECONDS = float(os.getenv("GROQ_GROUNDED_TIMEOUT_SECONDS", "15"))
+EXPLANATION_TIMEOUT_SECONDS = float(os.getenv("GROQ_EXPLANATION_TIMEOUT_SECONDS", "12"))
 
 
 def _prompt(question: str, context: list[dict[str, Any]]) -> str:
@@ -65,7 +71,7 @@ def generate_grounded_answer(question: str, parcel_id: str) -> dict[str, Any]:
         GROQ_API_URL,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         json={"model": MODEL_NAME, "max_completion_tokens": 700, "temperature": 0, "messages": [{"role": "user", "content": _prompt(question, context)}]},
-        timeout=60,
+        timeout=GROUNDED_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
     answer_text = _extract_text(response.json())
@@ -102,7 +108,7 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
         GROQ_API_URL,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         json={"model": MODEL_NAME, "max_completion_tokens": 600, "temperature": 0, "messages": [{"role": "user", "content": prompt}]},
-        timeout=20,
+        timeout=EXPLANATION_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
     answer_text = _extract_text(response.json()).strip()

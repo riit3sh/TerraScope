@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-try:
+# Only fall back to sibling imports when run as a script; inside the package a
+# failed import (e.g. chromadb missing) must surface as itself.
+if __package__:
     from .ingest import _collection, _model
-except ImportError:  # pragma: no cover - supports `python retrieve.py` from this directory.
+else:  # pragma: no cover - direct script execution.
     from ingest import _collection, _model
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +11,9 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 
-STORE_PATH = Path(__file__).with_name("chroma_store")
+# Overridable so Compose can mount it on a volume; inside the image this path
+# is a container layer and every rebuild would silently drop the index.
+STORE_PATH = Path(os.getenv("CHROMA_STORE_PATH", str(Path(__file__).with_name("chroma_store"))))
 COLLECTION_NAME = "terrascope_documents"
 EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
