@@ -77,6 +77,41 @@ def get_latest_for_parcel(parcel_id: str) -> tuple[str, dict[str, Any]] | None:
     return (row["snapshot_id"], json.loads(row["snapshot_json"])) if row else None
 
 
+def list_saved_reports(limit: int = 50) -> list[dict[str, Any]]:
+    """Most recent snapshot per parcel, for the saved-reports list."""
+    with _connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT s.parcel_id, s.snapshot_id, s.snapshot_json, s.created_at,
+                   (SELECT COUNT(*) FROM documents d WHERE d.parcel_id = s.parcel_id) AS document_count
+            FROM snapshots s
+            JOIN (SELECT parcel_id, MAX(created_at) AS newest FROM snapshots GROUP BY parcel_id) latest
+              ON latest.parcel_id = s.parcel_id AND latest.newest = s.created_at
+            ORDER BY s.created_at DESC LIMIT ?
+            """,
+            (int(limit),),
+        ).fetchall()
+    reports = []
+    for row in rows:
+        snapshot = json.loads(row["snapshot_json"])
+        location = snapshot.get("location") or {}
+        metadata = snapshot.get("metadata") or {}
+        geometry = snapshot.get("geometry_metadata") or {}
+        reports.append({
+            "parcel_id": row["parcel_id"],
+            "analysis_snapshot_id": row["snapshot_id"],
+            "created_at": row["created_at"],
+            "address": location.get("address"),
+            "district": location.get("district"),
+            "area_acres": geometry.get("area_acres"),
+            "analysis_date_from": metadata.get("analysis_date_from"),
+            "analysis_date_to": metadata.get("analysis_date_to"),
+            "document_count": int(row["document_count"] or 0),
+            "has_evaluation": get_latest_evaluation(row["parcel_id"]) is not None,
+        })
+    return reports
+
+
 def save_evaluation(parcel_id: str, snapshot_id: str, evaluation: dict[str, Any]) -> None:
     with _connect() as connection:
         connection.execute(
