@@ -7,7 +7,9 @@ import logging
 import math
 import os
 import tempfile
+import threading
 import time
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, as_completed, wait
 from pathlib import Path
 from typing import Any
 
@@ -26,16 +28,56 @@ class InfrastructureClient:
     """Query nearby OSM infrastructure while respecting public API limits."""
 
     OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+    # The public instances congest unpredictably. Rather than sleeping on a
+    # slow one, move to the next mirror; set OVERPASS_URLS to override.
+    # Only whole-planet instances belong here: a regional extract answers fast
+    # with zero elements outside its own country, which would be recorded as
+    # 'no road found' rather than as the missing data it really is.
+    OVERPASS_MIRRORS = (
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.private.coffee/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+    )
     NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
     NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
     CACHE_TTL_SECONDS = 30 * 24 * 60 * 60
     MIN_REQUEST_INTERVAL_SECONDS = 1.0
+    # Public Overpass instances throttle hard and time out under load; retry
+    # the transient statuses rather than failing a whole parcel analysis.
+    RETRY_STATUS_CODES = frozenset({429, 502, 503, 504})
+    MAX_ATTEMPTS = 3
+    # How long the primary gets alone before a mirror is started alongside it.
+    HEDGE_DELAY_SECONDS = 5.0
+    _LAST_REQUEST_AT: dict[str, float] = {}
+    _THROTTLE_LOCK = threading.Lock()
     DEFAULT_USER_AGENT = "TerraScope/0.1.0 (local land due-diligence demo)"
 
     # Add a future category here; query construction and parsing remain unchanged.
+    # Non-vehicular ways are excluded: a footpath 5 m away is not road access,
+    # and in a city they were most of a multi-thousand-element response.
+    _NON_ROAD_HIGHWAYS = (
+        "footway|path|steps|cycleway|bridleway|corridor|pedestrian|platform"
+        "|proposed|construction|raceway|escape|elevator|service|track"
+    )
     TAGS = [
-        {"name": "road", "selector": "way[highway]", "tag_name": "highway", "tag_value": None, "type_tag": "highway"},
-        {"name": "school", "selector": "nwr[amenity=school]", "tag_name": "amenity", "tag_value": "school", "type_tag": None},
+        {
+            "name": "road",
+            "selector": 'way[highway][highway!~"^(' + _NON_ROAD_HIGHWAYS + ')$"]',
+            "tag_name": "highway",
+            "tag_value": None,
+            "type_tag": "highway",
+            # Roads are dense, so a tighter radius finds the nearest one much
+            # faster; beyond this the accessibility score is already at its floor.
+            "radius_m": 1500.0,
+        },
+        {
+            "name": "school",
+            "selector": "nwr[amenity=school]",
+            "tag_name": "amenity",
+            "tag_value": "school",
+            "type_tag": None,
+            "radius_m": None,
+        },
     ]
 
     def __init__(
@@ -43,11 +85,13 @@ class InfrastructureClient:
         *,
         session: requests.Session | None = None,
         cache_path: str | Path | None = None,
-        request_timeout: float = 45.0,
+        request_timeout: float = 25.0,
     ) -> None:
         self.session = session or requests.Session()
         self.request_timeout = request_timeout
         self.cache_path = Path(cache_path) if cache_path else self._default_cache_path()
+        # Instance state is kept for compatibility; the throttle itself is shared
+        # (see _LAST_REQUEST_AT) because a fresh client is built per analysis.
         self._last_overpass_request_at = 0.0
         self._last_nominatim_request_at = 0.0
 
@@ -129,39 +173,80 @@ class InfrastructureClient:
             LOGGER.warning("Could not write OSM cache %s: %s", self.cache_path, error)
 
     def _wait_for_public_service(self, service: str) -> None:
-        attribute = "_last_overpass_request_at" if service == "overpass" else "_last_nominatim_request_at"
-        last_request_at = getattr(self, attribute)
-        wait_seconds = self.MIN_REQUEST_INTERVAL_SECONDS - (time.monotonic() - last_request_at)
-        if wait_seconds > 0:
-            time.sleep(wait_seconds)
-        setattr(self, attribute, time.monotonic())
+        """Throttle one public service, shared across clients and threads."""
+        key = "overpass" if service == "overpass" else "nominatim"
+        with InfrastructureClient._THROTTLE_LOCK:
+            last_request_at = InfrastructureClient._LAST_REQUEST_AT.get(key, 0.0)
+            wait_seconds = self.MIN_REQUEST_INTERVAL_SECONDS - (time.monotonic() - last_request_at)
+            if wait_seconds > 0:
+                time.sleep(wait_seconds)
+            InfrastructureClient._LAST_REQUEST_AT[key] = time.monotonic()
+        setattr(self, "_last_overpass_request_at" if key == "overpass" else "_last_nominatim_request_at", time.monotonic())
 
     def _overpass_query(self, latitude: float, longitude: float, radius_meters: float) -> str:
         statements = [
-            f"{tag['selector']}(around:{radius_meters:g},{latitude:.7f},{longitude:.7f});"
+            f"{tag['selector']}(around:{min(tag.get('radius_m') or radius_meters, radius_meters):g},"
+            f"{latitude:.7f},{longitude:.7f});"
             for tag in self.TAGS
         ]
-        return "[out:json][timeout:40];(\n" + "\n".join(statements) + "\n);out center tags;"
+        return "[out:json][timeout:25];(\n" + "\n".join(statements) + "\n);out center tags;"
+
+    def _overpass_endpoints(self) -> list[str]:
+        configured = os.getenv("OVERPASS_URLS") or os.getenv("OVERPASS_URL")
+        if configured:
+            return [url.strip() for url in configured.split(",") if url.strip()]
+        return list(self.OVERPASS_MIRRORS)
+
+    def _fetch_overpass_once(self, endpoint: str, query: str, user_agent: str) -> dict[str, Any]:
+        """One attempt against one endpoint. Raises on anything unusable."""
+        response = self.session.get(
+            endpoint,
+            params={"data": query},
+            headers={"User-Agent": user_agent},
+            timeout=self.request_timeout,
+        )
+        if response.status_code in self.RETRY_STATUS_CODES:
+            raise InfrastructureError(f"{endpoint}: HTTP {response.status_code}")
+        if not response.ok:
+            raise InfrastructureError(f"{endpoint}: HTTP {response.status_code}")
+        payload = response.json()
+        if not isinstance(payload, dict) or "elements" not in payload:
+            raise InfrastructureError(f"{endpoint}: unexpected response shape")
+        return payload
 
     def _request_overpass(self, query: str) -> dict[str, Any]:
-        self._wait_for_public_service("overpass")
+        """Query Overpass, hedging across mirrors so one slow instance cannot stall.
+
+        The primary gets a head start; if it has not answered within
+        ``HEDGE_DELAY_SECONDS`` the next mirror is started alongside it and the
+        first usable response wins. That keeps the common case to a single
+        request while capping the worst case at roughly one timeout.
+        """
         user_agent = os.getenv("TERRASCOPE_OSM_USER_AGENT", self.DEFAULT_USER_AGENT)
-        try:
-            response = self.session.get(
-                self.OVERPASS_URL,
-                params={"data": query},
-                headers={"User-Agent": user_agent},
-                timeout=self.request_timeout,
-            )
-            response.raise_for_status()
-            payload = response.json()
-        except requests.RequestException as error:
-            raise InfrastructureError(f"Overpass request failed: {error}") from error
-        except ValueError as error:
-            raise InfrastructureError("Overpass returned invalid JSON.") from error
-        if not isinstance(payload, dict):
-            raise InfrastructureError("Overpass returned an unexpected response shape.")
-        return payload
+        endpoints = self._overpass_endpoints()
+        self._wait_for_public_service("overpass")
+        errors: list[str] = []
+        with ThreadPoolExecutor(max_workers=len(endpoints)) as pool:
+            futures = {}
+            for index, endpoint in enumerate(endpoints):
+                if index:
+                    # Give the previous endpoint a head start before hedging.
+                    done, _ = wait(set(futures), timeout=self.HEDGE_DELAY_SECONDS, return_when=FIRST_COMPLETED)
+                    for future in done:
+                        try:
+                            return future.result()
+                        except Exception as error:  # try the next mirror
+                            errors.append(str(error))
+                            futures.pop(future, None)
+                futures[pool.submit(self._fetch_overpass_once, endpoint, query, user_agent)] = endpoint
+            for future in as_completed(futures):
+                try:
+                    return future.result()
+                except Exception as error:
+                    errors.append(str(error))
+        raise InfrastructureError(
+            "Every Overpass endpoint was unavailable: " + "; ".join(errors[:3])
+        )
 
     @staticmethod
     def _element_point(element: dict[str, Any]) -> tuple[float, float] | None:
@@ -190,7 +275,9 @@ class InfrastructureClient:
 
         query = self._overpass_query(representative_point[1], representative_point[0], radius_meters)
         payload = self._request_overpass(query)
-        nearest: dict[str, tuple[float, str | None]] = {}
+        # Keep the matched element's position: the map plots real amenity
+        # locations rather than decorative markers at made-up offsets.
+        nearest: dict[str, tuple[float, str | None, tuple[float, float]]] = {}
         for element in payload.get("elements", []):
             if not isinstance(element, dict):
                 continue
@@ -208,12 +295,20 @@ class InfrastructureClient:
                 category = tag["name"]
                 category_type = str(tag_value) if tag["type_tag"] else None
                 if category not in nearest or distance < nearest[category][0]:
-                    nearest[category] = (distance, category_type)
+                    nearest[category] = (distance, category_type, point)
 
         result = {
             "nearest_road_distance_m": round(nearest["road"][0], 2) if "road" in nearest else None,
             "nearest_road_type": nearest["road"][1] if "road" in nearest else None,
             "nearest_school_distance_m": round(nearest["school"][0], 2) if "school" in nearest else None,
+            **{
+                f"nearest_{category}_{axis}": (
+                    round(nearest[category][2][index], 6) if category in nearest else None
+                )
+                for category in ("road", "school")
+                # _element_point returns (longitude, latitude).
+                for axis, index in (("lat", 1), ("lon", 0))
+            },
         }
         cache[key] = {"cached_at": time.time(), "value": result}
         self._write_cache(cache)
