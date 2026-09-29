@@ -37,8 +37,11 @@ services:
       NASA_APPEEARS_MAX_WAIT_SECONDS: ${NASA_APPEEARS_MAX_WAIT_SECONDS:-150}
       TERRASCOPE_SATELLITE_CACHE_PATH: ${TERRASCOPE_SATELLITE_CACHE_PATH:-/app/.cache/terrascope_satellite.json}
       NOMINATIM_USER_AGENT: ${NOMINATIM_USER_AGENT:-terrascope-local-demo/0.1.0}
+      RERA_SEED_PATH: ${RERA_SEED_PATH:-/app/data/raw/maharera_seed.csv}
     ports:
       - "8001:8001"
+    volumes:
+      - satellite-cache:/app/.cache
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,21 +54,35 @@ services:
       DATA_PIPELINE_URL: http://data-pipeline:8001
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-20b}
+      GROQ_GROUNDED_TIMEOUT_SECONDS: ${GROQ_GROUNDED_TIMEOUT_SECONDS:-15}
+      GROQ_EXPLANATION_TIMEOUT_SECONDS: ${GROQ_EXPLANATION_TIMEOUT_SECONDS:-12}
+      CHROMA_STORE_PATH: /app/.chroma/terrascope
     ports:
       - "8002:8002"
+    volumes:
+      - chroma-store:/app/.chroma
     depends_on:
       - data-pipeline
 
   backend-api:
     build:
-      context: ./backend-api
+      context: .
+      dockerfile: backend-api/Dockerfile
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://terrascope:terrascope@postgres:5432/terrascope}
       DATA_PIPELINE_URL: http://data-pipeline:8001
       ML_MODELS_URL: http://ml-models:8002
       FRONTEND_URL: http://localhost:5173
+      BACKEND_STORE_PATH: /app/data/terrascope_backend.sqlite3
+      EVALUATE_READ_TIMEOUT_SECONDS: ${EVALUATE_READ_TIMEOUT_SECONDS:-90}
+      VALUATION_MODEL_PATH: ${VALUATION_MODEL_PATH:-/app/valuation/artifacts/land_price_model.joblib}
+      VALUATION_MAX_SUPPORT_DISTANCE_KM: ${VALUATION_MAX_SUPPORT_DISTANCE_KM:-25}
+      VALUATION_MIN_SUPPORTING_OBSERVATIONS: ${VALUATION_MIN_SUPPORTING_OBSERVATIONS:-5}
+      VALUATION_ALLOW_SYNTHETIC: ${VALUATION_ALLOW_SYNTHETIC:-false}
     ports:
       - "8000:8000"
+    volumes:
+      - backend-store:/app/data
     depends_on:
       - postgres
       - data-pipeline
@@ -84,3 +101,6 @@ services:
 
 volumes:
   postgres-data:
+  backend-store:
+  chroma-store:
+  satellite-cache:

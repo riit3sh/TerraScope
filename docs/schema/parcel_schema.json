@@ -6,267 +6,1037 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "parcel_id": { "type": ["string", "null"], "format": "uuid" },
+    "parcel_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
     "location": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
-        "latitude": { "type": ["number", "null"], "minimum": -90, "maximum": 90 },
-        "longitude": { "type": ["number", "null"], "minimum": -180, "maximum": 180 },
-        "address": { "type": ["string", "null"] },
-        "village": { "type": ["string", "null"] },
-        "district": { "type": ["string", "null"] },
-        "state": { "type": ["string", "null"] },
-        "pincode": { "type": ["string", "null"] }
+        "latitude": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -90,
+          "maximum": 90
+        },
+        "longitude": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -180,
+          "maximum": 180
+        },
+        "address": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "village": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "district": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "pincode": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "geometry": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
-        "type": { "const": "Polygon" },
-        "coordinates": { "$ref": "#/$defs/polygonCoordinates" }
+        "type": {
+          "const": "Polygon"
+        },
+        "coordinates": {
+          "$ref": "#/$defs/polygonCoordinates"
+        }
       }
     },
     "geometry_metadata": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
-        "area_m2": { "type": ["number", "null"], "minimum": 0 },
-        "area_acres": { "type": ["number", "null"], "minimum": 0 },
-        "perimeter_m": { "type": ["number", "null"], "minimum": 0 },
-        "boundary_source": {
-          "type": ["string", "null"],
-          "enum": ["user_drawn", "imported", "estimated", "unknown", null]
+        "area_m2": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
         },
-        "boundary_verified": { "type": ["boolean", "null"] }
+        "area_acres": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "perimeter_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "boundary_source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "user_drawn",
+            "imported",
+            "estimated",
+            "unknown",
+            null
+          ]
+        },
+        "boundary_verified": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
       }
     },
     "land_records": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
-        "survey_number": { "type": ["string", "null"] },
-        "ownership_type": {
-          "type": ["string", "null"],
-          "enum": ["freehold", "leasehold", "disputed", "unknown", null]
+        "survey_number": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
-        "title_clear": { "type": ["boolean", "null"] },
-        "encumbrance_flag": { "type": ["boolean", "null"] },
+        "ownership_type": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "freehold",
+            "leasehold",
+            "disputed",
+            "unknown",
+            null
+          ]
+        },
+        "title_clear": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "encumbrance_flag": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "source_document_ids": {
-          "type": ["array", "null"],
-          "items": { "type": ["string", "null"] }
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
         }
       }
     },
     "rera": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
-        "is_rera_project": { "type": ["boolean", "null"] },
-        "rera_registration_number": { "type": ["string", "null"] },
-        "promoter_name": { "type": ["string", "null"] },
-        "registered_completion_date": { "type": ["string", "null"], "format": "date" },
-        "source_url": { "type": ["string", "null"], "format": "uri" }
+        "is_rera_project": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "rera_registration_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "promoter_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "registered_completion_date": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "source_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uri"
+        }
       }
     },
     "satellite": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
         "imagery_dates": {
-          "type": ["array", "null"],
-          "items": { "type": ["string", "null"], "format": "date" }
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          }
         },
-        "ndvi_trend": { "$ref": "#/$defs/timeSeries" },
-        "ndbi_trend": { "$ref": "#/$defs/timeSeries" },
-        "change_detected": { "type": ["boolean", "null"] },
+        "ndvi_trend": {
+          "$ref": "#/$defs/timeSeries"
+        },
+        "ndbi_trend": {
+          "$ref": "#/$defs/timeSeries"
+        },
+        "change_detected": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
         "change_type": {
-          "type": ["string", "null"],
-          "enum": ["construction_growth", "vegetation_loss", "no_change", "insufficient_evidence", null]
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "construction_growth",
+            "vegetation_loss",
+            "no_change",
+            "insufficient_evidence",
+            null
+          ]
         },
-        "change_confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }
+        "change_confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
       }
     },
     "infrastructure": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
-        "nearest_road_distance_m": { "type": ["number", "null"], "minimum": 0 },
-        "nearest_road_type": { "type": ["string", "null"] },
-        "nearest_school_distance_m": { "type": ["number", "null"], "minimum": 0 }
+        "nearest_road_distance_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "nearest_road_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_school_distance_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "nearest_road_lat": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -90,
+          "maximum": 90
+        },
+        "nearest_road_lon": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -180,
+          "maximum": 180
+        },
+        "nearest_school_lat": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -90,
+          "maximum": 90
+        },
+        "nearest_school_lon": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -180,
+          "maximum": 180
+        },
+        "nearest_road_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_road_access_tag": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_road_surface": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_school_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "distance_measurement": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "road_access_note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "road_access_verified": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
       }
     },
     "risk": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
-        "flood_risk_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
-        "flood_risk_basis": { "type": ["string", "null"] },
-        "elevation_m": { "type": ["number", "null"] },
-        "legal_risk_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
-        "accessibility_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }
+        "flood_risk_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "flood_risk_basis": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "elevation_m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "legal_risk_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "accessibility_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "terrain_relative_elevation_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "terrain_basis": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "flood_assessment_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "assessed",
+            "unavailable",
+            null
+          ]
+        }
       }
     },
     "opportunity": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
-        "growth_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "growth_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
         "infra_growth_trend": {
-          "type": ["string", "null"],
-          "enum": ["rising", "stable", "declining", null]
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "rising",
+            "stable",
+            "declining",
+            null
+          ]
         }
       }
     },
     "evaluation": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
         "profile": {
-          "type": ["string", "null"],
-          "enum": ["homebuyer", "developer", "investor", "conservative", "custom", null]
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "homebuyer",
+            "developer",
+            "investor",
+            "conservative",
+            "custom",
+            null
+          ]
         },
         "property_type": {
-          "type": ["string", "null"],
-          "enum": ["residential", "commercial", "industrial", "mixed_use", null]
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "residential",
+            "commercial",
+            "industrial",
+            "mixed_use",
+            null
+          ]
         },
         "investment_horizon": {
-          "type": ["string", "null"],
-          "enum": ["under_1y", "1_to_3y", "3_to_5y", "5_to_10y", "10_plus_y", null]
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "under_1y",
+            "1_to_3y",
+            "3_to_5y",
+            "5_to_10y",
+            "10_plus_y",
+            null
+          ]
         },
         "weights": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "additionalProperties": false,
           "properties": {
-            "growth_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
-            "legal_safety_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
-            "accessibility_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
-            "flood_safety_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 }
+            "growth_pct": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 100
+            },
+            "legal_safety_pct": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 100
+            },
+            "accessibility_pct": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 100
+            },
+            "flood_safety_pct": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 100
+            }
           }
         },
         "preferences": {
-          "type": ["object", "null"],
+          "type": [
+            "object",
+            "null"
+          ],
           "additionalProperties": false,
           "properties": {
             "road_importance": {
-              "type": ["string", "null"],
-              "enum": ["low", "medium", "high", null]
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                null
+              ]
             },
             "school_importance": {
-              "type": ["string", "null"],
-              "enum": ["low", "medium", "high", null]
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                null
+              ]
             },
-            "max_road_distance_m": { "type": ["number", "null"], "minimum": 0 },
-            "max_school_distance_m": { "type": ["number", "null"], "minimum": 0 },
+            "max_road_distance_m": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "max_school_distance_m": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
             "rera_requirement": {
-              "type": ["string", "null"],
-              "enum": ["strict", "important", "informational", null]
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "strict",
+                "important",
+                "informational",
+                null
+              ]
             }
           }
         }
       }
     },
     "score_breakdown": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
-        "legal_safety_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
-        "accessibility_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
-        "flood_safety_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
-        "growth_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
-        "composite_score": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
+        "legal_safety_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "accessibility_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "flood_safety_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "growth_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "composite_score": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
         "weighted_contributions": {
-          "type": ["array", "null"],
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
-            "type": ["object", "null"],
+            "type": [
+              "object",
+              "null"
+            ],
             "additionalProperties": false,
             "properties": {
-              "factor": { "type": ["string", "null"] },
-              "contribution": { "type": ["number", "null"] }
+              "factor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "contribution": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
             }
+          }
+        },
+        "factors": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "factor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "score": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "enum": [
+                  "assessed",
+                  "indicative",
+                  "unavailable",
+                  "not_integrated",
+                  null
+                ]
+              },
+              "basis": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "limitations": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "weight_pct": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100
+              },
+              "checklist": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "assessed_weight_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "unassessed_factors": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       }
     },
     "evidence": {
-      "type": ["array", "null"],
+      "type": [
+        "array",
+        "null"
+      ],
       "items": {
-        "type": ["object", "null"],
+        "type": [
+          "object",
+          "null"
+        ],
         "additionalProperties": false,
         "properties": {
-          "evidence_id": { "type": ["string", "null"] },
-          "source_type": { "type": ["string", "null"] },
-          "source_reference": { "type": ["string", "null"] },
-          "title": { "type": ["string", "null"] },
-          "observed_at": { "type": ["string", "null"], "format": "date-time" },
-          "freshness": {
-            "type": ["string", "null"],
-            "enum": ["live", "cached", "seed_data", "user_upload", "derived", null]
+          "evidence_id": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
-          "summary": { "type": ["string", "null"] }
+          "source_type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source_reference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "freshness": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "live",
+              "cached",
+              "seed_data",
+              "user_upload",
+              "derived",
+              null
+            ]
+          },
+          "summary": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
         }
       }
     },
     "verdict": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
         "recommendation": {
-          "type": ["string", "null"],
-          "enum": ["BUY", "WAIT", "AVOID", null]
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "BUY",
+            "WAIT",
+            "AVOID",
+            "INSUFFICIENT_EVIDENCE",
+            null
+          ]
         },
-        "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
-        "reasoning_summary": { "type": ["string", "null"], "maxLength": 500 },
+        "confidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reasoning_summary": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 500
+        },
         "citations": {
-          "type": ["array", "null"],
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
-            "type": ["object", "null"],
+            "type": [
+              "object",
+              "null"
+            ],
             "additionalProperties": false,
             "properties": {
-              "claim": { "type": ["string", "null"] },
-              "source_type": { "type": ["string", "null"] },
-              "source_reference": { "type": ["string", "null"] }
+              "claim": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source_type": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source_reference": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
             }
           }
         }
       }
     },
     "metadata": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
-        "last_updated": { "type": ["string", "null"], "format": "date-time" },
-        "data_completeness_pct": { "type": ["number", "null"], "minimum": 0, "maximum": 100 },
-        "analysis_date_from": { "type": ["string", "null"], "format": "date" },
-        "analysis_date_to": { "type": ["string", "null"], "format": "date" },
-        "analysis_snapshot_id": { "type": ["string", "null"] }
+        "last_updated": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "data_completeness_pct": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "analysis_date_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "analysis_date_to": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "analysis_snapshot_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     }
   },
   "$defs": {
     "polygonCoordinates": {
-      "type": ["array", "null"],
+      "type": [
+        "array",
+        "null"
+      ],
       "minItems": 1,
       "items": {
-        "type": ["array", "null"],
+        "type": [
+          "array",
+          "null"
+        ],
         "minItems": 4,
         "items": {
-          "type": ["array", "null"],
+          "type": [
+            "array",
+            "null"
+          ],
           "minItems": 2,
           "maxItems": 3,
-          "items": { "type": ["number", "null"] }
+          "items": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
         }
       }
     },
     "timeSeries": {
-      "type": ["array", "null"],
+      "type": [
+        "array",
+        "null"
+      ],
       "items": {
-        "type": ["object", "null"],
+        "type": [
+          "object",
+          "null"
+        ],
         "additionalProperties": false,
         "properties": {
-          "date": { "type": ["string", "null"], "format": "date" },
-          "value": { "type": ["number", "null"] }
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
         }
       }
     }

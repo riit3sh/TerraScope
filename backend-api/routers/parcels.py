@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import json
+import io
+import logging
 import os
 import time
 from datetime import date
@@ -19,12 +20,14 @@ from .store import (
     get_latest_for_parcel,
     get_snapshot,
     init_store,
+    list_saved_reports,
     save_document,
     save_evaluation,
     save_snapshot,
 )
 
 
+LOGGER = logging.getLogger(__name__)
 router = APIRouter()
 init_store()
 _geocode_cache: dict[str, list[dict[str, Any]]] = {}
@@ -64,12 +67,41 @@ def _validate_polygon(polygon: dict[str, Any]) -> None:
                 raise HTTPException(status_code=400, detail="Polygon coordinates must be numeric.")
 
 
+def _timeout_seconds(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except ValueError:
+        LOGGER.warning("Invalid %s; falling back to %ss", name, default)
+        return default
+
+
 def _service_url(name: str, default: str) -> str:
-    return os.getenv(name, default).rstrip("/")
+    return (os.getenv(name) or default).rstrip("/")
 
 
-def _downstream_error(response: httpx.Response, service: str) -> HTTPException:
-    return HTTPException(status_code=502, detail=f"{service} returned HTTP {response.status_code}: {response.text[:500]}")
+# Loopback defaults serve a bare local run. Compose sets both variables to its
+# service DNS names (data-pipeline, ml-models), which do not resolve outside the
+# Docker network and fail on Windows with "[Errno 11001] getaddrinfo failed".
+def data_pipeline_url() -> str:
+    return _service_url("DATA_PIPELINE_URL", "http://127.0.0.1:8001")
+
+
+def ml_models_url() -> str:
+    return _service_url("ML_MODELS_URL", "http://127.0.0.1:8002")
+
+
+def _connection_error(action: str, error: httpx.HTTPError) -> HTTPException:
+    """Name the service and address that failed, not just the socket error."""
+    try:
+        url = str(error.request.url)
+    except RuntimeError:  # no request attached
+        return HTTPException(status_code=502, detail=f"{action} failed: {error}")
+    service = "data-pipeline" if url.startswith(data_pipeline_url()) else "ml-models"
+    origin = url.split("/", 3)[:3]
+    return HTTPException(
+        status_code=502,
+        detail=f"{action} failed: could not reach {service} at {'/'.join(origin)}: {error}",
+    )
 
 
 @router.get("/api/v1/search/geocode")
@@ -125,7 +157,7 @@ async def analyze_parcel(request: AnalyzeRequest) -> dict[str, Any]:
     try:
         async with httpx.AsyncClient() as client:
             evidence_response = await client.post(
-                f"{_service_url('DATA_PIPELINE_URL', 'http://data-pipeline:8001')}/internal/analysis/build",
+                f"{data_pipeline_url()}/internal/analysis/build",
                 json=payload,
                 timeout=evidence_timeout,
             )
@@ -133,7 +165,7 @@ async def analyze_parcel(request: AnalyzeRequest) -> dict[str, Any]:
                 raise _downstream_error(evidence_response, "data-pipeline")
             evidence_snapshot = evidence_response.json()
             enrich_response = await client.post(
-                f"{_service_url('ML_MODELS_URL', 'http://ml-models:8002')}/internal/ml/enrich",
+                f"{ml_models_url()}/internal/ml/enrich",
                 json={"snapshot": evidence_snapshot},
                 timeout=ml_timeout,
             )
@@ -143,7 +175,7 @@ async def analyze_parcel(request: AnalyzeRequest) -> dict[str, Any]:
     except httpx.TimeoutException as error:
         raise HTTPException(status_code=504, detail=f"Initial evidence collection timed out: {error}") from error
     except httpx.HTTPError as error:
-        raise HTTPException(status_code=502, detail=f"Initial evidence collection failed: {error}") from error
+        raise _connection_error("Initial evidence collection", error) from error
     save_snapshot(enriched_snapshot)
     return {
         "analysis_snapshot_id": enriched_snapshot["metadata"]["analysis_snapshot_id"],
@@ -170,9 +202,16 @@ async def evaluate_parcel(parcel_id: str, request: EvaluationRequest) -> dict[st
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{_service_url('ML_MODELS_URL', 'http://ml-models:8002')}/internal/ml/evaluate",
+                f"{ml_models_url()}/internal/ml/evaluate",
                 json={"snapshot": request_snapshot, "evaluation": evaluation},
-                timeout=httpx.Timeout(connect=2.0, read=15.0, write=10.0, pool=5.0),
+                timeout=httpx.Timeout(
+                    connect=2.0,
+                    # Must exceed ml-models' own retrieval + Groq budget, or the
+                    # optional AI step is cut off before it can degrade gracefully.
+                    read=_timeout_seconds("EVALUATE_READ_TIMEOUT_SECONDS", 90.0),
+                    write=10.0,
+                    pool=5.0,
+                ),
             )
             if not response.is_success:
                 raise _downstream_error(response, "ml-models evaluation")
@@ -180,9 +219,23 @@ async def evaluate_parcel(parcel_id: str, request: EvaluationRequest) -> dict[st
     except httpx.TimeoutException as error:
         raise HTTPException(status_code=504, detail=f"Evaluation timed out: {error}") from error
     except httpx.HTTPError as error:
-        raise HTTPException(status_code=502, detail=f"Evaluation failed: {error}") from error
+        raise _connection_error("Evaluation", error) from error
     save_evaluation(parcel_id, request.analysis_snapshot_id, result)
     return result
+
+
+def _document_text(content: bytes, extension: str, content_type: str) -> str | None:
+    """Extract indexable text from an uploaded evidence file, or None if there is none."""
+    if extension == "txt" or content_type == "text/plain":
+        return content.decode("utf-8", errors="replace").strip() or None
+    try:
+        from pypdf import PdfReader
+
+        pages = PdfReader(io.BytesIO(content)).pages
+        return "\n".join(page.extract_text() or "" for page in pages).strip() or None
+    except Exception as error:  # scanned or malformed PDFs stay stored but unindexed
+        LOGGER.warning("Could not extract text from uploaded evidence: %s", error)
+        return None
 
 
 @router.post("/api/v1/parcels/{parcel_id}/documents")
@@ -195,9 +248,15 @@ async def upload_parcel_document(parcel_id: str, file: UploadFile = File(...)) -
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Evidence files must be 10 MB or smaller.")
-    text_content = content.decode("utf-8", errors="replace") if extension == "txt" or content_type == "text/plain" else None
+    text_content = _document_text(content, extension, content_type)
     document_id = save_document(parcel_id, filename, content_type, len(content), text_content)
     return {"document_id": document_id, "parcel_id": parcel_id, "filename": filename, "text_indexed": text_content is not None}
+
+
+@router.get("/api/v1/parcels")
+def list_parcels(limit: int = 50) -> dict[str, Any]:
+    """Saved reports, newest first, so a user can reopen earlier work."""
+    return {"reports": list_saved_reports(max(1, min(limit, 200)))}
 
 
 @router.get("/api/v1/parcels/{parcel_id}")

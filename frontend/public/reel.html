@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TerraScope — 15s Reel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;800&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   TerraScope — 15 second reel.
+   One 15s master timeline: every element animates on the same
+   duration with percentage keyframes carved for its slot, so the
+   whole thing stays frame-locked and loops seamlessly.
+   1.000s = 6.667%.
+   ============================================================ */
+:root{
+  --ink:#0c1113; --lime:#b8f36a; --cyan:#77d8ff; --amber:#f8c15c; --violet:#d49aff;
+  --paper:#eef4ef; --line:#24322f; --reel:15s;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:#06090a;color:var(--paper);
+  font-family:Manrope,system-ui,sans-serif;
+  display:grid;place-items:center;overflow:hidden;
+}
+.frame{
+  position:relative;width:min(100vw,calc(100vh * 16 / 9));aspect-ratio:16/9;
+  background:var(--ink);overflow:hidden;isolation:isolate;
+  box-shadow:0 40px 120px #000a;
+}
+.stage{position:absolute;inset:0;overflow:hidden}
+.mono{font-family:'DM Mono',ui-monospace,monospace;letter-spacing:.16em;text-transform:uppercase}
+
+/* Every animated layer shares the master clock. */
+.frame *{animation-duration:var(--reel);animation-iteration-count:infinite;animation-timing-function:linear;animation-fill-mode:both}
+
+/* ---------- persistent grid ---------- */
+.grid{
+  position:absolute;inset:-25%;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:72px 72px;opacity:0;animation-name:gridLife;
+}
+@keyframes gridLife{
+  0%,1.6%{opacity:0;transform:scale(1.5)}
+  4%{opacity:.30;transform:scale(1.18)}
+  21%{opacity:.30;transform:scale(1.10)}
+  36%{opacity:.55;transform:scale(1.0) translate(0,0)}
+  53%{opacity:.5;transform:scale(1.45) translate(-3%,2%)}
+  66%{opacity:.35;transform:scale(1.5) translate(-4%,2%)}
+  69%{opacity:0}
+  81%{opacity:0}
+  86%{opacity:.22;transform:scale(1.02)}
+  100%{opacity:.16;transform:scale(1)}
+}
+
+/* ---------- 1. HOOK (0.00–1.10s) ---------- */
+.flash{position:absolute;inset:0;background:var(--lime);animation-name:flash;z-index:60}
+@keyframes flash{0%{opacity:1}0.75%{opacity:1}1.0%{opacity:0}100%{opacity:0}}
+
+.slit{
+  position:absolute;left:0;right:0;top:50%;height:2px;background:var(--lime);
+  transform:translateY(-50%) scaleX(0);animation-name:slit;z-index:40;
+  box-shadow:0 0 30px #b8f36a99;
+}
+@keyframes slit{
+  0%,1%{transform:translateY(-50%) scaleX(0);opacity:1}
+  3.4%{transform:translateY(-50%) scaleX(1);opacity:1}
+  4.2%{height:2px}
+  6.0%{height:132px;opacity:1}
+  7.4%{height:132px;opacity:1}
+  9.0%{height:0;opacity:0}
+  100%{height:0;opacity:0}
+}
+
+.hook{
+  position:absolute;inset:0;display:grid;place-items:center;z-index:41;
+  font-weight:800;font-size:clamp(28px,7.6vw,104px);letter-spacing:-.05em;line-height:.92;
+  color:var(--ink);mix-blend-mode:normal;
+  clip-path:inset(calc(50% - 1px) 0 calc(50% - 1px) 0);animation-name:hookClip;
+}
+@keyframes hookClip{
+  0%,3.6%{clip-path:inset(50% 0 50% 0);opacity:0}
+  4.4%{opacity:1}
+  6.0%{clip-path:inset(calc(50% - 66px) 0 calc(50% - 66px) 0);opacity:1}
+  7.4%{clip-path:inset(calc(50% - 66px) 0 calc(50% - 66px) 0);opacity:1}
+  8.2%{clip-path:inset(50% 0 50% 0);opacity:0}
+  100%{opacity:0}
+}
+.hook span{display:block;animation-name:hookShift}
+@keyframes hookShift{
+  0%,3.6%{transform:translateY(14px) scaleX(1.06)}
+  6%{transform:translateY(0) scaleX(1)}
+  100%{transform:translateY(0)}
+}
+
+/* ---------- 2. TYPOGRAPHY (1.10–3.30s) ---------- */
+.kinetic{position:absolute;inset:0;display:grid;place-content:center;gap:.06em;z-index:30;padding:0 6vw;animation-name:kineticOut}
+@keyframes kineticOut{
+  0%,7%{opacity:0}
+  7.4%{opacity:1}
+  19%{opacity:1;transform:scale(1)}
+  22%{opacity:0;transform:scale(.86);filter:blur(10px)}
+  100%{opacity:0;transform:scale(.86)}
+}
+.kinetic b{
+  display:block;font-weight:800;font-size:clamp(26px,6.6vw,92px);line-height:.94;
+  letter-spacing:-.045em;color:var(--paper);transform-origin:left center;
+}
+.kinetic b i{font-style:normal;color:var(--lime)}
+.k1{animation-name:punch1} .k2{animation-name:punch2} .k3{animation-name:punch3}
+@keyframes punch1{
+  0%,7.3%{opacity:0;transform:translateY(26px) scale(1.3);filter:blur(12px)}
+  9.4%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes punch2{
+  0%,10%{opacity:0;transform:translateY(26px) scale(1.3);filter:blur(12px)}
+  12.1%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes punch3{
+  0%,12.7%{opacity:0;transform:translateY(26px) scale(1.3);filter:blur(12px)}
+  14.8%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+  /* letter-spacing collapse on the downbeat */
+  17.4%{letter-spacing:-.045em}
+  18.7%{letter-spacing:-.075em}
+  100%{opacity:1;letter-spacing:-.075em}
+}
+.tick{position:absolute;left:6vw;bottom:14%;height:1px;background:var(--lime);width:0;animation-name:tick;z-index:31}
+@keyframes tick{0%,7.4%{width:0;opacity:0}8%{opacity:1}19%{width:44%;opacity:1}21%{opacity:0}100%{opacity:0}}
+
+/* ---------- 3. SHAPE PLAY (3.30–5.60s) ---------- */
+.shape{position:absolute;inset:0;display:grid;place-items:center;z-index:25;animation-name:shapeLife}
+@keyframes shapeLife{
+  0%,21%{opacity:0}
+  23%{opacity:1}
+  50%{opacity:1}
+  54%{opacity:0}
+  100%{opacity:0}
+}
+.plot{position:relative;width:min(46vw,52vh);aspect-ratio:1;animation-name:plotMove}
+@keyframes plotMove{
+  0%,21%{transform:scale(.82) rotate(-3deg)}
+  26%{transform:scale(1) rotate(0deg)}
+  /* camera push begins here and carries into scene 4 */
+  40%{transform:scale(1.06)}
+  53%{transform:scale(2.1)}
+  100%{transform:scale(2.1)}
+}
+.plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.poly{fill:#b8f36a14;stroke:var(--lime);stroke-width:2.5;stroke-linejoin:round;
+  stroke-dasharray:1200;stroke-dashoffset:1200;animation-name:draw}
+@keyframes draw{
+  0%,22%{stroke-dashoffset:1200}
+  31%{stroke-dashoffset:0}
+  100%{stroke-dashoffset:0}
+}
+.vtx{fill:var(--ink);stroke:var(--lime);stroke-width:3;r:0;animation-name:vtx}
+.vtx:nth-of-type(1){animation-name:vtx1}.vtx:nth-of-type(2){animation-name:vtx2}
+.vtx:nth-of-type(3){animation-name:vtx3}.vtx:nth-of-type(4){animation-name:vtx4}
+@keyframes vtx1{0%,25%{r:0}26.5%{r:11}27.8%{r:7}100%{r:7}}
+@keyframes vtx2{0%,27%{r:0}28.5%{r:11}29.8%{r:7}100%{r:7}}
+@keyframes vtx3{0%,29%{r:0}30.5%{r:11}31.8%{r:7}100%{r:7}}
+@keyframes vtx4{0%,31%{r:0}32.5%{r:11}33.8%{r:7}100%{r:7}}
+
+.sweep{
+  position:absolute;inset:-18%;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0 300deg,#b8f36a1f 348deg,#b8f36a4d 360deg);
+  -webkit-mask-image:radial-gradient(circle,#000 22%,transparent 68%);
+  mask-image:radial-gradient(circle,#000 22%,transparent 68%);
+  animation-name:sweep;opacity:0;
+}
+@keyframes sweep{
+  0%,22%{opacity:0;transform:rotate(0deg)}
+  25%{opacity:1}
+  50%{opacity:1}
+  53%{opacity:0}
+  100%{opacity:0;transform:rotate(1080deg)}
+}
+.area{
+  position:absolute;left:50%;top:-12%;transform:translateX(-50%);
+  font-family:'DM Mono',monospace;font-size:clamp(10px,1.15vw,15px);letter-spacing:.2em;
+  color:var(--lime);opacity:0;animation-name:areaIn;white-space:nowrap;
+}
+@keyframes areaIn{0%,27%{opacity:0;transform:translate(-50%,10px)}30%{opacity:1;transform:translate(-50%,0)}50%{opacity:1}52%{opacity:0}100%{opacity:0}}
+
+/* ---------- 4. CAMERA MOVE + PINS (5.60–8.10s) ---------- */
+.pins{position:absolute;inset:0;z-index:26;animation-name:pinsLife}
+@keyframes pinsLife{0%,36%{opacity:0}38%{opacity:1}52%{opacity:1}54.5%{opacity:0}100%{opacity:0}}
+.pin{position:absolute;display:flex;align-items:center;gap:10px;transform:translateY(-16px);opacity:0}
+.pin em{width:12px;height:12px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 0 #b8f36a66;flex:0 0 auto;animation-name:pinPulse}
+@keyframes pinPulse{0%,100%{box-shadow:0 0 0 0 #b8f36a66}50%{box-shadow:0 0 0 14px #b8f36a00}}
+.pin span{font-family:'DM Mono',monospace;font-size:clamp(9px,1.05vw,13px);letter-spacing:.16em;white-space:nowrap;color:var(--paper)}
+.pin b{color:var(--lime);font-weight:500}
+.pin.a{left:16%;top:30%;animation-name:pinDropA}
+.pin.b{right:14%;top:46%;animation-name:pinDropB}
+.pin.c{left:26%;bottom:24%;animation-name:pinDropC}
+.pin.b em{background:var(--cyan);box-shadow:0 0 0 0 #77d8ff66}
+.pin.c em{background:var(--amber);box-shadow:0 0 0 0 #f8c15c66}
+@keyframes pinDropA{0%,37%{opacity:0;transform:translateY(-18px)}39%{opacity:1;transform:translateY(0)}52%{opacity:1}54%{opacity:0}100%{opacity:0}}
+@keyframes pinDropB{0%,40%{opacity:0;transform:translateY(-18px)}42%{opacity:1;transform:translateY(0)}52%{opacity:1}54%{opacity:0}100%{opacity:0}}
+@keyframes pinDropC{0%,43%{opacity:0;transform:translateY(-18px)}45%{opacity:1;transform:translateY(0)}52%{opacity:1}54%{opacity:0}100%{opacity:0}}
+
+/* ---------- 5. DATA (8.10–10.40s) ---------- */
+.data{position:absolute;inset:0;display:grid;place-content:center;gap:clamp(10px,1.5vh,20px);z-index:27;padding:0 10vw;animation-name:dataLife}
+@keyframes dataLife{0%,53.5%{opacity:0}55.5%{opacity:1}67%{opacity:1}69.5%{opacity:0;transform:translateY(-24px)}100%{opacity:0}}
+.row{display:grid;grid-template-columns:clamp(74px,9vw,130px) 1fr auto;align-items:center;gap:clamp(10px,1.6vw,22px)}
+.row i{font-family:'DM Mono',monospace;font-style:normal;font-size:clamp(8px,.95vw,12px);letter-spacing:.16em;color:#8b9a94}
+.bar{height:clamp(5px,.8vh,9px);background:#1d2a27;overflow:hidden}
+.bar u{display:block;height:100%;width:0;text-decoration:none}
+.row:nth-child(1) u{background:var(--lime);animation-name:fill90}
+.row:nth-child(2) u{background:var(--cyan);animation-name:fill89}
+.row:nth-child(3) u{background:var(--violet);animation-name:fill72}
+.row:nth-child(4) u{background:var(--amber);animation-name:fill76}
+@keyframes fill90{0%,55%{width:0}62%{width:90%}100%{width:90%}}
+@keyframes fill89{0%,56%{width:0}63%{width:89%}100%{width:89%}}
+@keyframes fill72{0%,57%{width:0}64%{width:72%}100%{width:72%}}
+@keyframes fill76{0%,58%{width:0}65%{width:76%}100%{width:76%}}
+.row b{font-family:'DM Mono',monospace;font-size:clamp(12px,1.5vw,20px);color:var(--paper);min-width:2.4em;text-align:right}
+
+/* Counting numbers via a registered custom property. */
+@property --n{syntax:'<integer>';initial-value:0;inherits:false}
+.num::after{content:counter(nn);}
+.n90{counter-reset:nn var(--n);animation-name:c90}
+.n89{counter-reset:nn var(--n);animation-name:c89}
+.n72{counter-reset:nn var(--n);animation-name:c72}
+.n76{counter-reset:nn var(--n);animation-name:c76}
+@keyframes c90{0%,55%{--n:0}62%{--n:90}100%{--n:90}}
+@keyframes c89{0%,56%{--n:0}63%{--n:89}100%{--n:89}}
+@keyframes c72{0%,57%{--n:0}64%{--n:72}100%{--n:72}}
+@keyframes c76{0%,58%{--n:0}65%{--n:76}100%{--n:76}}
+
+/* ---------- 6. COLOUR FLOOD + PRICE (10.40–12.30s) ---------- */
+.flood{position:absolute;inset:0;background:var(--lime);transform-origin:left center;transform:scaleX(0);z-index:45;animation-name:flood}
+@keyframes flood{
+  0%,68.5%{transform:scaleX(0);transform-origin:left center}
+  71.5%{transform:scaleX(1);transform-origin:left center}
+  80%{transform:scaleX(1);transform-origin:right center}
+  83%{transform:scaleX(0);transform-origin:right center}
+  100%{transform:scaleX(0)}
+}
+.price{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:.2em;z-index:46;color:var(--ink);animation-name:priceLife}
+@keyframes priceLife{0%,70%{opacity:0}71.8%{opacity:1}80%{opacity:1}81.5%{opacity:0}100%{opacity:0}}
+.price .lab{font-family:'DM Mono',monospace;font-size:clamp(9px,1.05vw,13px);letter-spacing:.3em;opacity:.7}
+.price .big{font-weight:800;font-size:clamp(42px,11vw,150px);letter-spacing:-.06em;line-height:.88;animation-name:priceSlam}
+@keyframes priceSlam{
+  0%,70%{transform:scale(1.35);filter:blur(14px)}
+  72.2%{transform:scale(1);filter:blur(0)}
+  79%{transform:scale(1)}
+  81%{transform:scale(1.06)}
+  100%{transform:scale(1.06)}
+}
+.price .sub{font-family:'DM Mono',monospace;font-size:clamp(9px,1.05vw,13px);letter-spacing:.22em;opacity:.75}
+
+/* ---------- 7. VERDICT (12.30–13.70s) ---------- */
+.verdict{position:absolute;inset:0;display:grid;place-items:center;z-index:44;animation-name:verdictLife}
+@keyframes verdictLife{0%,81%{opacity:0}82.5%{opacity:1}89%{opacity:1}91%{opacity:0}100%{opacity:0}}
+.verdict strong{font-weight:800;font-size:clamp(50px,13vw,180px);letter-spacing:-.07em;color:var(--lime);animation-name:stamp}
+@keyframes stamp{
+  0%,81%{transform:scale(2.2) rotate(-6deg);opacity:0;filter:blur(16px)}
+  83%{transform:scale(1) rotate(0deg);opacity:1;filter:blur(0)}
+  84.5%{transform:scale(1.04)}
+  86%{transform:scale(1)}
+  100%{transform:scale(1)}
+}
+.shock{position:absolute;width:26vh;height:26vh;border:2px solid var(--lime);border-radius:50%;opacity:0;animation-name:shock}
+.shock.s2{animation-name:shock2}
+@keyframes shock{0%,82.4%{transform:scale(.2);opacity:0}83%{opacity:.9}88%{transform:scale(4.2);opacity:0}100%{opacity:0}}
+@keyframes shock2{0%,83.4%{transform:scale(.2);opacity:0}84%{opacity:.6}89%{transform:scale(5.4);opacity:0}100%{opacity:0}}
+
+/* ---------- 8. LANDING (13.70–15.00s) ---------- */
+.land{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:clamp(8px,1.4vh,16px);z-index:43;animation-name:landLife}
+@keyframes landLife{0%,90%{opacity:0}92%{opacity:1}100%{opacity:1}}
+.land .mark{display:flex;align-items:center;gap:14px;animation-name:markIn}
+@keyframes markIn{0%,90%{transform:translateY(16px);letter-spacing:.42em}93.5%{transform:translateY(0);letter-spacing:.2em}100%{transform:translateY(0);letter-spacing:.2em}}
+.land .dot{width:clamp(22px,2.4vw,34px);aspect-ratio:1;border-radius:50%;background:var(--lime);display:grid;place-items:center;color:var(--ink);font-weight:800;font-size:clamp(11px,1.2vw,17px)}
+.land .name{font-family:'DM Mono',monospace;font-size:clamp(13px,1.9vw,27px);color:var(--paper)}
+.land .rule{height:1px;width:0;background:var(--lime);animation-name:ruleIn}
+@keyframes ruleIn{0%,92%{width:0}95%{width:clamp(120px,18vw,280px)}100%{width:clamp(120px,18vw,280px)}}
+.land .tag{font-family:'DM Mono',monospace;font-size:clamp(8px,.95vw,12px);letter-spacing:.26em;color:#8b9a94;opacity:0;animation-name:tagIn}
+@keyframes tagIn{0%,94%{opacity:0;transform:translateY(8px)}96.5%{opacity:1;transform:translateY(0)}100%{opacity:1;transform:translateY(0)}}
+
+/* ---------- chrome: timeline + beat ---------- */
+.hud{position:absolute;left:0;right:0;bottom:0;height:3px;background:#16201e;z-index:70}
+.hud i{display:block;height:100%;width:0;background:var(--lime);animation-name:playhead}
+@keyframes playhead{0%{width:0}100%{width:100%}}
+.beat{position:absolute;right:16px;top:14px;width:7px;height:7px;border-radius:50%;background:var(--lime);z-index:70;animation-name:beat}
+@keyframes beat{
+  0%,3%,6%,9%,12%{transform:scale(1.5);opacity:1}
+  1.5%,4.5%,7.5%,10.5%,13.5%{transform:scale(.8);opacity:.45}
+  100%{transform:scale(.8);opacity:.45}
+}
+.stampcode{position:absolute;left:16px;top:14px;z-index:70;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.2em;color:#5d6d67}
+
+.replay{
+  position:fixed;right:18px;bottom:18px;z-index:99;
+  font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--lime);background:#101a17;border:1px solid #2e4238;padding:9px 14px;cursor:pointer;
+  animation:none;
+}
+.replay:hover{background:#16241f}
+
+@media (prefers-reduced-motion:reduce){
+  .frame *{animation:none !important}
+  .hook,.kinetic,.shape,.pins,.data,.flood,.price,.verdict{display:none}
+  .land{opacity:1}
+  .grid{opacity:.18}
+}
+</style>
+</head>
+<body>
+<div class="frame" id="frame">
+  <div class="stage">
+    <div class="grid"></div>
+
+    <!-- 1. HOOK -->
+    <div class="flash"></div>
+    <div class="slit"></div>
+    <div class="hook"><span>SEE THE LAND</span></div>
+
+    <!-- 2. TYPOGRAPHY -->
+    <div class="kinetic">
+      <b class="k1">BEFORE</b>
+      <b class="k2">YOU</b>
+      <b class="k3"><i>COMMIT.</i></b>
+      <div class="tick"></div>
+    </div>
+
+    <!-- 3. SHAPE PLAY -->
+    <div class="shape">
+      <div class="plot">
+        <div class="sweep"></div>
+        <div class="area mono">PARCEL · 2.75 ACRES · USER-DEFINED</div>
+        <svg viewBox="0 0 400 400" aria-hidden="true">
+          <polygon class="poly" points="60,96 330,54 358,300 104,346" />
+          <circle class="vtx" cx="60" cy="96" /><circle class="vtx" cx="330" cy="54" />
+          <circle class="vtx" cx="358" cy="300" /><circle class="vtx" cx="104" cy="346" />
+        </svg>
+      </div>
+    </div>
+
+    <!-- 4. CAMERA + PINS -->
+    <div class="pins">
+      <div class="pin a"><em></em><span>NEAREST ROAD <b>38 M</b></span></div>
+      <div class="pin b"><em></em><span>SCHOOL <b>640 M</b></span></div>
+      <div class="pin c"><em></em><span>ELEVATION <b>563 M</b></span></div>
+    </div>
+
+    <!-- 5. DATA -->
+    <div class="data">
+      <div class="row"><i>LEGAL</i><div class="bar"><u></u></div><b class="num n90"></b></div>
+      <div class="row"><i>ACCESS</i><div class="bar"><u></u></div><b class="num n89"></b></div>
+      <div class="row"><i>FLOOD</i><div class="bar"><u></u></div><b class="num n72"></b></div>
+      <div class="row"><i>GROWTH</i><div class="bar"><u></u></div><b class="num n76"></b></div>
+    </div>
+
+    <!-- 6. COLOUR FLOOD -->
+    <div class="flood"></div>
+    <div class="price">
+      <div class="lab">ESTIMATED MARKET VALUE</div>
+      <div class="big">₹6,396</div>
+      <div class="sub">PER SQ FT · HELD-OUT MAE ±₹1,272</div>
+    </div>
+
+    <!-- 7. VERDICT -->
+    <div class="verdict">
+      <div class="shock"></div><div class="shock s2"></div>
+      <strong>BUY</strong>
+    </div>
+
+    <!-- 8. LANDING -->
+    <div class="land">
+      <div class="mark"><span class="dot">T</span><span class="name mono">TERRASCOPE</span></div>
+      <div class="rule"></div>
+      <div class="tag">SEE THE LAND BEFORE YOU COMMIT</div>
+    </div>
+
+    <div class="stampcode">TERRASCOPE / REEL 15.0S</div>
+    <div class="beat"></div>
+    <div class="hud"><i></i></div>
+  </div>
+</div>
+<button class="replay" id="replay">Replay</button>
+<script>
+  // Restart the whole timeline in sync by reflowing the frame's animations.
+  document.getElementById('replay').addEventListener('click', () => {
+    const frame = document.getElementById('frame');
+    frame.style.display = 'none';
+    void frame.offsetWidth;
+    frame.style.display = '';
+  });
+</script>
+</body>
+</html>

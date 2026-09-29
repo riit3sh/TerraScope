@@ -1,0 +1,1201 @@
+record_id,latitude,longitude,district,state,area_value,area_unit,land_use,observation_date,price_value,price_unit,price_basis,source
+SYN-00001,18.463669,73.773204,Pune,Maharashtra,10890,sqft,residential,2021-02-02,69951035.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00002,18.503998,73.776164,Pune,Maharashtra,1800,sqft,residential,2022-05-21,13538548.32,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00003,18.568263,73.89208,Pune,Maharashtra,1800,sqft,residential,2024-01-18,13554030.05,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00004,18.490902,73.842913,Pune,Maharashtra,2400,sqft,residential,2021-09-13,15586351.97,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00005,18.446484,73.866815,Pune,Maharashtra,8000,sqft,agricultural,2024-02-05,11623919.51,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00006,18.502356,73.794928,Pune,Maharashtra,1200,sqft,commercial,2021-12-25,12532399.92,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00007,18.531388,73.930227,Pune,Maharashtra,2400,sqft,industrial,2022-01-26,11062758.25,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00008,18.548705,73.917585,Pune,Maharashtra,10890,sqft,residential,2022-04-21,66389361.54,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00009,18.528987,73.777421,Pune,Maharashtra,8000,sqft,industrial,2021-09-18,46431066.3,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00010,18.443815,73.921848,Pune,Maharashtra,3600,sqft,mixed_use,2022-03-23,33219389.31,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00011,18.514385,73.834382,Pune,Maharashtra,8000,sqft,agricultural,2022-12-22,10565485.73,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00012,18.542182,73.772622,Pune,Maharashtra,5400,sqft,residential,2024-03-04,45847480.99,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00013,18.432781,73.768204,Pune,Maharashtra,1800,sqft,mixed_use,2024-01-30,18814001.39,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00014,18.474627,73.886868,Pune,Maharashtra,3600,sqft,commercial,2021-04-17,34720255.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00015,18.485009,73.872505,Pune,Maharashtra,2400,sqft,industrial,2021-06-30,12472847.42,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00016,18.561936,73.855953,Pune,Maharashtra,2400,sqft,commercial,2022-01-04,24873830.63,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00017,18.434005,73.876557,Pune,Maharashtra,1200,sqft,residential,2024-09-02,7912949.29,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00018,18.542851,73.833063,Pune,Maharashtra,3600,sqft,industrial,2023-11-08,20520444.5,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00019,18.500029,73.832286,Pune,Maharashtra,2400,sqft,residential,2023-11-23,17091989.13,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00020,18.573527,73.842019,Pune,Maharashtra,3600,sqft,commercial,2024-03-17,51951396.73,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00021,18.510111,73.866782,Pune,Maharashtra,5400,sqft,commercial,2023-08-14,72408989.58,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00022,18.465109,73.78198,Pune,Maharashtra,1200,sqft,commercial,2023-03-31,15164374.91,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00023,18.43945,73.801973,Pune,Maharashtra,1800,sqft,residential,2022-06-26,11128938.23,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00024,18.569814,73.917674,Pune,Maharashtra,5400,sqft,residential,2021-01-03,28283522.85,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00025,18.570243,73.869507,Pune,Maharashtra,8000,sqft,residential,2023-12-20,47539255.44,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00026,18.523888,73.870277,Pune,Maharashtra,10890,sqft,mixed_use,2024-07-31,97043397.97,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00027,18.435176,73.894943,Pune,Maharashtra,3600,sqft,residential,2024-05-06,28914280.45,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00028,18.431061,73.878903,Pune,Maharashtra,5400,sqft,commercial,2021-06-27,56744400.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00029,18.545742,73.784161,Pune,Maharashtra,2400,sqft,agricultural,2022-10-06,2982050.36,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00030,18.542476,73.804944,Pune,Maharashtra,1200,sqft,residential,2023-04-29,8600458.29,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00031,19.188595,72.920964,Mumbai Suburban,Maharashtra,1800,sqft,commercial,2024-12-02,79125456.41,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00032,19.073691,72.9148,Mumbai Suburban,Maharashtra,3600,sqft,commercial,2023-10-09,201139490.16,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00033,19.130461,72.785263,Mumbai Suburban,Maharashtra,5400,sqft,residential,2021-11-16,121358694.7,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00034,19.191545,72.850359,Mumbai Suburban,Maharashtra,1200,sqft,mixed_use,2023-07-20,40503099.83,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00035,19.102316,72.834625,Mumbai Suburban,Maharashtra,10890,sqft,mixed_use,2024-10-19,424230953.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00036,19.177892,72.952864,Mumbai Suburban,Maharashtra,8000,sqft,residential,2024-02-22,201032898.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00037,19.07444,72.946929,Mumbai Suburban,Maharashtra,5400,sqft,residential,2022-02-24,120274911.11,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00038,19.194446,72.924948,Mumbai Suburban,Maharashtra,1200,sqft,agricultural,2021-01-02,6001009.5,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00039,19.043227,72.816212,Mumbai Suburban,Maharashtra,2400,sqft,residential,2024-08-02,61384534.54,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00040,19.12539,72.950756,Mumbai Suburban,Maharashtra,5400,sqft,residential,2023-09-20,175669750.38,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00041,19.043383,72.932191,Mumbai Suburban,Maharashtra,8000,sqft,industrial,2022-04-23,143352995.76,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00042,19.18624,72.930392,Mumbai Suburban,Maharashtra,3600,sqft,mixed_use,2021-02-10,126039717.49,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00043,19.167795,72.883392,Mumbai Suburban,Maharashtra,5400,sqft,residential,2023-04-14,169388722.53,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00044,19.183349,72.875604,Mumbai Suburban,Maharashtra,8000,sqft,commercial,2022-02-26,309817459.68,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00045,19.116087,72.834059,Mumbai Suburban,Maharashtra,5400,sqft,commercial,2021-11-08,265871010.79,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00046,19.200662,72.940988,Mumbai Suburban,Maharashtra,8000,sqft,agricultural,2023-03-04,44484135.73,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00047,19.053259,72.909326,Mumbai Suburban,Maharashtra,5400,sqft,residential,2022-05-29,162828404.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00048,19.082209,72.927077,Mumbai Suburban,Maharashtra,1200,sqft,commercial,2024-11-24,52708545.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00049,19.025606,72.914987,Mumbai Suburban,Maharashtra,1800,sqft,industrial,2022-09-28,42611064.6,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00050,19.149657,72.917705,Mumbai Suburban,Maharashtra,5400,sqft,residential,2021-01-24,141177117.1,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00051,19.131537,72.910723,Mumbai Suburban,Maharashtra,1800,sqft,residential,2021-06-29,37311499.58,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00052,19.094236,72.920538,Mumbai Suburban,Maharashtra,8000,sqft,residential,2023-09-27,211645214.87,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00053,19.061579,72.815875,Mumbai Suburban,Maharashtra,1800,sqft,agricultural,2024-09-12,12526678.56,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00054,19.084155,72.867728,Mumbai Suburban,Maharashtra,10890,sqft,mixed_use,2024-08-20,382651190.78,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00055,19.181215,72.836418,Mumbai Suburban,Maharashtra,5400,sqft,mixed_use,2023-04-01,183162815.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00056,19.089785,72.786606,Mumbai Suburban,Maharashtra,5400,sqft,commercial,2022-11-02,254130346.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00057,19.117352,72.866233,Mumbai Suburban,Maharashtra,2400,sqft,agricultural,2021-02-26,13414027.88,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00058,19.13758,72.920082,Mumbai Suburban,Maharashtra,1800,sqft,residential,2023-01-17,50772402.58,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00059,19.119338,72.852595,Mumbai Suburban,Maharashtra,8000,sqft,industrial,2024-01-05,172389327.61,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00060,19.193626,72.951814,Mumbai Suburban,Maharashtra,3600,sqft,residential,2022-01-16,95140128.06,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00061,19.276986,72.968097,Thane,Maharashtra,10890,sqft,mixed_use,2021-12-06,224429729.84,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00062,19.181029,73.06617,Thane,Maharashtra,3600,sqft,residential,2022-08-04,54350422.14,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00063,19.170797,72.927076,Thane,Maharashtra,1200,sqft,residential,2021-06-30,19944747.89,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00064,19.137777,72.950559,Thane,Maharashtra,5400,sqft,agricultural,2023-03-23,19884740.36,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00065,19.1496,72.907736,Thane,Maharashtra,8000,sqft,residential,2022-01-25,136616705.01,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00066,19.144944,72.998592,Thane,Maharashtra,1800,sqft,residential,2023-05-07,30655341.68,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00067,19.238481,72.979421,Thane,Maharashtra,1800,sqft,residential,2021-06-19,26602357.39,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00068,19.160648,73.032612,Thane,Maharashtra,1200,sqft,industrial,2022-07-10,17139391.71,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00069,19.237531,73.022386,Thane,Maharashtra,3600,sqft,residential,2021-08-03,63004787.34,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00070,19.172096,73.023953,Thane,Maharashtra,1800,sqft,residential,2024-07-19,36684009.26,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00071,19.163004,72.913817,Thane,Maharashtra,1200,sqft,industrial,2021-08-11,16318942.95,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00072,19.237626,72.985084,Thane,Maharashtra,8000,sqft,mixed_use,2023-02-23,182071333.28,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00073,19.254411,73.016463,Thane,Maharashtra,1800,sqft,commercial,2022-08-30,41209838.95,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00074,19.189259,73.037818,Thane,Maharashtra,2400,sqft,residential,2021-03-07,37455845.34,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00075,19.292034,72.978364,Thane,Maharashtra,2400,sqft,residential,2021-07-28,38634646.51,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00076,19.237406,73.058704,Thane,Maharashtra,5400,sqft,residential,2022-11-05,93532372.96,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00077,19.191442,73.03449,Thane,Maharashtra,3600,sqft,commercial,2023-05-01,92887409.81,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00078,19.261438,72.949442,Thane,Maharashtra,5400,sqft,mixed_use,2022-10-30,112915686.87,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00079,19.149271,73.049178,Thane,Maharashtra,1200,sqft,agricultural,2023-11-23,5178056.83,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00080,19.165965,73.034077,Thane,Maharashtra,1800,sqft,industrial,2022-07-15,21673260.73,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00081,19.269201,73.060554,Thane,Maharashtra,2400,sqft,residential,2023-06-24,42797915.26,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00082,19.293832,73.017186,Thane,Maharashtra,5400,sqft,residential,2023-09-15,104496462.83,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00083,19.263504,72.900279,Thane,Maharashtra,1200,sqft,industrial,2023-11-03,14337105.41,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00084,19.152694,73.064553,Thane,Maharashtra,1200,sqft,commercial,2024-06-12,40270036.33,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00085,19.128461,72.890482,Thane,Maharashtra,2400,sqft,residential,2021-02-11,41561813.6,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00086,19.147792,72.888597,Thane,Maharashtra,5400,sqft,residential,2024-09-18,111975818.68,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00087,19.266578,73.004717,Thane,Maharashtra,8000,sqft,commercial,2022-05-20,234598883.54,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00088,19.203028,72.956137,Thane,Maharashtra,3600,sqft,residential,2022-12-18,62113306.66,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00089,19.183435,72.982977,Thane,Maharashtra,1800,sqft,residential,2021-11-02,27472574.07,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00090,19.133253,73.059729,Thane,Maharashtra,10890,sqft,agricultural,2024-02-17,47405418.2,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00091,20.069319,73.767944,Nashik,Maharashtra,3600,sqft,commercial,2021-05-23,17481642.73,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00092,20.040054,73.854315,Nashik,Maharashtra,1200,sqft,residential,2021-01-01,4138519.16,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00093,20.025235,73.714988,Nashik,Maharashtra,3600,sqft,residential,2024-07-05,12949961.94,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00094,20.020695,73.715979,Nashik,Maharashtra,10890,sqft,agricultural,2024-07-11,10921184.26,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00095,19.914242,73.809174,Nashik,Maharashtra,2400,sqft,residential,2022-08-21,8446030.91,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00096,20.026078,73.772805,Nashik,Maharashtra,5400,sqft,commercial,2024-01-20,27516233.65,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00097,19.925462,73.714081,Nashik,Maharashtra,1200,sqft,residential,2022-04-26,4720418.66,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00098,19.995848,73.802341,Nashik,Maharashtra,10890,sqft,mixed_use,2023-02-22,55449045.7,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00099,19.955541,73.770283,Nashik,Maharashtra,5400,sqft,residential,2021-10-20,19654590.25,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00100,19.937923,73.70883,Nashik,Maharashtra,1200,sqft,commercial,2023-10-17,5969885.61,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00101,20.024897,73.768272,Nashik,Maharashtra,10890,sqft,residential,2023-04-04,39651602.72,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00102,20.035928,73.746218,Nashik,Maharashtra,1800,sqft,residential,2021-07-30,5363995.45,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00103,20.026165,73.816781,Nashik,Maharashtra,1800,sqft,residential,2021-07-20,5620565.99,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00104,19.999799,73.702277,Nashik,Maharashtra,10890,sqft,commercial,2024-12-03,75710874.92,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00105,20.026188,73.712331,Nashik,Maharashtra,8000,sqft,commercial,2023-05-13,43288678.16,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00106,20.014692,73.853379,Nashik,Maharashtra,3600,sqft,residential,2024-04-30,11534998.88,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00107,19.979929,73.743602,Nashik,Maharashtra,8000,sqft,residential,2023-09-09,27767055.71,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00108,20.033641,73.788684,Nashik,Maharashtra,1800,sqft,mixed_use,2022-06-09,8108038.8,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00109,19.92063,73.798337,Nashik,Maharashtra,5400,sqft,residential,2022-03-13,18060036.65,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00110,20.086877,73.73116,Nashik,Maharashtra,1200,sqft,residential,2024-09-15,3811566.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00111,19.982753,73.824259,Nashik,Maharashtra,2400,sqft,industrial,2021-08-15,4964954.58,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00112,19.978164,73.826707,Nashik,Maharashtra,10890,sqft,commercial,2023-03-26,62300654.08,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00113,19.956603,73.722134,Nashik,Maharashtra,2400,sqft,commercial,2022-02-11,10941758.61,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00114,19.908433,73.759991,Nashik,Maharashtra,3600,sqft,commercial,2024-11-11,26077214.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00115,19.977408,73.812602,Nashik,Maharashtra,8000,sqft,agricultural,2024-09-17,6324100.25,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00116,19.991828,73.778339,Nashik,Maharashtra,2400,sqft,mixed_use,2021-10-08,11070144.8,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00117,20.037565,73.748857,Nashik,Maharashtra,8000,sqft,commercial,2021-10-30,44557290.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00118,20.066696,73.725388,Nashik,Maharashtra,8000,sqft,residential,2024-05-12,26561497.67,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00119,20.007495,73.740555,Nashik,Maharashtra,2400,sqft,commercial,2022-08-09,12038546.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00120,20.068955,73.797107,Nashik,Maharashtra,2400,sqft,mixed_use,2023-10-30,8991171.9,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00121,21.183447,79.159688,Nagpur,Maharashtra,3600,sqft,commercial,2023-12-13,17478857.27,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00122,21.193086,79.073894,Nagpur,Maharashtra,3600,sqft,commercial,2023-02-23,17447577.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00123,21.20393,79.066249,Nagpur,Maharashtra,10890,sqft,agricultural,2024-08-01,7362146.38,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00124,21.103659,79.021596,Nagpur,Maharashtra,2400,sqft,industrial,2022-07-26,6155850.95,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00125,21.160955,79.060452,Nagpur,Maharashtra,2400,sqft,industrial,2022-08-26,4756918.47,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00126,21.211914,79.144055,Nagpur,Maharashtra,8000,sqft,commercial,2021-12-21,36483131.1,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00127,21.144825,78.999797,Nagpur,Maharashtra,1200,sqft,agricultural,2021-09-27,739499.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00128,21.097917,79.016452,Nagpur,Maharashtra,8000,sqft,residential,2023-02-03,26309228.08,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00129,21.064185,79.07627,Nagpur,Maharashtra,8000,sqft,residential,2022-01-22,26880023.99,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00130,21.232201,79.178048,Nagpur,Maharashtra,1800,sqft,mixed_use,2021-07-13,5719717.21,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00131,21.202249,79.142739,Nagpur,Maharashtra,8000,sqft,commercial,2022-01-19,33354240.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00132,21.194201,79.11407,Nagpur,Maharashtra,3600,sqft,industrial,2024-08-16,8630226.36,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00133,21.177138,79.142948,Nagpur,Maharashtra,1800,sqft,commercial,2021-11-18,8141805.8,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00134,21.211181,79.088297,Nagpur,Maharashtra,8000,sqft,commercial,2023-03-16,45861070.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00135,21.233667,79.16413,Nagpur,Maharashtra,2400,sqft,commercial,2023-01-23,12461643.97,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00136,21.218936,79.169795,Nagpur,Maharashtra,1200,sqft,residential,2024-04-27,3695722.82,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00137,21.145931,79.048843,Nagpur,Maharashtra,5400,sqft,residential,2024-10-20,17684526.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00138,21.090372,79.002927,Nagpur,Maharashtra,3600,sqft,mixed_use,2023-05-08,15065397.06,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00139,21.103747,79.035175,Nagpur,Maharashtra,10890,sqft,industrial,2024-05-09,26027262.61,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00140,21.068384,79.093248,Nagpur,Maharashtra,1800,sqft,commercial,2021-10-26,8420723.36,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00141,21.178649,79.16174,Nagpur,Maharashtra,2400,sqft,industrial,2022-04-07,6617282.41,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00142,21.150895,79.090917,Nagpur,Maharashtra,10890,sqft,residential,2024-06-08,32184304.66,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00143,21.208375,79.007705,Nagpur,Maharashtra,1800,sqft,residential,2023-11-20,5734464.1,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00144,21.108891,79.091796,Nagpur,Maharashtra,1200,sqft,residential,2024-02-28,4621221.46,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00145,21.078273,79.038501,Nagpur,Maharashtra,10890,sqft,residential,2022-02-11,35768133.3,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00146,21.170452,79.129,Nagpur,Maharashtra,5400,sqft,residential,2024-11-25,18860997.04,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00147,21.181991,79.103279,Nagpur,Maharashtra,8000,sqft,agricultural,2021-12-12,5856976.12,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00148,21.197164,79.003236,Nagpur,Maharashtra,1800,sqft,agricultural,2024-02-11,1200409.92,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00149,21.231182,79.054938,Nagpur,Maharashtra,1800,sqft,industrial,2022-05-25,4906342.81,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00150,21.19526,79.154085,Nagpur,Maharashtra,1200,sqft,residential,2021-03-09,3219654.84,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00151,19.937505,75.372992,Aurangabad,Maharashtra,5400,sqft,commercial,2024-08-26,29905180.27,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00152,19.786785,75.319447,Aurangabad,Maharashtra,8000,sqft,industrial,2022-03-10,18783809.72,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00153,19.962022,75.302906,Aurangabad,Maharashtra,8000,sqft,residential,2024-07-19,24170642.61,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00154,19.965927,75.393566,Aurangabad,Maharashtra,8000,sqft,residential,2024-03-27,28273256.02,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00155,19.841387,75.264458,Aurangabad,Maharashtra,10890,sqft,industrial,2024-08-05,26232470.97,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00156,19.921152,75.380699,Aurangabad,Maharashtra,1800,sqft,commercial,2022-07-14,9054247.24,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00157,19.906809,75.365458,Aurangabad,Maharashtra,1800,sqft,residential,2021-05-16,4063838.29,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00158,19.869767,75.395263,Aurangabad,Maharashtra,2400,sqft,residential,2022-04-01,5905657.33,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00159,19.852304,75.431954,Aurangabad,Maharashtra,3600,sqft,residential,2021-05-23,8862295.11,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00160,19.797861,75.265838,Aurangabad,Maharashtra,8000,sqft,residential,2024-12-23,25473923.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00161,19.906434,75.317444,Aurangabad,Maharashtra,8000,sqft,residential,2023-09-03,24228196.89,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00162,19.905717,75.350338,Aurangabad,Maharashtra,8000,sqft,residential,2022-03-25,22660390.77,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00163,19.822164,75.415471,Aurangabad,Maharashtra,10890,sqft,residential,2024-08-06,30800853.49,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00164,19.794492,75.384903,Aurangabad,Maharashtra,1800,sqft,residential,2023-01-26,5000601.45,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00165,19.958549,75.342203,Aurangabad,Maharashtra,5400,sqft,residential,2024-03-16,16652200.19,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00166,19.898102,75.378724,Aurangabad,Maharashtra,1800,sqft,residential,2022-07-16,4478355.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00167,19.893546,75.423529,Aurangabad,Maharashtra,1200,sqft,residential,2023-04-15,3365958.79,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00168,19.819087,75.406623,Aurangabad,Maharashtra,5400,sqft,residential,2023-02-21,13618537.61,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00169,19.875499,75.402273,Aurangabad,Maharashtra,10890,sqft,commercial,2024-09-26,49371636.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00170,19.883591,75.399529,Aurangabad,Maharashtra,10890,sqft,agricultural,2024-04-08,7189933.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00171,19.851791,75.340052,Aurangabad,Maharashtra,1800,sqft,industrial,2022-10-16,3422373.71,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00172,19.870787,75.307236,Aurangabad,Maharashtra,10890,sqft,residential,2023-01-17,24656619.96,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00173,19.858147,75.394202,Aurangabad,Maharashtra,10890,sqft,residential,2023-10-22,34135089.12,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00174,19.892506,75.256155,Aurangabad,Maharashtra,1800,sqft,residential,2022-05-01,4247427.19,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00175,19.821537,75.422143,Aurangabad,Maharashtra,3600,sqft,mixed_use,2023-03-22,11992200.46,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00176,19.911161,75.419435,Aurangabad,Maharashtra,2400,sqft,residential,2021-05-30,6983272.82,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00177,19.891789,75.287828,Aurangabad,Maharashtra,5400,sqft,residential,2022-12-20,13396281.77,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00178,19.835653,75.314781,Aurangabad,Maharashtra,1200,sqft,agricultural,2021-08-18,671884.79,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00179,19.868851,75.356177,Aurangabad,Maharashtra,3600,sqft,agricultural,2022-06-04,2150911.45,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00180,19.899513,75.358716,Aurangabad,Maharashtra,2400,sqft,residential,2021-05-01,6656985.82,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00181,13.144655,80.205874,Chennai,Tamil Nadu,3600,sqft,residential,2023-10-04,39640082.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00182,13.08915,80.35603,Chennai,Tamil Nadu,5400,sqft,commercial,2024-01-05,145634292.93,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00183,13.146131,80.225012,Chennai,Tamil Nadu,1200,sqft,commercial,2023-05-12,23498400.95,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00184,13.091587,80.320496,Chennai,Tamil Nadu,5400,sqft,industrial,2021-08-24,46889311.38,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00185,13.018698,80.264532,Chennai,Tamil Nadu,10890,sqft,mixed_use,2024-08-04,193452954.16,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00186,13.136785,80.281662,Chennai,Tamil Nadu,8000,sqft,residential,2022-04-19,112699786.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00187,13.000757,80.199471,Chennai,Tamil Nadu,3600,sqft,residential,2022-03-28,40771106.64,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00188,13.114657,80.262357,Chennai,Tamil Nadu,3600,sqft,residential,2022-07-27,45645824.84,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00189,13.115475,80.216316,Chennai,Tamil Nadu,10890,sqft,residential,2022-01-29,111311171.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00190,13.051253,80.306217,Chennai,Tamil Nadu,10890,sqft,residential,2024-03-05,134114123.03,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00191,13.154071,80.217833,Chennai,Tamil Nadu,5400,sqft,residential,2021-04-19,77719734.1,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00192,13.068685,80.274677,Chennai,Tamil Nadu,8000,sqft,commercial,2023-07-18,195448857.97,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00193,13.107188,80.296404,Chennai,Tamil Nadu,5400,sqft,commercial,2021-12-27,109275934.44,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00194,13.024482,80.220021,Chennai,Tamil Nadu,8000,sqft,residential,2023-02-13,112326464.54,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00195,13.0493,80.259667,Chennai,Tamil Nadu,5400,sqft,agricultural,2021-02-16,12721715.02,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00196,13.043944,80.189146,Chennai,Tamil Nadu,2400,sqft,industrial,2023-12-04,24975618.18,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00197,13.149725,80.195851,Chennai,Tamil Nadu,3600,sqft,residential,2022-10-10,37735443.06,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00198,13.091594,80.31878,Chennai,Tamil Nadu,1800,sqft,residential,2024-07-30,21255348.9,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00199,13.014283,80.204898,Chennai,Tamil Nadu,2400,sqft,industrial,2023-11-24,26330476.11,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00200,13.076127,80.340846,Chennai,Tamil Nadu,3600,sqft,residential,2022-06-28,49537434.29,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00201,13.094227,80.228869,Chennai,Tamil Nadu,5400,sqft,industrial,2021-11-24,42319159.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00202,13.125511,80.213901,Chennai,Tamil Nadu,1200,sqft,industrial,2023-10-07,13262063.71,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00203,13.143738,80.186285,Chennai,Tamil Nadu,3600,sqft,residential,2023-09-07,49034290.35,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00204,13.100319,80.348782,Chennai,Tamil Nadu,3600,sqft,agricultural,2021-08-22,8497259.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00205,12.993457,80.316729,Chennai,Tamil Nadu,1200,sqft,commercial,2021-05-20,20508134.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00206,13.034352,80.346326,Chennai,Tamil Nadu,5400,sqft,residential,2024-03-08,62635820.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00207,13.049949,80.262608,Chennai,Tamil Nadu,10890,sqft,industrial,2021-07-20,102029839.95,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00208,13.04955,80.272268,Chennai,Tamil Nadu,1800,sqft,residential,2022-04-03,21939634.32,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00209,13.150661,80.24964,Chennai,Tamil Nadu,8000,sqft,commercial,2022-04-30,183738348.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00210,13.088151,80.213824,Chennai,Tamil Nadu,3600,sqft,residential,2024-09-18,41470877.67,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00211,11.091127,76.883828,Coimbatore,Tamil Nadu,8000,sqft,residential,2022-09-04,32836781.46,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00212,10.994287,76.963885,Coimbatore,Tamil Nadu,3600,sqft,industrial,2024-08-22,13412080.19,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00213,10.974598,76.93307,Coimbatore,Tamil Nadu,1200,sqft,residential,2024-04-29,5090854.22,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00214,11.097725,76.976817,Coimbatore,Tamil Nadu,1800,sqft,agricultural,2021-07-05,1677920.63,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00215,10.934578,76.982335,Coimbatore,Tamil Nadu,3600,sqft,residential,2023-12-26,18995137.46,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00216,11.096872,76.920392,Coimbatore,Tamil Nadu,1800,sqft,commercial,2024-06-20,13281172.92,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00217,11.053755,76.904976,Coimbatore,Tamil Nadu,10890,sqft,residential,2023-01-31,50982717.96,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00218,11.029903,76.959711,Coimbatore,Tamil Nadu,1800,sqft,residential,2023-02-16,8862015.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00219,11.011195,77.03156,Coimbatore,Tamil Nadu,8000,sqft,commercial,2022-12-09,62528752.24,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00220,11.09835,77.015316,Coimbatore,Tamil Nadu,8000,sqft,residential,2023-02-21,36436604.21,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00221,10.956018,76.955493,Coimbatore,Tamil Nadu,1800,sqft,commercial,2024-09-08,13684455.19,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00222,11.087377,76.936757,Coimbatore,Tamil Nadu,1200,sqft,commercial,2023-07-23,8669793.44,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00223,10.97711,76.883856,Coimbatore,Tamil Nadu,2400,sqft,residential,2022-12-05,9665224.76,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00224,11.055698,77.042564,Coimbatore,Tamil Nadu,3600,sqft,residential,2024-05-22,14132663.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00225,11.033802,76.889877,Coimbatore,Tamil Nadu,2400,sqft,agricultural,2023-10-06,2557459.88,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00226,11.016805,77.014148,Coimbatore,Tamil Nadu,8000,sqft,agricultural,2023-03-26,8487365.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00227,11.009006,76.954887,Coimbatore,Tamil Nadu,1200,sqft,mixed_use,2024-08-13,7391550.25,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00228,11.102004,76.874042,Coimbatore,Tamil Nadu,5400,sqft,agricultural,2024-08-21,5070538.39,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00229,11.05067,77.038805,Coimbatore,Tamil Nadu,1800,sqft,commercial,2022-10-31,14008535.69,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00230,11.099566,76.94366,Coimbatore,Tamil Nadu,8000,sqft,residential,2022-11-03,27600237.06,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00231,10.973328,76.889198,Coimbatore,Tamil Nadu,8000,sqft,commercial,2022-04-24,49213050.64,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00232,10.94867,76.877267,Coimbatore,Tamil Nadu,1200,sqft,commercial,2024-05-14,7978624.95,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00233,11.066493,76.956075,Coimbatore,Tamil Nadu,8000,sqft,residential,2021-06-18,29201441.81,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00234,10.955678,76.879518,Coimbatore,Tamil Nadu,2400,sqft,agricultural,2024-05-29,2782345.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00235,10.942366,76.968979,Coimbatore,Tamil Nadu,1200,sqft,residential,2023-06-18,5967993.1,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00236,10.949977,76.921154,Coimbatore,Tamil Nadu,10890,sqft,agricultural,2024-07-29,10732168.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00237,11.10203,77.021251,Coimbatore,Tamil Nadu,2400,sqft,commercial,2022-07-01,17560883.82,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00238,11.040931,77.00383,Coimbatore,Tamil Nadu,3600,sqft,commercial,2021-06-27,25445779.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00239,11.105306,76.949106,Coimbatore,Tamil Nadu,1800,sqft,residential,2022-12-14,8836292.5,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00240,11.071438,76.943853,Coimbatore,Tamil Nadu,1200,sqft,industrial,2024-11-30,4991954.8,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00241,12.849496,79.175893,Vellore,Tamil Nadu,1200,sqft,residential,2022-02-10,2235755.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00242,12.908147,79.085045,Vellore,Tamil Nadu,10890,sqft,industrial,2021-12-05,19978956.69,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00243,12.91754,79.118212,Vellore,Tamil Nadu,1200,sqft,residential,2023-05-03,2206306.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00244,12.879369,79.065724,Vellore,Tamil Nadu,3600,sqft,residential,2024-09-23,7475667.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00245,12.991795,79.104888,Vellore,Tamil Nadu,1800,sqft,agricultural,2021-10-13,839585.38,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00246,12.853699,79.139642,Vellore,Tamil Nadu,5400,sqft,agricultural,2021-06-18,2534949.83,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00247,12.890742,79.134667,Vellore,Tamil Nadu,3600,sqft,residential,2022-07-18,7521658.28,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00248,12.948944,79.134844,Vellore,Tamil Nadu,5400,sqft,residential,2021-05-28,12292746.82,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00249,12.916586,79.116078,Vellore,Tamil Nadu,3600,sqft,residential,2021-02-16,6852461.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00250,12.979577,79.138668,Vellore,Tamil Nadu,1200,sqft,residential,2021-11-12,2732016.27,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00251,12.921838,79.083228,Vellore,Tamil Nadu,5400,sqft,industrial,2021-05-17,7373286.89,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00252,12.904204,79.201723,Vellore,Tamil Nadu,5400,sqft,industrial,2022-01-28,9002065.02,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00253,12.967836,79.150608,Vellore,Tamil Nadu,1200,sqft,agricultural,2022-12-09,648404.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00254,12.830539,79.218343,Vellore,Tamil Nadu,5400,sqft,residential,2023-05-23,12335683.05,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00255,12.850443,79.148298,Vellore,Tamil Nadu,10890,sqft,agricultural,2021-12-22,5851797.19,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00256,12.859405,79.097275,Vellore,Tamil Nadu,3600,sqft,commercial,2024-10-29,12875207.79,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00257,12.889807,79.090249,Vellore,Tamil Nadu,3600,sqft,commercial,2023-12-27,13238531.37,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00258,12.843891,79.086654,Vellore,Tamil Nadu,5400,sqft,residential,2024-03-29,11302480.5,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00259,12.972886,79.071796,Vellore,Tamil Nadu,2400,sqft,residential,2022-11-24,5060685.03,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00260,12.957021,79.125227,Vellore,Tamil Nadu,1200,sqft,residential,2021-02-19,2570399.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00261,12.870762,79.147609,Vellore,Tamil Nadu,3600,sqft,residential,2024-12-21,8043509.19,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00262,12.854802,79.180916,Vellore,Tamil Nadu,3600,sqft,industrial,2022-05-31,5183449.33,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00263,12.860118,79.181044,Vellore,Tamil Nadu,1800,sqft,commercial,2023-02-03,7364417.4,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00264,12.912679,79.077532,Vellore,Tamil Nadu,2400,sqft,residential,2022-11-30,5400458.25,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00265,12.976057,79.205751,Vellore,Tamil Nadu,10890,sqft,residential,2021-10-08,22712356.37,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00266,12.994505,79.100658,Vellore,Tamil Nadu,2400,sqft,residential,2021-08-07,4009472.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00267,12.920436,79.101616,Vellore,Tamil Nadu,1200,sqft,mixed_use,2024-04-06,3503613.76,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00268,12.951844,79.102723,Vellore,Tamil Nadu,5400,sqft,agricultural,2022-02-20,2664098.51,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00269,12.905361,79.163395,Vellore,Tamil Nadu,5400,sqft,residential,2023-02-22,10187682.96,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00270,12.880934,79.096676,Vellore,Tamil Nadu,3600,sqft,residential,2022-08-11,7356104.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00271,9.891505,78.072369,Madurai,Tamil Nadu,2400,sqft,commercial,2022-03-21,10016202.03,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00272,9.997972,78.068404,Madurai,Tamil Nadu,1200,sqft,mixed_use,2022-10-31,3808974.32,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00273,9.893116,78.152864,Madurai,Tamil Nadu,3600,sqft,residential,2021-04-28,7007123.49,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00274,9.894785,78.109213,Madurai,Tamil Nadu,1200,sqft,industrial,2022-05-31,2724330.16,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00275,9.88076,78.104671,Madurai,Tamil Nadu,8000,sqft,residential,2024-03-04,17482187.4,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00276,9.877447,78.1151,Madurai,Tamil Nadu,5400,sqft,residential,2023-01-14,14074557.96,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00277,10.009326,78.095911,Madurai,Tamil Nadu,3600,sqft,agricultural,2023-11-04,2371611.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00278,9.865792,78.065635,Madurai,Tamil Nadu,2400,sqft,residential,2021-06-02,6248497.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00279,9.845438,78.042732,Madurai,Tamil Nadu,2400,sqft,agricultural,2024-10-15,1151295.61,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00280,9.951688,78.04623,Madurai,Tamil Nadu,8000,sqft,agricultural,2021-11-14,3803809.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00281,9.904879,78.034377,Madurai,Tamil Nadu,10890,sqft,commercial,2021-09-15,43346890.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00282,9.911831,78.115706,Madurai,Tamil Nadu,8000,sqft,residential,2021-08-16,19856142.14,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00283,9.83809,78.031196,Madurai,Tamil Nadu,10890,sqft,residential,2022-08-24,22273420.58,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00284,9.911707,78.037221,Madurai,Tamil Nadu,5400,sqft,mixed_use,2021-08-04,13900160.83,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00285,9.981383,78.050607,Madurai,Tamil Nadu,1800,sqft,residential,2021-09-16,4723986.12,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00286,9.973899,78.038571,Madurai,Tamil Nadu,8000,sqft,residential,2021-03-19,20367331.19,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00287,10.013831,78.067645,Madurai,Tamil Nadu,1200,sqft,industrial,2024-07-26,2218379.61,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00288,9.908353,78.044505,Madurai,Tamil Nadu,3600,sqft,commercial,2024-11-29,16080514.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00289,9.947465,78.055955,Madurai,Tamil Nadu,3600,sqft,residential,2023-11-12,8118532.55,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00290,9.938711,78.03716,Madurai,Tamil Nadu,3600,sqft,mixed_use,2022-10-15,10665857.65,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00291,9.964458,78.055434,Madurai,Tamil Nadu,3600,sqft,residential,2022-06-15,7229792.22,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00292,9.868876,78.103674,Madurai,Tamil Nadu,2400,sqft,residential,2023-03-30,5946776.84,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00293,10.010836,78.121629,Madurai,Tamil Nadu,10890,sqft,residential,2021-02-16,20789498.85,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00294,10.012258,78.190685,Madurai,Tamil Nadu,3600,sqft,residential,2022-11-16,7477647.87,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00295,9.969709,78.06738,Madurai,Tamil Nadu,5400,sqft,residential,2023-03-19,15062745.54,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00296,9.872234,78.196953,Madurai,Tamil Nadu,3600,sqft,agricultural,2022-01-25,1853501.76,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00297,9.934627,78.108739,Madurai,Tamil Nadu,1200,sqft,residential,2023-11-12,2661024.19,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00298,9.895498,78.038956,Madurai,Tamil Nadu,10890,sqft,residential,2023-01-15,22112633.45,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00299,9.957535,78.070936,Madurai,Tamil Nadu,2400,sqft,residential,2022-11-06,6581832.2,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00300,9.885137,78.165381,Madurai,Tamil Nadu,1200,sqft,commercial,2021-07-23,3967735.91,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00301,11.671303,78.076204,Salem,Tamil Nadu,8000,sqft,residential,2022-01-14,17428094.49,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00302,11.716488,78.080098,Salem,Tamil Nadu,5400,sqft,residential,2024-03-06,11628773.23,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00303,11.634285,78.176848,Salem,Tamil Nadu,1800,sqft,mixed_use,2024-03-19,5201262.14,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00304,11.726081,78.170707,Salem,Tamil Nadu,5400,sqft,agricultural,2024-06-26,2208569.92,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00305,11.699606,78.124934,Salem,Tamil Nadu,1800,sqft,mixed_use,2023-05-15,4660140.03,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00306,11.576518,78.194827,Salem,Tamil Nadu,5400,sqft,commercial,2024-06-23,20089327.21,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00307,11.676648,78.073996,Salem,Tamil Nadu,2400,sqft,commercial,2021-11-13,6809784.89,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00308,11.666828,78.06454,Salem,Tamil Nadu,10890,sqft,commercial,2021-09-10,28549514.92,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00309,11.680508,78.223039,Salem,Tamil Nadu,3600,sqft,residential,2023-04-10,8303846.49,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00310,11.743895,78.082211,Salem,Tamil Nadu,10890,sqft,agricultural,2023-11-12,5981336.52,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00311,11.65855,78.192884,Salem,Tamil Nadu,5400,sqft,mixed_use,2021-03-04,13220197.05,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00312,11.635079,78.189788,Salem,Tamil Nadu,5400,sqft,agricultural,2024-06-19,2356982.45,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00313,11.696534,78.135562,Salem,Tamil Nadu,2400,sqft,agricultural,2022-06-22,1210171.25,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00314,11.68082,78.171665,Salem,Tamil Nadu,1800,sqft,residential,2022-12-23,3330887.73,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00315,11.623363,78.140597,Salem,Tamil Nadu,8000,sqft,residential,2023-04-27,17040324.19,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00316,11.706921,78.172563,Salem,Tamil Nadu,8000,sqft,mixed_use,2023-07-23,19178912.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00317,11.617911,78.09768,Salem,Tamil Nadu,2400,sqft,residential,2024-08-25,4578839.71,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00318,11.727877,78.218846,Salem,Tamil Nadu,10890,sqft,mixed_use,2022-02-18,23831853.08,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00319,11.591543,78.148974,Salem,Tamil Nadu,8000,sqft,agricultural,2021-02-16,3469017.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00320,11.581917,78.207369,Salem,Tamil Nadu,1800,sqft,mixed_use,2023-11-06,4479516.92,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00321,11.700259,78.213455,Salem,Tamil Nadu,3600,sqft,commercial,2022-11-03,11708098.8,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00322,11.607444,78.234164,Salem,Tamil Nadu,8000,sqft,commercial,2021-02-26,22122933.46,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00323,11.692036,78.079848,Salem,Tamil Nadu,1200,sqft,residential,2023-06-20,2875616.82,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00324,11.648805,78.137885,Salem,Tamil Nadu,8000,sqft,residential,2023-04-27,15393034.52,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00325,11.725251,78.085861,Salem,Tamil Nadu,2400,sqft,residential,2022-01-10,5464443.7,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00326,11.654509,78.083737,Salem,Tamil Nadu,2400,sqft,commercial,2021-06-04,6198456.73,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00327,11.649931,78.063292,Salem,Tamil Nadu,5400,sqft,agricultural,2022-06-17,2401837.48,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00328,11.711416,78.202682,Salem,Tamil Nadu,10890,sqft,commercial,2024-08-23,41432514.23,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00329,11.627267,78.190309,Salem,Tamil Nadu,1200,sqft,residential,2023-03-19,2428786.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00330,11.716816,78.224393,Salem,Tamil Nadu,5400,sqft,residential,2024-09-29,13897961.6,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00331,10.787295,78.668665,Tiruchirappalli,Tamil Nadu,2400,sqft,commercial,2021-02-02,8306072.38,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00332,10.709542,78.740843,Tiruchirappalli,Tamil Nadu,3600,sqft,residential,2024-09-22,7334015.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00333,10.747217,78.648571,Tiruchirappalli,Tamil Nadu,1200,sqft,mixed_use,2023-10-03,3981565.71,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00334,10.810012,78.696241,Tiruchirappalli,Tamil Nadu,1200,sqft,residential,2024-02-02,2901563.88,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00335,10.859277,78.783961,Tiruchirappalli,Tamil Nadu,5400,sqft,industrial,2023-08-27,9181459.71,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00336,10.820643,78.714418,Tiruchirappalli,Tamil Nadu,2400,sqft,residential,2024-12-07,5797096.04,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00337,10.788882,78.757124,Tiruchirappalli,Tamil Nadu,8000,sqft,residential,2023-02-24,18720970.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00338,10.767626,78.771684,Tiruchirappalli,Tamil Nadu,2400,sqft,residential,2024-07-12,5782064.8,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00339,10.763296,78.751218,Tiruchirappalli,Tamil Nadu,10890,sqft,residential,2023-12-09,27599095.33,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00340,10.847848,78.776618,Tiruchirappalli,Tamil Nadu,8000,sqft,agricultural,2021-09-17,4172335.17,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00341,10.822149,78.733202,Tiruchirappalli,Tamil Nadu,10890,sqft,commercial,2024-04-14,48506292.24,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00342,10.829544,78.764982,Tiruchirappalli,Tamil Nadu,8000,sqft,residential,2022-09-08,16915122.78,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00343,10.702034,78.672875,Tiruchirappalli,Tamil Nadu,8000,sqft,agricultural,2024-07-08,5207856.15,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00344,10.761902,78.633117,Tiruchirappalli,Tamil Nadu,10890,sqft,residential,2022-04-20,25903831.54,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00345,10.787282,78.717362,Tiruchirappalli,Tamil Nadu,5400,sqft,agricultural,2023-06-12,2453504.52,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00346,10.770294,78.783185,Tiruchirappalli,Tamil Nadu,5400,sqft,residential,2021-01-15,10002205.33,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00347,10.753414,78.794131,Tiruchirappalli,Tamil Nadu,5400,sqft,mixed_use,2022-08-21,13765131.81,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00348,10.863261,78.695865,Tiruchirappalli,Tamil Nadu,1800,sqft,mixed_use,2022-04-09,5255496.18,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00349,10.726337,78.75713,Tiruchirappalli,Tamil Nadu,1800,sqft,residential,2024-06-06,5242515.7,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00350,10.750645,78.790273,Tiruchirappalli,Tamil Nadu,2400,sqft,commercial,2022-03-13,9780680.53,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00351,10.745802,78.682188,Tiruchirappalli,Tamil Nadu,3600,sqft,residential,2022-11-06,7114754.34,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00352,10.809591,78.632898,Tiruchirappalli,Tamil Nadu,1200,sqft,residential,2024-02-04,3344495.73,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00353,10.711081,78.781178,Tiruchirappalli,Tamil Nadu,10890,sqft,residential,2022-08-19,22851427.33,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00354,10.797344,78.686217,Tiruchirappalli,Tamil Nadu,1200,sqft,residential,2021-06-25,2445502.91,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00355,10.737819,78.78337,Tiruchirappalli,Tamil Nadu,2400,sqft,industrial,2024-12-30,5269359.02,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00356,10.865996,78.619239,Tiruchirappalli,Tamil Nadu,1200,sqft,mixed_use,2024-11-13,3417315.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00357,10.850317,78.745361,Tiruchirappalli,Tamil Nadu,3600,sqft,mixed_use,2023-05-07,8903536.51,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00358,10.70544,78.780907,Tiruchirappalli,Tamil Nadu,2400,sqft,residential,2021-08-01,5688005.34,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00359,10.783868,78.786554,Tiruchirappalli,Tamil Nadu,1800,sqft,commercial,2021-06-08,6672992.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00360,10.748878,78.628747,Tiruchirappalli,Tamil Nadu,10890,sqft,commercial,2022-08-16,37016779.0,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00361,12.972194,77.675757,Bengaluru Urban,Karnataka,10890,sqft,residential,2022-06-22,138898930.18,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00362,12.942062,77.585091,Bengaluru Urban,Karnataka,1200,sqft,residential,2023-12-03,15028644.4,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00363,12.923052,77.536651,Bengaluru Urban,Karnataka,3600,sqft,industrial,2023-10-05,37172621.96,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00364,12.892202,77.572524,Bengaluru Urban,Karnataka,3600,sqft,agricultural,2022-11-01,8718886.84,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00365,12.926089,77.594567,Bengaluru Urban,Karnataka,8000,sqft,industrial,2021-08-27,78072060.07,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00366,12.934259,77.600809,Bengaluru Urban,Karnataka,1800,sqft,agricultural,2024-04-03,5138384.32,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00367,12.929599,77.54754,Bengaluru Urban,Karnataka,8000,sqft,residential,2021-11-23,94051370.99,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00368,12.995494,77.510185,Bengaluru Urban,Karnataka,2400,sqft,residential,2022-02-13,23901441.28,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00369,12.9146,77.508754,Bengaluru Urban,Karnataka,2400,sqft,residential,2023-06-26,23963201.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00370,12.939417,77.640809,Bengaluru Urban,Karnataka,10890,sqft,agricultural,2024-04-30,27568997.8,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00371,12.922338,77.590347,Bengaluru Urban,Karnataka,3600,sqft,residential,2024-11-04,37353287.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00372,13.056544,77.625376,Bengaluru Urban,Karnataka,1200,sqft,residential,2022-01-19,14646622.1,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00373,13.050718,77.560324,Bengaluru Urban,Karnataka,3600,sqft,agricultural,2022-02-16,7610253.37,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00374,13.000868,77.625298,Bengaluru Urban,Karnataka,10890,sqft,commercial,2022-08-29,164266563.8,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00375,13.030892,77.651062,Bengaluru Urban,Karnataka,3600,sqft,residential,2023-04-05,38581500.34,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00376,13.029117,77.587682,Bengaluru Urban,Karnataka,2400,sqft,residential,2021-06-23,25724877.19,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00377,12.912039,77.583086,Bengaluru Urban,Karnataka,5400,sqft,residential,2024-12-15,60270424.71,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00378,13.015312,77.562378,Bengaluru Urban,Karnataka,2400,sqft,residential,2022-01-08,25326916.79,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00379,12.890086,77.654502,Bengaluru Urban,Karnataka,2400,sqft,commercial,2024-09-15,50915403.13,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00380,12.96493,77.641147,Bengaluru Urban,Karnataka,3600,sqft,commercial,2023-03-30,61757796.23,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00381,13.05118,77.512047,Bengaluru Urban,Karnataka,3600,sqft,residential,2023-10-22,48209861.16,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00382,12.96054,77.54909,Bengaluru Urban,Karnataka,2400,sqft,agricultural,2024-04-20,7558073.13,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00383,12.956719,77.554288,Bengaluru Urban,Karnataka,2400,sqft,mixed_use,2023-04-11,34131681.06,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00384,12.915863,77.52392,Bengaluru Urban,Karnataka,2400,sqft,residential,2024-12-10,27251492.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00385,12.959554,77.540766,Bengaluru Urban,Karnataka,2400,sqft,residential,2024-02-10,26496859.92,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00386,13.03514,77.55098,Bengaluru Urban,Karnataka,1200,sqft,residential,2023-03-06,12102167.01,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00387,12.901938,77.608452,Bengaluru Urban,Karnataka,3600,sqft,residential,2023-10-16,37282597.08,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00388,13.036019,77.522195,Bengaluru Urban,Karnataka,10890,sqft,residential,2021-05-30,122749517.41,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00389,12.972382,77.511515,Bengaluru Urban,Karnataka,10890,sqft,mixed_use,2022-06-05,127164328.05,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00390,13.042247,77.651661,Bengaluru Urban,Karnataka,1800,sqft,industrial,2023-03-20,15177178.98,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00391,12.243662,76.60438,Mysuru,Karnataka,3600,sqft,residential,2021-06-07,12267247.42,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00392,12.306957,76.552136,Mysuru,Karnataka,1200,sqft,residential,2024-06-03,5081690.49,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00393,12.371772,76.621731,Mysuru,Karnataka,1200,sqft,industrial,2023-08-22,3518371.72,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00394,12.28115,76.551884,Mysuru,Karnataka,1200,sqft,commercial,2022-11-21,8244028.05,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00395,12.29464,76.707231,Mysuru,Karnataka,2400,sqft,commercial,2023-04-21,12511889.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00396,12.213955,76.635278,Mysuru,Karnataka,2400,sqft,residential,2024-01-21,7691482.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00397,12.300531,76.691154,Mysuru,Karnataka,1800,sqft,residential,2024-01-16,7048747.35,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00398,12.241481,76.583526,Mysuru,Karnataka,10890,sqft,residential,2022-08-24,36691502.29,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00399,12.310335,76.69976,Mysuru,Karnataka,3600,sqft,agricultural,2024-04-07,3101653.4,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00400,12.232673,76.56584,Mysuru,Karnataka,2400,sqft,residential,2023-07-04,8802261.37,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00401,12.340511,76.689289,Mysuru,Karnataka,2400,sqft,agricultural,2023-07-10,1836298.47,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00402,12.288189,76.55512,Mysuru,Karnataka,2400,sqft,agricultural,2022-02-06,1966195.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00403,12.226539,76.680315,Mysuru,Karnataka,2400,sqft,residential,2021-11-04,8049715.24,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00404,12.356638,76.679785,Mysuru,Karnataka,2400,sqft,mixed_use,2024-07-21,13072274.89,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00405,12.322484,76.616441,Mysuru,Karnataka,3600,sqft,agricultural,2024-09-10,3701658.58,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00406,12.339226,76.628475,Mysuru,Karnataka,1800,sqft,industrial,2021-01-25,4345175.78,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00407,12.337161,76.588758,Mysuru,Karnataka,1200,sqft,industrial,2024-11-08,4255140.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00408,12.287843,76.68987,Mysuru,Karnataka,10890,sqft,industrial,2022-10-22,34293451.91,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00409,12.220992,76.635834,Mysuru,Karnataka,3600,sqft,commercial,2024-01-16,24087412.4,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00410,12.252228,76.594905,Mysuru,Karnataka,8000,sqft,mixed_use,2024-12-22,39387684.48,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00411,12.336297,76.630958,Mysuru,Karnataka,1800,sqft,residential,2024-07-04,5862931.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00412,12.383959,76.660829,Mysuru,Karnataka,2400,sqft,residential,2023-02-05,9168733.13,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00413,12.324355,76.665799,Mysuru,Karnataka,5400,sqft,residential,2024-07-23,16968295.24,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00414,12.338965,76.562365,Mysuru,Karnataka,1800,sqft,industrial,2021-09-16,4411084.1,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00415,12.300485,76.651316,Mysuru,Karnataka,5400,sqft,agricultural,2021-03-02,4007905.96,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00416,12.308862,76.593826,Mysuru,Karnataka,3600,sqft,residential,2022-06-12,11535946.62,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00417,12.35671,76.637217,Mysuru,Karnataka,2400,sqft,commercial,2022-06-12,13277197.55,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00418,12.314613,76.623951,Mysuru,Karnataka,5400,sqft,agricultural,2022-09-24,4219793.97,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00419,12.206221,76.675604,Mysuru,Karnataka,2400,sqft,residential,2021-10-07,8762495.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00420,12.241347,76.665147,Mysuru,Karnataka,5400,sqft,commercial,2024-02-09,35134862.6,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00421,12.949426,74.813908,Mangaluru,Karnataka,10890,sqft,agricultural,2023-06-12,12807127.25,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00422,12.932742,74.81252,Mangaluru,Karnataka,2400,sqft,agricultural,2024-11-08,2898628.54,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00423,12.938882,74.939935,Mangaluru,Karnataka,5400,sqft,industrial,2023-03-21,21743595.85,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00424,12.996075,74.773439,Mangaluru,Karnataka,3600,sqft,residential,2024-05-31,17769797.68,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00425,12.978032,74.942251,Mangaluru,Karnataka,5400,sqft,residential,2021-09-15,22556682.98,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00426,12.862899,74.792231,Mangaluru,Karnataka,1800,sqft,industrial,2021-05-29,5526891.85,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00427,12.916946,74.87427,Mangaluru,Karnataka,2400,sqft,residential,2021-12-01,10900120.16,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00428,12.898788,74.921114,Mangaluru,Karnataka,2400,sqft,agricultural,2023-07-13,2386190.83,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00429,12.91806,74.940422,Mangaluru,Karnataka,3600,sqft,residential,2023-01-02,16092968.44,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00430,12.874526,74.791532,Mangaluru,Karnataka,10890,sqft,commercial,2021-11-23,86691794.55,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00431,12.944585,74.84755,Mangaluru,Karnataka,5400,sqft,commercial,2022-02-10,39355954.63,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00432,12.933486,74.910682,Mangaluru,Karnataka,10890,sqft,residential,2021-06-09,50654879.88,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00433,12.947025,74.849697,Mangaluru,Karnataka,5400,sqft,residential,2023-07-25,27541010.16,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00434,12.986021,74.940311,Mangaluru,Karnataka,10890,sqft,residential,2022-06-03,49613965.9,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00435,12.865128,74.776711,Mangaluru,Karnataka,3600,sqft,agricultural,2023-08-04,4228492.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00436,12.898411,74.876989,Mangaluru,Karnataka,8000,sqft,agricultural,2021-10-20,7808018.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00437,12.880888,74.818388,Mangaluru,Karnataka,1800,sqft,commercial,2021-07-26,13075174.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00438,12.975903,74.902074,Mangaluru,Karnataka,1800,sqft,mixed_use,2021-06-03,8158520.2,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00439,12.913333,74.832089,Mangaluru,Karnataka,1800,sqft,agricultural,2021-06-25,1985077.84,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00440,12.84278,74.918941,Mangaluru,Karnataka,1800,sqft,industrial,2023-11-07,6832133.37,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00441,12.96291,74.902962,Mangaluru,Karnataka,3600,sqft,commercial,2024-08-30,28333482.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00442,12.997349,74.859336,Mangaluru,Karnataka,3600,sqft,residential,2021-08-13,15733801.35,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00443,12.998082,74.857021,Mangaluru,Karnataka,1800,sqft,residential,2023-05-15,8646489.06,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00444,12.863652,74.815019,Mangaluru,Karnataka,1200,sqft,commercial,2021-12-13,9769204.59,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00445,12.958802,74.942052,Mangaluru,Karnataka,5400,sqft,residential,2021-01-14,20883897.82,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00446,12.930615,74.919064,Mangaluru,Karnataka,8000,sqft,residential,2024-07-09,35827322.29,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00447,12.865181,74.918327,Mangaluru,Karnataka,3600,sqft,mixed_use,2024-03-22,23761351.15,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00448,12.989149,74.834159,Mangaluru,Karnataka,3600,sqft,commercial,2023-04-30,28305356.32,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00449,12.96678,74.866475,Mangaluru,Karnataka,1200,sqft,residential,2022-01-25,5483790.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00450,12.92175,74.879802,Mangaluru,Karnataka,3600,sqft,industrial,2022-08-07,14750500.32,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00451,15.396973,75.131638,Hubballi,Karnataka,10890,sqft,residential,2023-02-01,24641425.8,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00452,15.373291,75.148729,Hubballi,Karnataka,1800,sqft,industrial,2024-06-13,3333114.59,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00453,15.393529,75.185596,Hubballi,Karnataka,3600,sqft,residential,2023-08-12,7849908.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00454,15.310365,75.061604,Hubballi,Karnataka,1200,sqft,industrial,2023-10-28,2427589.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00455,15.433417,75.047396,Hubballi,Karnataka,8000,sqft,residential,2023-02-10,22497855.76,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00456,15.374553,75.066015,Hubballi,Karnataka,2400,sqft,industrial,2021-12-18,4025725.19,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00457,15.40587,75.151075,Hubballi,Karnataka,1200,sqft,commercial,2024-08-08,5523049.4,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00458,15.278474,75.166021,Hubballi,Karnataka,1200,sqft,commercial,2022-05-05,5258711.89,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00459,15.29168,75.057535,Hubballi,Karnataka,3600,sqft,residential,2021-01-30,8562548.6,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00460,15.313097,75.043101,Hubballi,Karnataka,2400,sqft,residential,2022-07-18,5416107.47,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00461,15.28707,75.03574,Hubballi,Karnataka,3600,sqft,industrial,2021-06-09,6487213.25,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00462,15.403677,75.115347,Hubballi,Karnataka,5400,sqft,residential,2024-12-20,12594831.6,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00463,15.40306,75.053443,Hubballi,Karnataka,2400,sqft,agricultural,2022-03-10,1289475.0,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00464,15.41889,75.203659,Hubballi,Karnataka,8000,sqft,industrial,2023-12-03,15780399.67,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00465,15.441743,75.073472,Hubballi,Karnataka,3600,sqft,commercial,2023-07-14,11801057.69,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00466,15.358467,75.096976,Hubballi,Karnataka,8000,sqft,residential,2023-08-31,21568990.14,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00467,15.34011,75.080858,Hubballi,Karnataka,2400,sqft,mixed_use,2023-07-09,8381915.55,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00468,15.406447,75.118101,Hubballi,Karnataka,1800,sqft,industrial,2022-01-19,3829615.6,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00469,15.430179,75.047885,Hubballi,Karnataka,1800,sqft,residential,2022-08-25,4351450.58,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00470,15.426576,75.21312,Hubballi,Karnataka,1200,sqft,agricultural,2022-03-02,499539.15,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00471,15.355693,75.03831,Hubballi,Karnataka,1800,sqft,agricultural,2021-05-04,914661.96,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00472,15.286863,75.10972,Hubballi,Karnataka,1200,sqft,commercial,2023-12-04,5658934.49,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00473,15.335336,75.170638,Hubballi,Karnataka,1800,sqft,agricultural,2021-09-30,969998.67,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00474,15.293584,75.0917,Hubballi,Karnataka,2400,sqft,residential,2021-06-28,4565303.08,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00475,15.32052,75.064183,Hubballi,Karnataka,10890,sqft,commercial,2021-04-07,42121509.81,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00476,15.421168,75.044061,Hubballi,Karnataka,1800,sqft,industrial,2024-01-05,3248342.36,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00477,15.326734,75.116697,Hubballi,Karnataka,5400,sqft,commercial,2022-07-10,21065409.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00478,15.307244,75.12664,Hubballi,Karnataka,10890,sqft,residential,2021-08-01,22033080.76,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00479,15.346091,75.084223,Hubballi,Karnataka,1800,sqft,agricultural,2021-02-05,757893.3,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00480,15.415458,75.205747,Hubballi,Karnataka,5400,sqft,agricultural,2021-02-13,2560858.98,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00481,17.42918,78.560614,Hyderabad,Telangana,10890,sqft,agricultural,2024-06-21,23595101.03,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00482,17.377288,78.551376,Hyderabad,Telangana,1800,sqft,industrial,2021-12-12,13632384.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00483,17.474046,78.487528,Hyderabad,Telangana,5400,sqft,residential,2023-01-16,56615833.13,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00484,17.447379,78.499805,Hyderabad,Telangana,3600,sqft,residential,2024-11-22,34085139.16,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00485,17.340185,78.496178,Hyderabad,Telangana,1800,sqft,commercial,2024-10-31,29668731.15,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00486,17.356623,78.430063,Hyderabad,Telangana,1200,sqft,residential,2024-05-29,11137148.21,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00487,17.449047,78.505077,Hyderabad,Telangana,2400,sqft,mixed_use,2021-08-10,31126526.59,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00488,17.467104,78.409252,Hyderabad,Telangana,1800,sqft,industrial,2023-06-12,14466166.21,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00489,17.306098,78.442096,Hyderabad,Telangana,1800,sqft,residential,2021-12-29,18276087.87,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00490,17.432275,78.535691,Hyderabad,Telangana,10890,sqft,industrial,2022-11-07,79768435.51,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00491,17.404702,78.486254,Hyderabad,Telangana,5400,sqft,residential,2024-03-23,55438577.82,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00492,17.436981,78.564827,Hyderabad,Telangana,10890,sqft,commercial,2024-10-29,176385834.98,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00493,17.314203,78.530305,Hyderabad,Telangana,5400,sqft,residential,2023-11-03,49057903.51,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00494,17.366659,78.495547,Hyderabad,Telangana,1200,sqft,commercial,2024-01-06,20729460.99,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00495,17.342884,78.455266,Hyderabad,Telangana,2400,sqft,residential,2022-05-09,21031797.61,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00496,17.300364,78.573172,Hyderabad,Telangana,1800,sqft,commercial,2024-03-05,30873980.38,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00497,17.327315,78.56362,Hyderabad,Telangana,10890,sqft,commercial,2024-06-14,188786977.64,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00498,17.311341,78.556479,Hyderabad,Telangana,5400,sqft,residential,2023-05-10,47119100.61,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00499,17.344682,78.41338,Hyderabad,Telangana,5400,sqft,industrial,2022-04-28,37953620.04,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00500,17.454968,78.518792,Hyderabad,Telangana,1800,sqft,residential,2024-08-07,17015309.69,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00501,17.297926,78.449753,Hyderabad,Telangana,10890,sqft,mixed_use,2021-07-31,139425999.02,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00502,17.307278,78.459554,Hyderabad,Telangana,10890,sqft,residential,2021-11-16,92474426.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00503,17.342084,78.562176,Hyderabad,Telangana,5400,sqft,residential,2021-05-04,41675305.06,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00504,17.40901,78.538126,Hyderabad,Telangana,3600,sqft,residential,2022-02-21,29488420.4,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00505,17.469792,78.551187,Hyderabad,Telangana,2400,sqft,commercial,2021-04-17,37737126.1,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00506,17.437815,78.468676,Hyderabad,Telangana,1200,sqft,residential,2024-02-24,13067898.34,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00507,17.375552,78.429532,Hyderabad,Telangana,2400,sqft,agricultural,2024-09-11,5305106.81,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00508,17.366057,78.399361,Hyderabad,Telangana,5400,sqft,mixed_use,2023-02-24,75121011.54,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00509,17.297379,78.437599,Hyderabad,Telangana,2400,sqft,mixed_use,2024-03-20,35270357.65,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00510,17.382209,78.550841,Hyderabad,Telangana,3600,sqft,residential,2024-06-21,33377802.01,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00511,18.022338,79.511133,Warangal,Telangana,5400,sqft,mixed_use,2024-11-08,15469984.85,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00512,17.934377,79.612759,Warangal,Telangana,10890,sqft,commercial,2021-09-18,36816767.87,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00513,17.987941,79.562365,Warangal,Telangana,10890,sqft,mixed_use,2024-02-24,31835216.24,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00514,18.002959,79.54433,Warangal,Telangana,1800,sqft,residential,2023-06-05,4041504.67,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00515,18.02889,79.632124,Warangal,Telangana,2400,sqft,mixed_use,2023-01-03,6182358.86,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00516,17.960331,79.513724,Warangal,Telangana,2400,sqft,industrial,2021-12-14,3448111.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00517,17.901766,79.55293,Warangal,Telangana,1800,sqft,residential,2023-10-01,3437473.34,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00518,17.896658,79.581035,Warangal,Telangana,1800,sqft,residential,2024-12-20,3980734.28,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00519,18.042964,79.560586,Warangal,Telangana,1200,sqft,residential,2023-02-28,2972040.36,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00520,17.890754,79.509483,Warangal,Telangana,8000,sqft,residential,2021-06-30,14444286.66,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00521,18.038869,79.559812,Warangal,Telangana,8000,sqft,agricultural,2023-02-16,3446272.89,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00522,17.976899,79.681998,Warangal,Telangana,10890,sqft,residential,2024-01-30,25534581.35,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00523,18.012731,79.657535,Warangal,Telangana,10890,sqft,commercial,2022-12-13,41372116.26,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00524,17.930928,79.617214,Warangal,Telangana,2400,sqft,residential,2022-01-12,5220668.85,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00525,17.963323,79.658847,Warangal,Telangana,8000,sqft,residential,2023-09-20,19003459.9,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00526,18.03161,79.559248,Warangal,Telangana,3600,sqft,residential,2024-06-25,9197553.03,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00527,18.023309,79.560087,Warangal,Telangana,1200,sqft,agricultural,2022-11-24,541871.48,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00528,17.9053,79.664781,Warangal,Telangana,10890,sqft,residential,2021-03-14,20531363.17,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00529,18.024399,79.508307,Warangal,Telangana,1200,sqft,mixed_use,2021-12-04,3047488.44,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00530,17.997013,79.616817,Warangal,Telangana,3600,sqft,residential,2021-12-17,6150429.56,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00531,17.931788,79.516899,Warangal,Telangana,1800,sqft,residential,2021-12-22,4068153.3,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00532,17.931693,79.517225,Warangal,Telangana,1200,sqft,residential,2023-11-24,2822336.23,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00533,17.931233,79.563402,Warangal,Telangana,3600,sqft,residential,2021-04-17,7400887.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00534,18.019935,79.632002,Warangal,Telangana,8000,sqft,residential,2023-08-01,19379155.99,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00535,18.053873,79.520558,Warangal,Telangana,5400,sqft,residential,2023-12-31,13545543.18,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00536,17.980278,79.525298,Warangal,Telangana,1200,sqft,commercial,2024-07-06,4650364.17,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00537,17.951232,79.679878,Warangal,Telangana,5400,sqft,commercial,2024-06-22,21666873.82,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00538,17.985409,79.54042,Warangal,Telangana,5400,sqft,industrial,2023-06-20,8775345.52,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00539,18.033448,79.505802,Warangal,Telangana,10890,sqft,mixed_use,2023-07-25,24695598.0,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00540,18.05458,79.561002,Warangal,Telangana,1200,sqft,residential,2021-04-04,2053005.22,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00541,17.622596,83.286914,Visakhapatnam,Andhra Pradesh,5400,sqft,industrial,2021-07-14,20361848.81,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00542,17.597472,83.199733,Visakhapatnam,Andhra Pradesh,5400,sqft,residential,2023-05-12,25670973.49,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00543,17.616375,83.255815,Visakhapatnam,Andhra Pradesh,10890,sqft,commercial,2021-10-09,82491760.14,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00544,17.699027,83.29878,Visakhapatnam,Andhra Pradesh,1200,sqft,residential,2023-05-12,6752759.52,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00545,17.618653,83.172585,Visakhapatnam,Andhra Pradesh,1200,sqft,agricultural,2022-02-20,1390074.25,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00546,17.634389,83.167238,Visakhapatnam,Andhra Pradesh,5400,sqft,mixed_use,2021-01-14,29171695.17,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00547,17.629985,83.211441,Visakhapatnam,Andhra Pradesh,2400,sqft,residential,2022-01-04,11390781.41,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00548,17.615979,83.215449,Visakhapatnam,Andhra Pradesh,2400,sqft,mixed_use,2022-11-09,13747722.78,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00549,17.677783,83.196804,Visakhapatnam,Andhra Pradesh,10890,sqft,industrial,2022-09-28,37080814.32,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00550,17.631165,83.24315,Visakhapatnam,Andhra Pradesh,10890,sqft,residential,2021-12-09,48111753.91,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00551,17.651811,83.169241,Visakhapatnam,Andhra Pradesh,2400,sqft,residential,2023-07-29,13257475.47,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00552,17.649412,83.294385,Visakhapatnam,Andhra Pradesh,1800,sqft,agricultural,2023-10-22,2531055.49,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00553,17.660699,83.270273,Visakhapatnam,Andhra Pradesh,5400,sqft,residential,2023-05-02,28935083.04,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00554,17.634893,83.198301,Visakhapatnam,Andhra Pradesh,1800,sqft,residential,2023-04-01,10270541.32,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00555,17.661976,83.293468,Visakhapatnam,Andhra Pradesh,8000,sqft,industrial,2024-11-24,30702000.64,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00556,17.642519,83.238222,Visakhapatnam,Andhra Pradesh,8000,sqft,mixed_use,2022-11-09,54688063.04,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00557,17.714175,83.247936,Visakhapatnam,Andhra Pradesh,1800,sqft,residential,2023-11-10,10615814.6,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00558,17.646034,83.275574,Visakhapatnam,Andhra Pradesh,10890,sqft,industrial,2022-01-26,47111822.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00559,17.671283,83.1918,Visakhapatnam,Andhra Pradesh,1200,sqft,agricultural,2024-05-25,1514527.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00560,17.757905,83.170044,Visakhapatnam,Andhra Pradesh,2400,sqft,mixed_use,2023-11-25,15414452.24,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00561,17.629901,83.159125,Visakhapatnam,Andhra Pradesh,5400,sqft,agricultural,2024-07-04,8031463.35,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00562,17.68097,83.278343,Visakhapatnam,Andhra Pradesh,10890,sqft,residential,2023-09-15,47949432.52,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00563,17.693181,83.230702,Visakhapatnam,Andhra Pradesh,10890,sqft,agricultural,2021-10-19,11010439.91,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00564,17.719701,83.164228,Visakhapatnam,Andhra Pradesh,5400,sqft,residential,2021-11-03,23463320.23,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00565,17.640612,83.165768,Visakhapatnam,Andhra Pradesh,2400,sqft,agricultural,2023-05-17,3067810.4,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00566,17.695876,83.217475,Visakhapatnam,Andhra Pradesh,2400,sqft,commercial,2021-04-19,17174123.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00567,17.681121,83.220484,Visakhapatnam,Andhra Pradesh,3600,sqft,agricultural,2024-06-21,4166113.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00568,17.762129,83.270928,Visakhapatnam,Andhra Pradesh,10890,sqft,agricultural,2022-11-30,12872724.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00569,17.731627,83.230935,Visakhapatnam,Andhra Pradesh,8000,sqft,residential,2024-03-11,48592997.02,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00570,17.631914,83.262315,Visakhapatnam,Andhra Pradesh,2400,sqft,residential,2024-10-30,11535685.96,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00571,16.445968,80.625219,Vijayawada,Andhra Pradesh,1200,sqft,residential,2021-01-22,4306655.69,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00572,16.560895,80.605759,Vijayawada,Andhra Pradesh,1200,sqft,residential,2023-01-12,5036688.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00573,16.481276,80.636681,Vijayawada,Andhra Pradesh,1800,sqft,agricultural,2024-11-01,1799200.99,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00574,16.568624,80.6673,Vijayawada,Andhra Pradesh,10890,sqft,residential,2022-03-27,52372700.32,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00575,16.423892,80.729038,Vijayawada,Andhra Pradesh,10890,sqft,agricultural,2023-03-08,11771230.61,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00576,16.595327,80.706049,Vijayawada,Andhra Pradesh,3600,sqft,residential,2024-09-20,14821706.4,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00577,16.418478,80.689632,Vijayawada,Andhra Pradesh,8000,sqft,residential,2024-05-29,31520919.78,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00578,16.552582,80.672748,Vijayawada,Andhra Pradesh,3600,sqft,residential,2024-02-24,18654270.85,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00579,16.464075,80.719,Vijayawada,Andhra Pradesh,3600,sqft,mixed_use,2024-08-30,19112991.63,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00580,16.4618,80.580213,Vijayawada,Andhra Pradesh,8000,sqft,agricultural,2021-11-06,5995815.2,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00581,16.508928,80.609073,Vijayawada,Andhra Pradesh,2400,sqft,residential,2024-12-01,13075986.63,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00582,16.575201,80.61631,Vijayawada,Andhra Pradesh,8000,sqft,mixed_use,2022-04-26,43163709.38,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00583,16.433648,80.681903,Vijayawada,Andhra Pradesh,1800,sqft,residential,2024-04-09,8581701.08,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00584,16.445068,80.645221,Vijayawada,Andhra Pradesh,3600,sqft,residential,2022-06-01,16313538.29,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00585,16.573828,80.582178,Vijayawada,Andhra Pradesh,1200,sqft,residential,2023-08-23,4653641.91,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00586,16.497642,80.606985,Vijayawada,Andhra Pradesh,8000,sqft,residential,2023-04-27,35087748.99,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00587,16.444483,80.596057,Vijayawada,Andhra Pradesh,1800,sqft,commercial,2024-05-13,16120563.04,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00588,16.454679,80.678051,Vijayawada,Andhra Pradesh,10890,sqft,residential,2021-03-09,38188692.87,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00589,16.591107,80.558236,Vijayawada,Andhra Pradesh,2400,sqft,residential,2023-09-03,11131797.83,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00590,16.463315,80.629646,Vijayawada,Andhra Pradesh,2400,sqft,commercial,2021-10-19,15102369.61,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00591,16.423987,80.655452,Vijayawada,Andhra Pradesh,10890,sqft,residential,2022-05-14,51519912.63,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00592,16.527621,80.655939,Vijayawada,Andhra Pradesh,10890,sqft,mixed_use,2022-12-25,56678457.67,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00593,16.440299,80.684621,Vijayawada,Andhra Pradesh,10890,sqft,commercial,2021-12-23,68755910.1,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00594,16.538334,80.569779,Vijayawada,Andhra Pradesh,1800,sqft,residential,2022-10-05,6949729.1,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00595,16.445232,80.730498,Vijayawada,Andhra Pradesh,3600,sqft,residential,2021-07-07,16212955.47,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00596,16.566335,80.677923,Vijayawada,Andhra Pradesh,8000,sqft,residential,2023-04-03,35779953.16,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00597,16.517309,80.614858,Vijayawada,Andhra Pradesh,5400,sqft,mixed_use,2024-06-16,33234818.08,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00598,16.577761,80.574454,Vijayawada,Andhra Pradesh,2400,sqft,residential,2021-01-05,10764276.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00599,16.567957,80.671767,Vijayawada,Andhra Pradesh,8000,sqft,industrial,2021-01-03,22916968.07,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00600,16.532726,80.592712,Vijayawada,Andhra Pradesh,1800,sqft,residential,2023-09-08,6623088.26,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00601,14.458029,78.746596,YSR Kadapa,Andhra Pradesh,8000,sqft,agricultural,2023-04-10,2979943.78,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00602,14.402991,78.843494,YSR Kadapa,Andhra Pradesh,5400,sqft,industrial,2023-01-20,7660587.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00603,14.484106,78.741074,YSR Kadapa,Andhra Pradesh,5400,sqft,industrial,2023-03-07,7788758.83,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00604,14.419399,78.781525,YSR Kadapa,Andhra Pradesh,1800,sqft,industrial,2024-04-21,2870141.4,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00605,14.406965,78.912153,YSR Kadapa,Andhra Pradesh,3600,sqft,residential,2022-02-13,5611016.92,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00606,14.390495,78.747257,YSR Kadapa,Andhra Pradesh,8000,sqft,mixed_use,2022-03-30,13395356.11,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00607,14.46022,78.806269,YSR Kadapa,Andhra Pradesh,5400,sqft,commercial,2021-05-24,15870862.38,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00608,14.45512,78.810851,YSR Kadapa,Andhra Pradesh,8000,sqft,residential,2023-05-23,16792723.22,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00609,14.457561,78.894647,YSR Kadapa,Andhra Pradesh,2400,sqft,industrial,2022-08-25,3169016.23,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00610,14.445077,78.832216,YSR Kadapa,Andhra Pradesh,10890,sqft,industrial,2021-09-03,12585545.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00611,14.426644,78.821752,YSR Kadapa,Andhra Pradesh,8000,sqft,residential,2021-04-23,12278758.77,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00612,14.454414,78.818521,YSR Kadapa,Andhra Pradesh,5400,sqft,mixed_use,2021-03-28,11347885.58,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00613,14.530647,78.851638,YSR Kadapa,Andhra Pradesh,1800,sqft,industrial,2021-04-08,2082508.88,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00614,14.446392,78.779324,YSR Kadapa,Andhra Pradesh,10890,sqft,residential,2024-04-12,22140817.39,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00615,14.519696,78.856221,YSR Kadapa,Andhra Pradesh,8000,sqft,mixed_use,2023-09-19,20898672.69,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00616,14.442202,78.805418,YSR Kadapa,Andhra Pradesh,1800,sqft,industrial,2024-04-01,2797431.89,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00617,14.534062,78.832596,YSR Kadapa,Andhra Pradesh,5400,sqft,residential,2022-10-27,9561638.27,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00618,14.546988,78.782548,YSR Kadapa,Andhra Pradesh,1800,sqft,residential,2024-01-11,2897469.94,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00619,14.542916,78.750879,YSR Kadapa,Andhra Pradesh,1800,sqft,residential,2022-12-23,2943943.88,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00620,14.526499,78.860606,YSR Kadapa,Andhra Pradesh,3600,sqft,residential,2022-12-03,5816552.65,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00621,14.396346,78.844864,YSR Kadapa,Andhra Pradesh,5400,sqft,residential,2022-08-01,7891892.83,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00622,14.440267,78.79097,YSR Kadapa,Andhra Pradesh,1800,sqft,commercial,2024-08-26,5978635.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00623,14.468435,78.871095,YSR Kadapa,Andhra Pradesh,8000,sqft,industrial,2024-09-24,10434990.71,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00624,14.528322,78.858522,YSR Kadapa,Andhra Pradesh,5400,sqft,mixed_use,2021-07-12,10648551.2,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00625,14.380637,78.801798,YSR Kadapa,Andhra Pradesh,3600,sqft,mixed_use,2024-06-28,7821000.6,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00626,14.548624,78.826397,YSR Kadapa,Andhra Pradesh,1200,sqft,residential,2023-07-02,2149819.18,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00627,14.532776,78.876212,YSR Kadapa,Andhra Pradesh,2400,sqft,residential,2023-08-18,4057081.37,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00628,14.534851,78.865719,YSR Kadapa,Andhra Pradesh,2400,sqft,agricultural,2023-10-07,1007391.14,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00629,14.537326,78.813759,YSR Kadapa,Andhra Pradesh,1200,sqft,residential,2024-01-05,2052185.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00630,14.437787,78.882004,YSR Kadapa,Andhra Pradesh,8000,sqft,residential,2022-05-02,14880085.06,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00631,13.697935,79.435626,Tirupati,Andhra Pradesh,2400,sqft,mixed_use,2022-02-20,8802278.28,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00632,13.709806,79.498632,Tirupati,Andhra Pradesh,10890,sqft,residential,2024-01-12,30875184.78,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00633,13.57741,79.411416,Tirupati,Andhra Pradesh,8000,sqft,commercial,2022-10-02,32861040.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00634,13.580842,79.463295,Tirupati,Andhra Pradesh,3600,sqft,commercial,2021-12-17,17362862.0,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00635,13.684736,79.483132,Tirupati,Andhra Pradesh,1200,sqft,residential,2023-11-25,3196660.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00636,13.638357,79.447385,Tirupati,Andhra Pradesh,10890,sqft,residential,2024-10-30,37297024.2,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00637,13.640565,79.354144,Tirupati,Andhra Pradesh,5400,sqft,industrial,2023-08-29,13177472.32,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00638,13.681652,79.451496,Tirupati,Andhra Pradesh,5400,sqft,residential,2021-01-12,12718511.33,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00639,13.541245,79.487596,Tirupati,Andhra Pradesh,1200,sqft,residential,2022-12-24,3882008.32,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00640,13.630895,79.463977,Tirupati,Andhra Pradesh,8000,sqft,residential,2022-06-10,24658772.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00641,13.584223,79.444067,Tirupati,Andhra Pradesh,10890,sqft,residential,2021-03-05,27907787.0,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00642,13.699814,79.33303,Tirupati,Andhra Pradesh,1800,sqft,residential,2022-05-16,5481062.92,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00643,13.646198,79.418188,Tirupati,Andhra Pradesh,8000,sqft,mixed_use,2024-06-30,36488917.73,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00644,13.681885,79.344119,Tirupati,Andhra Pradesh,1800,sqft,commercial,2023-04-07,8153048.61,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00645,13.654349,79.365353,Tirupati,Andhra Pradesh,3600,sqft,agricultural,2021-08-11,2141306.43,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00646,13.622364,79.35006,Tirupati,Andhra Pradesh,1800,sqft,agricultural,2022-02-01,1255326.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00647,13.638135,79.486651,Tirupati,Andhra Pradesh,10890,sqft,residential,2021-09-15,31166546.91,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00648,13.641238,79.379673,Tirupati,Andhra Pradesh,3600,sqft,mixed_use,2024-11-28,12572208.48,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00649,13.636298,79.448434,Tirupati,Andhra Pradesh,8000,sqft,commercial,2023-06-18,37052936.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00650,13.659683,79.361948,Tirupati,Andhra Pradesh,1200,sqft,commercial,2023-01-14,6009588.35,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00651,13.589332,79.439875,Tirupati,Andhra Pradesh,1200,sqft,residential,2022-08-24,2963745.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00652,13.637503,79.452975,Tirupati,Andhra Pradesh,8000,sqft,residential,2023-06-08,20419011.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00653,13.700418,79.357153,Tirupati,Andhra Pradesh,10890,sqft,residential,2024-07-05,28356973.72,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00654,13.710322,79.395306,Tirupati,Andhra Pradesh,1200,sqft,commercial,2021-11-02,6317274.72,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00655,13.598719,79.338008,Tirupati,Andhra Pradesh,10890,sqft,mixed_use,2023-05-08,40358711.42,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00656,13.575557,79.468718,Tirupati,Andhra Pradesh,1200,sqft,residential,2022-10-06,3403875.94,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00657,13.618009,79.464445,Tirupati,Andhra Pradesh,5400,sqft,industrial,2024-07-20,11165395.27,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00658,13.566471,79.330033,Tirupati,Andhra Pradesh,10890,sqft,residential,2022-06-11,32183005.67,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00659,13.565748,79.488496,Tirupati,Andhra Pradesh,1800,sqft,residential,2023-01-14,5865471.12,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00660,13.548987,79.496729,Tirupati,Andhra Pradesh,1800,sqft,residential,2021-10-07,5596198.17,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00661,9.977008,76.238962,Ernakulam,Kerala,5400,sqft,residential,2021-09-12,32376159.44,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00662,9.91684,76.351594,Ernakulam,Kerala,5400,sqft,residential,2021-10-26,28138289.7,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00663,9.918082,76.294043,Ernakulam,Kerala,5400,sqft,commercial,2023-01-13,61700917.49,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00664,9.870759,76.267989,Ernakulam,Kerala,1200,sqft,residential,2024-07-28,6806894.71,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00665,9.990608,76.343589,Ernakulam,Kerala,1800,sqft,residential,2021-11-22,12245624.09,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00666,9.954096,76.266121,Ernakulam,Kerala,1200,sqft,industrial,2022-01-20,6195997.46,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00667,9.903303,76.202331,Ernakulam,Kerala,1200,sqft,agricultural,2023-02-22,1629220.82,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00668,9.937982,76.222196,Ernakulam,Kerala,8000,sqft,mixed_use,2021-12-16,54131390.08,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00669,9.898699,76.225358,Ernakulam,Kerala,2400,sqft,residential,2022-12-13,15179051.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00670,9.899585,76.192053,Ernakulam,Kerala,10890,sqft,commercial,2021-08-09,96898466.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00671,9.876945,76.343138,Ernakulam,Kerala,5400,sqft,commercial,2021-01-23,56206733.2,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00672,9.881297,76.30308,Ernakulam,Kerala,5400,sqft,residential,2023-07-01,29437449.54,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00673,9.892227,76.252236,Ernakulam,Kerala,3600,sqft,agricultural,2024-11-15,4376772.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00674,9.991667,76.334744,Ernakulam,Kerala,10890,sqft,commercial,2022-10-17,104155584.12,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00675,9.862339,76.180017,Ernakulam,Kerala,1200,sqft,residential,2022-12-12,7975236.68,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00676,9.956245,76.312248,Ernakulam,Kerala,1200,sqft,mixed_use,2023-02-27,7505141.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00677,9.890551,76.307742,Ernakulam,Kerala,10890,sqft,commercial,2022-03-25,110217810.65,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00678,9.995845,76.283192,Ernakulam,Kerala,10890,sqft,mixed_use,2022-06-18,71086949.64,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00679,9.918071,76.255776,Ernakulam,Kerala,2400,sqft,industrial,2022-11-02,11936342.64,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00680,9.933696,76.240195,Ernakulam,Kerala,8000,sqft,industrial,2021-10-05,34370582.12,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00681,9.957473,76.329636,Ernakulam,Kerala,10890,sqft,industrial,2023-11-08,56616064.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00682,9.841345,76.202626,Ernakulam,Kerala,10890,sqft,residential,2021-02-21,67283946.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00683,9.963971,76.22957,Ernakulam,Kerala,8000,sqft,commercial,2024-05-14,73425820.66,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00684,9.873756,76.211583,Ernakulam,Kerala,3600,sqft,commercial,2024-11-25,43857386.56,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00685,9.884029,76.310079,Ernakulam,Kerala,8000,sqft,residential,2024-01-09,50112268.16,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00686,9.940318,76.2814,Ernakulam,Kerala,10890,sqft,residential,2023-09-02,79502787.39,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00687,9.909405,76.350527,Ernakulam,Kerala,8000,sqft,residential,2022-06-28,54778519.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00688,9.847668,76.270853,Ernakulam,Kerala,1800,sqft,residential,2022-10-23,12433783.04,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00689,9.984547,76.279206,Ernakulam,Kerala,1800,sqft,residential,2021-09-27,9610959.7,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00690,10.020654,76.340118,Ernakulam,Kerala,2400,sqft,mixed_use,2024-10-28,18723916.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00691,8.563812,76.917773,Thiruvananthapuram,Kerala,1800,sqft,industrial,2024-11-16,7178509.73,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00692,8.604235,76.980175,Thiruvananthapuram,Kerala,10890,sqft,industrial,2022-09-13,35468794.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00693,8.45401,76.990995,Thiruvananthapuram,Kerala,8000,sqft,residential,2022-12-20,34161327.42,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00694,8.546068,77.015194,Thiruvananthapuram,Kerala,5400,sqft,residential,2023-06-14,31156855.13,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00695,8.469491,76.978566,Thiruvananthapuram,Kerala,5400,sqft,commercial,2023-08-26,48599690.17,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00696,8.57628,76.908167,Thiruvananthapuram,Kerala,1200,sqft,residential,2024-11-14,5443596.99,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00697,8.611279,76.863821,Thiruvananthapuram,Kerala,3600,sqft,residential,2021-04-11,14086342.03,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00698,8.550167,76.939337,Thiruvananthapuram,Kerala,2400,sqft,residential,2021-08-03,10839620.03,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00699,8.472361,76.962665,Thiruvananthapuram,Kerala,10890,sqft,residential,2021-01-19,43683304.66,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00700,8.591347,76.895238,Thiruvananthapuram,Kerala,2400,sqft,residential,2021-01-29,9938691.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00701,8.564102,76.998489,Thiruvananthapuram,Kerala,3600,sqft,agricultural,2022-11-21,3178754.9,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00702,8.536326,76.847088,Thiruvananthapuram,Kerala,5400,sqft,residential,2022-04-12,27355963.73,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00703,8.445777,76.8942,Thiruvananthapuram,Kerala,1800,sqft,residential,2024-03-04,9574084.02,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00704,8.599165,76.936193,Thiruvananthapuram,Kerala,1800,sqft,residential,2024-11-02,9205342.3,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00705,8.606054,76.875487,Thiruvananthapuram,Kerala,5400,sqft,agricultural,2024-09-06,6769587.73,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00706,8.502894,76.991066,Thiruvananthapuram,Kerala,2400,sqft,commercial,2024-12-24,21577557.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00707,8.460109,76.88002,Thiruvananthapuram,Kerala,3600,sqft,residential,2024-08-03,17508067.5,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00708,8.499249,76.847823,Thiruvananthapuram,Kerala,1800,sqft,residential,2021-01-18,7649741.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00709,8.538945,76.896524,Thiruvananthapuram,Kerala,8000,sqft,residential,2024-10-17,40103629.52,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00710,8.473168,76.943892,Thiruvananthapuram,Kerala,5400,sqft,residential,2023-05-04,28945656.95,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00711,8.538979,76.866104,Thiruvananthapuram,Kerala,10890,sqft,commercial,2024-05-25,105233532.1,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00712,8.535555,76.940452,Thiruvananthapuram,Kerala,1200,sqft,commercial,2024-04-12,9302215.4,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00713,8.598645,76.863657,Thiruvananthapuram,Kerala,10890,sqft,commercial,2023-10-19,100026814.4,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00714,8.528396,76.977871,Thiruvananthapuram,Kerala,8000,sqft,residential,2023-05-01,38390999.39,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00715,8.487713,76.931982,Thiruvananthapuram,Kerala,10890,sqft,agricultural,2023-06-23,11701220.04,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00716,8.601862,76.992136,Thiruvananthapuram,Kerala,5400,sqft,residential,2021-01-17,24302786.47,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00717,8.507253,77.023635,Thiruvananthapuram,Kerala,1200,sqft,residential,2022-05-07,5175974.48,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00718,8.542969,76.873874,Thiruvananthapuram,Kerala,8000,sqft,residential,2023-11-22,37233936.18,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00719,8.472787,76.976494,Thiruvananthapuram,Kerala,2400,sqft,industrial,2021-06-07,6574894.15,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00720,8.439825,76.991492,Thiruvananthapuram,Kerala,1800,sqft,commercial,2023-11-21,14466164.33,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00721,11.310615,75.824456,Kozhikode,Kerala,1800,sqft,residential,2024-07-28,8022784.87,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00722,11.181553,75.73767,Kozhikode,Kerala,1800,sqft,residential,2023-01-04,6778258.6,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00723,11.212591,75.734076,Kozhikode,Kerala,8000,sqft,commercial,2023-11-29,46788760.67,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00724,11.2318,75.714413,Kozhikode,Kerala,2400,sqft,residential,2021-10-04,9963232.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00725,11.194829,75.823148,Kozhikode,Kerala,10890,sqft,commercial,2024-12-29,82868610.78,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00726,11.199614,75.869961,Kozhikode,Kerala,1800,sqft,residential,2023-02-13,6406764.58,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00727,11.213566,75.813351,Kozhikode,Kerala,1800,sqft,residential,2022-02-17,7174563.69,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00728,11.194631,75.81758,Kozhikode,Kerala,1200,sqft,residential,2023-01-26,5255771.23,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00729,11.295213,75.763397,Kozhikode,Kerala,1800,sqft,residential,2022-09-17,7089259.81,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00730,11.16886,75.831343,Kozhikode,Kerala,10890,sqft,residential,2022-08-29,37405306.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00731,11.343859,75.707275,Kozhikode,Kerala,8000,sqft,residential,2023-02-04,29169597.59,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00732,11.299094,75.700308,Kozhikode,Kerala,3600,sqft,commercial,2023-03-11,27227458.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00733,11.303402,75.864644,Kozhikode,Kerala,3600,sqft,mixed_use,2021-05-14,15335635.83,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00734,11.181632,75.713678,Kozhikode,Kerala,3600,sqft,residential,2021-01-01,15054991.72,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00735,11.192258,75.792626,Kozhikode,Kerala,1800,sqft,residential,2024-08-04,7708786.89,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00736,11.319775,75.69847,Kozhikode,Kerala,3600,sqft,commercial,2022-02-19,21928985.18,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00737,11.336795,75.696938,Kozhikode,Kerala,10890,sqft,industrial,2021-09-14,34639664.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00738,11.335807,75.712588,Kozhikode,Kerala,3600,sqft,residential,2022-12-02,15237238.25,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00739,11.274139,75.824804,Kozhikode,Kerala,2400,sqft,commercial,2024-12-10,19200146.22,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00740,11.319281,75.785173,Kozhikode,Kerala,5400,sqft,residential,2024-09-02,20840692.38,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00741,11.270059,75.783717,Kozhikode,Kerala,2400,sqft,commercial,2024-10-02,17661819.9,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00742,11.345332,75.839645,Kozhikode,Kerala,10890,sqft,residential,2021-01-31,36899897.57,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00743,11.293804,75.712568,Kozhikode,Kerala,5400,sqft,industrial,2021-05-03,16843619.37,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00744,11.187271,75.755885,Kozhikode,Kerala,2400,sqft,residential,2021-12-20,9085579.55,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00745,11.232764,75.700377,Kozhikode,Kerala,2400,sqft,industrial,2024-11-04,7809486.21,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00746,11.298182,75.741362,Kozhikode,Kerala,10890,sqft,residential,2023-05-02,46019278.72,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00747,11.206281,75.829103,Kozhikode,Kerala,8000,sqft,residential,2024-06-04,35478443.67,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00748,11.298572,75.807472,Kozhikode,Kerala,8000,sqft,residential,2023-03-29,26885317.56,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00749,11.216277,75.760056,Kozhikode,Kerala,2400,sqft,residential,2023-01-01,10811877.8,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00750,11.348185,75.82108,Kozhikode,Kerala,5400,sqft,agricultural,2023-11-02,4996105.3,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00751,28.599479,77.172485,New Delhi,Delhi,8000,sqft,residential,2022-05-15,170532606.3,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00752,28.539092,77.292109,New Delhi,Delhi,2400,sqft,commercial,2021-02-09,70739431.35,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00753,28.678757,77.154953,New Delhi,Delhi,1800,sqft,residential,2022-11-05,38569490.11,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00754,28.599202,77.17894,New Delhi,Delhi,2400,sqft,residential,2023-09-11,48999885.15,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00755,28.591996,77.208897,New Delhi,Delhi,1200,sqft,residential,2022-10-11,21964084.13,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00756,28.617621,77.204874,New Delhi,Delhi,8000,sqft,residential,2024-02-14,198140612.14,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00757,28.641637,77.275614,New Delhi,Delhi,3600,sqft,industrial,2024-01-20,54551416.07,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00758,28.614392,77.272086,New Delhi,Delhi,3600,sqft,residential,2024-09-04,72932505.27,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00759,28.622637,77.291332,New Delhi,Delhi,1200,sqft,industrial,2021-02-17,18325403.59,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00760,28.635886,77.208656,New Delhi,Delhi,2400,sqft,residential,2023-07-24,43184154.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00761,28.688748,77.236068,New Delhi,Delhi,1800,sqft,residential,2021-03-29,41976895.64,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00762,28.69342,77.295628,New Delhi,Delhi,3600,sqft,residential,2022-10-06,72687286.66,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00763,28.604885,77.226274,New Delhi,Delhi,10890,sqft,commercial,2024-07-07,394629003.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00764,28.692109,77.194608,New Delhi,Delhi,1800,sqft,commercial,2024-07-01,66981605.12,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00765,28.659908,77.123391,New Delhi,Delhi,10890,sqft,residential,2023-12-13,283288634.33,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00766,28.603794,77.217862,New Delhi,Delhi,8000,sqft,residential,2023-02-14,197257391.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00767,28.55694,77.192198,New Delhi,Delhi,1800,sqft,residential,2023-06-21,32972680.71,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00768,28.556276,77.135346,New Delhi,Delhi,8000,sqft,residential,2021-10-11,182202886.87,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00769,28.668642,77.284569,New Delhi,Delhi,3600,sqft,industrial,2024-11-14,57613918.28,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00770,28.624303,77.137347,New Delhi,Delhi,1200,sqft,residential,2023-11-15,24844158.27,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00771,28.637431,77.141252,New Delhi,Delhi,2400,sqft,residential,2022-01-25,51403238.85,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00772,28.633409,77.121811,New Delhi,Delhi,1200,sqft,mixed_use,2021-09-27,26702758.11,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00773,28.599753,77.165224,New Delhi,Delhi,10890,sqft,agricultural,2023-04-28,44992238.71,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00774,28.620582,77.130514,New Delhi,Delhi,10890,sqft,residential,2024-05-15,227580972.47,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00775,28.68503,77.23768,New Delhi,Delhi,3600,sqft,residential,2024-04-09,92787894.62,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00776,28.651783,77.164313,New Delhi,Delhi,3600,sqft,commercial,2024-11-16,124993040.78,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00777,28.593904,77.177636,New Delhi,Delhi,1200,sqft,residential,2021-07-16,21055346.44,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00778,28.676812,77.20463,New Delhi,Delhi,2400,sqft,residential,2023-02-28,55311657.05,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00779,28.690237,77.200422,New Delhi,Delhi,1800,sqft,mixed_use,2024-06-27,52471719.28,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00780,28.612489,77.285438,New Delhi,Delhi,3600,sqft,commercial,2021-03-03,118960628.58,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00781,28.450087,76.945195,Gurugram,Haryana,2400,sqft,residential,2023-06-05,35539242.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00782,28.500644,76.945596,Gurugram,Haryana,10890,sqft,residential,2022-12-15,122906158.19,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00783,28.540783,76.942891,Gurugram,Haryana,2400,sqft,mixed_use,2024-05-21,46868599.97,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00784,28.536435,77.06329,Gurugram,Haryana,1200,sqft,residential,2024-02-01,14569087.71,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00785,28.472202,77.077302,Gurugram,Haryana,8000,sqft,commercial,2024-12-31,182625917.19,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00786,28.500819,77.099186,Gurugram,Haryana,3600,sqft,residential,2022-09-27,43137452.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00787,28.436138,77.06499,Gurugram,Haryana,1200,sqft,residential,2021-04-08,15570560.9,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00788,28.450148,76.955409,Gurugram,Haryana,8000,sqft,mixed_use,2022-11-07,129689096.5,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00789,28.410686,77.022481,Gurugram,Haryana,10890,sqft,residential,2021-01-30,141289924.56,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00790,28.389114,77.099524,Gurugram,Haryana,1800,sqft,residential,2022-12-01,25557268.44,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00791,28.377915,77.008674,Gurugram,Haryana,10890,sqft,commercial,2022-12-26,252922008.74,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00792,28.400884,77.061864,Gurugram,Haryana,1800,sqft,mixed_use,2023-08-18,28281213.83,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00793,28.477431,77.036762,Gurugram,Haryana,2400,sqft,residential,2022-03-15,34913304.14,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00794,28.505047,77.050186,Gurugram,Haryana,8000,sqft,residential,2024-07-25,99727328.51,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00795,28.41007,77.108808,Gurugram,Haryana,3600,sqft,agricultural,2022-03-01,9581094.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00796,28.398961,77.061591,Gurugram,Haryana,5400,sqft,commercial,2022-01-04,92853714.46,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00797,28.378519,76.99319,Gurugram,Haryana,5400,sqft,mixed_use,2021-04-25,83059085.56,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00798,28.432496,77.005053,Gurugram,Haryana,2400,sqft,commercial,2022-08-19,57026012.56,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00799,28.487822,77.026134,Gurugram,Haryana,1200,sqft,residential,2023-09-21,19531744.02,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00800,28.484976,76.944034,Gurugram,Haryana,2400,sqft,residential,2022-07-20,28548215.87,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00801,28.417608,77.093307,Gurugram,Haryana,5400,sqft,residential,2021-03-08,63981552.48,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00802,28.545426,77.021589,Gurugram,Haryana,2400,sqft,residential,2024-09-18,37984434.14,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00803,28.459777,77.070717,Gurugram,Haryana,3600,sqft,residential,2021-08-25,48203180.0,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00804,28.426419,76.992004,Gurugram,Haryana,5400,sqft,residential,2023-02-22,64498568.79,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00805,28.506645,77.079583,Gurugram,Haryana,1200,sqft,commercial,2022-10-06,26767540.37,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00806,28.475033,76.997589,Gurugram,Haryana,1200,sqft,residential,2021-01-24,15827858.22,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00807,28.421612,76.987797,Gurugram,Haryana,8000,sqft,industrial,2022-10-27,74614758.29,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00808,28.383974,77.079445,Gurugram,Haryana,1200,sqft,residential,2023-04-15,14654511.53,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00809,28.402296,77.093,Gurugram,Haryana,10890,sqft,residential,2022-12-12,156739752.08,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00810,28.530543,77.040866,Gurugram,Haryana,2400,sqft,residential,2024-12-03,32982042.87,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00811,28.472074,77.338219,Noida,Uttar Pradesh,3600,sqft,residential,2021-09-09,30687208.04,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00812,28.616333,77.336155,Noida,Uttar Pradesh,1800,sqft,commercial,2024-01-20,26540732.06,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00813,28.502969,77.390799,Noida,Uttar Pradesh,5400,sqft,residential,2022-07-11,55261989.81,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00814,28.484095,77.372523,Noida,Uttar Pradesh,1200,sqft,agricultural,2022-06-20,2272350.16,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00815,28.608059,77.402153,Noida,Uttar Pradesh,1800,sqft,residential,2022-04-29,14484903.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00816,28.52047,77.370037,Noida,Uttar Pradesh,5400,sqft,agricultural,2024-02-04,13412604.6,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00817,28.490414,77.396701,Noida,Uttar Pradesh,10890,sqft,commercial,2024-10-05,186222877.26,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00818,28.450462,77.391337,Noida,Uttar Pradesh,1800,sqft,mixed_use,2024-12-12,24662100.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00819,28.572687,77.430971,Noida,Uttar Pradesh,5400,sqft,industrial,2021-08-02,36265884.2,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00820,28.618002,77.395339,Noida,Uttar Pradesh,1800,sqft,residential,2021-06-17,15662156.65,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00821,28.564956,77.411415,Noida,Uttar Pradesh,1200,sqft,residential,2021-12-11,11219091.0,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00822,28.54242,77.368865,Noida,Uttar Pradesh,2400,sqft,industrial,2024-04-28,15012829.27,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00823,28.534028,77.455593,Noida,Uttar Pradesh,5400,sqft,residential,2024-04-22,53488395.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00824,28.492132,77.417994,Noida,Uttar Pradesh,8000,sqft,residential,2023-09-17,76098677.46,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00825,28.513746,77.428337,Noida,Uttar Pradesh,1800,sqft,residential,2021-12-01,15368381.87,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00826,28.581746,77.387236,Noida,Uttar Pradesh,1200,sqft,residential,2021-02-04,11306287.15,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00827,28.621712,77.472879,Noida,Uttar Pradesh,5400,sqft,residential,2023-04-13,49378613.5,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00828,28.513103,77.402046,Noida,Uttar Pradesh,1800,sqft,agricultural,2021-08-22,3046534.5,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00829,28.577901,77.477464,Noida,Uttar Pradesh,1200,sqft,residential,2022-06-22,11139548.17,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00830,28.542074,77.382341,Noida,Uttar Pradesh,1200,sqft,residential,2024-08-23,13040178.04,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00831,28.464804,77.416384,Noida,Uttar Pradesh,2400,sqft,industrial,2023-04-22,19827766.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00832,28.618513,77.464202,Noida,Uttar Pradesh,1200,sqft,agricultural,2022-10-16,2174858.68,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00833,28.470458,77.367569,Noida,Uttar Pradesh,8000,sqft,residential,2024-01-23,67714548.5,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00834,28.573436,77.31175,Noida,Uttar Pradesh,3600,sqft,commercial,2023-09-13,63288597.08,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00835,28.624965,77.479784,Noida,Uttar Pradesh,8000,sqft,residential,2024-05-09,82907808.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00836,28.467764,77.309925,Noida,Uttar Pradesh,1200,sqft,industrial,2021-03-28,8862123.03,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00837,28.572102,77.41591,Noida,Uttar Pradesh,3600,sqft,residential,2024-10-17,35989298.57,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00838,28.501969,77.398509,Noida,Uttar Pradesh,1800,sqft,residential,2023-03-08,17625760.75,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00839,28.577982,77.305215,Noida,Uttar Pradesh,2400,sqft,industrial,2023-10-16,14965359.57,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00840,28.580998,77.432558,Noida,Uttar Pradesh,8000,sqft,residential,2023-08-04,68715121.46,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00841,26.791854,81.035881,Lucknow,Uttar Pradesh,5400,sqft,industrial,2024-12-07,19683527.94,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00842,26.884686,81.01165,Lucknow,Uttar Pradesh,2400,sqft,mixed_use,2024-07-05,14107703.21,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00843,26.89016,80.920387,Lucknow,Uttar Pradesh,1200,sqft,residential,2024-02-20,5129771.76,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00844,26.894244,80.930736,Lucknow,Uttar Pradesh,5400,sqft,mixed_use,2023-07-01,28476922.79,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00845,26.909518,80.879048,Lucknow,Uttar Pradesh,8000,sqft,residential,2022-05-18,24887295.52,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00846,26.904258,80.995424,Lucknow,Uttar Pradesh,1200,sqft,residential,2021-12-18,3987006.9,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00847,26.901961,81.013192,Lucknow,Uttar Pradesh,8000,sqft,residential,2023-10-02,30703528.16,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00848,26.76814,80.860645,Lucknow,Uttar Pradesh,1200,sqft,commercial,2024-10-14,8572912.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00849,26.758404,80.986593,Lucknow,Uttar Pradesh,8000,sqft,residential,2023-02-14,26605277.36,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00850,26.812801,80.85828,Lucknow,Uttar Pradesh,3600,sqft,commercial,2022-08-28,21280084.56,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00851,26.850214,80.877852,Lucknow,Uttar Pradesh,5400,sqft,agricultural,2022-04-09,4106502.28,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00852,26.929593,80.917903,Lucknow,Uttar Pradesh,3600,sqft,residential,2023-04-18,11711721.21,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00853,26.830249,81.006352,Lucknow,Uttar Pradesh,3600,sqft,mixed_use,2021-10-20,13608645.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00854,26.888544,80.887666,Lucknow,Uttar Pradesh,1200,sqft,residential,2023-07-03,4951384.08,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00855,26.868502,80.999518,Lucknow,Uttar Pradesh,5400,sqft,agricultural,2022-11-21,4069240.61,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00856,26.765841,80.898098,Lucknow,Uttar Pradesh,8000,sqft,industrial,2021-09-19,20023933.52,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00857,26.871316,80.936599,Lucknow,Uttar Pradesh,1800,sqft,commercial,2024-06-25,11477252.97,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00858,26.829481,81.013564,Lucknow,Uttar Pradesh,10890,sqft,residential,2021-04-01,38956663.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00859,26.840578,80.990176,Lucknow,Uttar Pradesh,2400,sqft,agricultural,2024-08-25,2309040.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00860,26.871831,80.876094,Lucknow,Uttar Pradesh,1800,sqft,commercial,2021-10-12,9631478.67,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00861,26.757595,80.958641,Lucknow,Uttar Pradesh,8000,sqft,residential,2021-12-19,31146522.66,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00862,26.796102,80.998961,Lucknow,Uttar Pradesh,10890,sqft,agricultural,2021-12-26,8310133.87,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00863,26.816573,80.905108,Lucknow,Uttar Pradesh,10890,sqft,residential,2024-11-23,40746508.23,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00864,26.861163,80.902292,Lucknow,Uttar Pradesh,1800,sqft,residential,2023-04-18,7271528.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00865,26.789185,80.874287,Lucknow,Uttar Pradesh,2400,sqft,residential,2021-07-22,9613298.35,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00866,26.928288,80.98415,Lucknow,Uttar Pradesh,2400,sqft,commercial,2022-03-16,15811492.25,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00867,26.927413,80.858627,Lucknow,Uttar Pradesh,3600,sqft,residential,2021-03-02,10240808.38,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00868,26.778217,81.010514,Lucknow,Uttar Pradesh,2400,sqft,residential,2023-06-11,8120077.09,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00869,26.833429,81.000726,Lucknow,Uttar Pradesh,8000,sqft,commercial,2021-11-04,43262881.46,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00870,26.768735,80.96483,Lucknow,Uttar Pradesh,1800,sqft,agricultural,2024-01-13,1798792.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00871,26.889092,75.745112,Jaipur,Rajasthan,8000,sqft,residential,2022-05-23,38412534.93,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00872,26.920121,75.841647,Jaipur,Rajasthan,8000,sqft,mixed_use,2022-05-14,45165690.35,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00873,26.864324,75.766695,Jaipur,Rajasthan,10890,sqft,residential,2024-02-04,57299308.2,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00874,26.890877,75.811017,Jaipur,Rajasthan,1200,sqft,residential,2022-10-15,5634294.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00875,26.995285,75.815558,Jaipur,Rajasthan,10890,sqft,residential,2022-02-21,53119870.33,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00876,26.900492,75.831251,Jaipur,Rajasthan,3600,sqft,commercial,2024-12-31,27894078.61,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00877,26.921967,75.746443,Jaipur,Rajasthan,8000,sqft,residential,2023-06-15,31529157.85,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00878,26.959258,75.793799,Jaipur,Rajasthan,3600,sqft,residential,2023-06-14,14099832.47,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00879,26.929198,75.750956,Jaipur,Rajasthan,5400,sqft,residential,2024-12-08,23012254.72,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00880,26.928729,75.704522,Jaipur,Rajasthan,3600,sqft,residential,2024-03-23,18149539.36,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00881,26.935054,75.803196,Jaipur,Rajasthan,3600,sqft,commercial,2023-08-21,29533154.68,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00882,26.89494,75.874934,Jaipur,Rajasthan,10890,sqft,commercial,2024-02-14,77447154.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00883,26.886408,75.789246,Jaipur,Rajasthan,1800,sqft,residential,2022-02-25,7587786.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00884,26.980626,75.826816,Jaipur,Rajasthan,3600,sqft,agricultural,2023-05-28,2803490.34,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00885,26.845043,75.794327,Jaipur,Rajasthan,1200,sqft,residential,2023-08-21,4466929.82,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00886,26.826733,75.821237,Jaipur,Rajasthan,10890,sqft,commercial,2021-02-05,70948972.0,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00887,26.937745,75.809776,Jaipur,Rajasthan,3600,sqft,residential,2021-08-03,12854523.21,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00888,26.887826,75.743869,Jaipur,Rajasthan,1200,sqft,residential,2023-09-02,5295590.64,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00889,26.966207,75.81178,Jaipur,Rajasthan,1800,sqft,agricultural,2021-10-03,1509986.86,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00890,26.990414,75.8288,Jaipur,Rajasthan,1200,sqft,residential,2024-10-28,5680342.24,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00891,26.937992,75.844204,Jaipur,Rajasthan,1200,sqft,agricultural,2024-03-04,1331378.67,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00892,26.951186,75.732505,Jaipur,Rajasthan,1800,sqft,industrial,2024-09-29,6423119.5,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00893,26.859637,75.724762,Jaipur,Rajasthan,1200,sqft,commercial,2024-10-27,8065413.13,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00894,26.844319,75.772673,Jaipur,Rajasthan,8000,sqft,residential,2021-05-17,32862434.79,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00895,26.973733,75.749997,Jaipur,Rajasthan,1800,sqft,residential,2024-11-03,6989560.22,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00896,26.874321,75.864035,Jaipur,Rajasthan,5400,sqft,commercial,2022-06-05,31383908.26,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00897,26.939375,75.75391,Jaipur,Rajasthan,5400,sqft,residential,2024-03-06,24504755.22,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00898,26.974032,75.735857,Jaipur,Rajasthan,3600,sqft,residential,2022-03-23,15390272.64,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00899,26.977286,75.729637,Jaipur,Rajasthan,3600,sqft,mixed_use,2024-02-05,20060454.53,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00900,26.98608,75.828858,Jaipur,Rajasthan,1800,sqft,residential,2023-07-07,6356842.96,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00901,23.02108,72.509519,Ahmedabad,Gujarat,10890,sqft,agricultural,2022-06-15,15507619.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00902,23.05194,72.594966,Ahmedabad,Gujarat,2400,sqft,residential,2024-06-01,17927878.03,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00903,23.0316,72.538991,Ahmedabad,Gujarat,10890,sqft,industrial,2023-04-02,55623774.4,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00904,23.042808,72.582583,Ahmedabad,Gujarat,1800,sqft,residential,2024-08-30,10141352.21,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00905,22.961771,72.62982,Ahmedabad,Gujarat,8000,sqft,industrial,2024-01-05,40721839.58,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00906,23.031937,72.539365,Ahmedabad,Gujarat,1800,sqft,industrial,2022-05-24,9308807.18,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00907,23.047966,72.607876,Ahmedabad,Gujarat,1800,sqft,industrial,2022-06-05,6642259.44,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00908,22.967177,72.609547,Ahmedabad,Gujarat,1800,sqft,mixed_use,2022-01-24,12215495.47,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00909,23.106556,72.647477,Ahmedabad,Gujarat,8000,sqft,residential,2024-08-27,45407647.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00910,22.982736,72.556762,Ahmedabad,Gujarat,3600,sqft,residential,2024-05-27,19990484.12,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00911,23.104849,72.516802,Ahmedabad,Gujarat,2400,sqft,residential,2021-04-06,11999132.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00912,23.075645,72.516626,Ahmedabad,Gujarat,8000,sqft,industrial,2024-02-18,41432711.54,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00913,23.000756,72.58748,Ahmedabad,Gujarat,8000,sqft,residential,2021-08-04,37589166.39,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00914,22.963157,72.535426,Ahmedabad,Gujarat,10890,sqft,residential,2022-08-05,61220074.89,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00915,22.979613,72.637904,Ahmedabad,Gujarat,3600,sqft,residential,2022-01-04,17835998.25,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00916,23.100266,72.592833,Ahmedabad,Gujarat,1200,sqft,residential,2024-07-24,8205784.66,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00917,22.989119,72.543202,Ahmedabad,Gujarat,10890,sqft,residential,2023-11-19,57412789.14,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00918,23.108184,72.492439,Ahmedabad,Gujarat,8000,sqft,agricultural,2022-04-21,9976310.52,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00919,22.985226,72.504767,Ahmedabad,Gujarat,10890,sqft,residential,2024-10-30,65943581.1,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00920,22.942932,72.64304,Ahmedabad,Gujarat,1200,sqft,mixed_use,2024-06-04,8277549.87,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00921,23.045972,72.545906,Ahmedabad,Gujarat,10890,sqft,commercial,2023-05-13,110206091.81,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00922,22.98377,72.523926,Ahmedabad,Gujarat,2400,sqft,residential,2022-10-18,11941286.79,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00923,22.978306,72.570551,Ahmedabad,Gujarat,5400,sqft,commercial,2022-01-27,44597544.59,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00924,22.94988,72.619254,Ahmedabad,Gujarat,10890,sqft,residential,2022-02-19,60284995.44,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00925,23.016791,72.512441,Ahmedabad,Gujarat,2400,sqft,agricultural,2023-03-17,3227381.79,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00926,23.017753,72.523085,Ahmedabad,Gujarat,5400,sqft,residential,2021-08-25,31871765.33,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00927,22.952467,72.618915,Ahmedabad,Gujarat,3600,sqft,residential,2024-03-18,24337218.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00928,22.96793,72.534543,Ahmedabad,Gujarat,8000,sqft,mixed_use,2023-11-29,69444342.12,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00929,22.962588,72.553087,Ahmedabad,Gujarat,3600,sqft,residential,2021-06-19,18935186.9,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00930,22.93487,72.553348,Ahmedabad,Gujarat,5400,sqft,residential,2022-04-20,28475456.57,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00931,21.148446,72.815931,Surat,Gujarat,1800,sqft,industrial,2024-09-05,6663206.63,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00932,21.257687,72.862559,Surat,Gujarat,8000,sqft,residential,2022-11-24,41652259.0,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00933,21.149112,72.782391,Surat,Gujarat,2400,sqft,residential,2024-12-30,13414812.94,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00934,21.124076,72.759221,Surat,Gujarat,1800,sqft,residential,2023-12-10,9581273.88,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00935,21.173446,72.820733,Surat,Gujarat,3600,sqft,industrial,2024-06-11,16907862.42,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00936,21.114611,72.892702,Surat,Gujarat,5400,sqft,mixed_use,2021-12-05,30816275.81,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00937,21.228124,72.919249,Surat,Gujarat,3600,sqft,residential,2024-10-27,15716926.37,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00938,21.217115,72.766672,Surat,Gujarat,10890,sqft,mixed_use,2021-06-11,49845271.04,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00939,21.186934,72.800249,Surat,Gujarat,1200,sqft,commercial,2021-04-17,10440787.26,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00940,21.097614,72.824696,Surat,Gujarat,1200,sqft,residential,2023-10-31,5935315.79,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00941,21.251108,72.761315,Surat,Gujarat,8000,sqft,residential,2022-06-20,41130791.24,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00942,21.116325,72.901563,Surat,Gujarat,3600,sqft,mixed_use,2021-06-30,20227549.39,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00943,21.118222,72.909438,Surat,Gujarat,2400,sqft,commercial,2021-01-03,16102878.3,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00944,21.201596,72.806915,Surat,Gujarat,2400,sqft,residential,2022-07-13,11854328.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00945,21.184439,72.831838,Surat,Gujarat,2400,sqft,residential,2023-04-08,13387253.16,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00946,21.216111,72.829434,Surat,Gujarat,1200,sqft,residential,2021-01-23,4539341.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00947,21.210071,72.858805,Surat,Gujarat,8000,sqft,residential,2022-06-17,35287232.85,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00948,21.090755,72.85596,Surat,Gujarat,3600,sqft,mixed_use,2021-12-19,18904585.07,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00949,21.175607,72.790586,Surat,Gujarat,1200,sqft,residential,2021-02-09,4593292.3,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00950,21.14973,72.770001,Surat,Gujarat,1800,sqft,residential,2021-11-11,7169147.52,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00951,21.100511,72.844524,Surat,Gujarat,1200,sqft,industrial,2024-12-19,4361022.68,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00952,21.127565,72.912874,Surat,Gujarat,5400,sqft,residential,2022-12-25,24938556.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00953,21.193155,72.776275,Surat,Gujarat,1800,sqft,residential,2023-04-29,9239641.02,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00954,21.120215,72.865486,Surat,Gujarat,8000,sqft,residential,2021-04-07,32620686.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00955,21.090295,72.848058,Surat,Gujarat,8000,sqft,residential,2023-06-14,32597063.07,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00956,21.209817,72.869015,Surat,Gujarat,10890,sqft,residential,2023-10-16,61642240.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00957,21.179324,72.868878,Surat,Gujarat,2400,sqft,residential,2023-08-17,12724959.68,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00958,21.237349,72.804428,Surat,Gujarat,10890,sqft,mixed_use,2024-07-30,83656330.01,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00959,21.09897,72.866413,Surat,Gujarat,1200,sqft,residential,2021-06-25,5002226.66,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00960,21.21211,72.844993,Surat,Gujarat,1800,sqft,commercial,2024-10-25,13969705.18,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00961,22.768762,75.904195,Indore,Madhya Pradesh,1200,sqft,residential,2023-05-05,4080406.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00962,22.718771,75.810566,Indore,Madhya Pradesh,5400,sqft,agricultural,2024-01-19,4118563.34,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00963,22.695166,75.824923,Indore,Madhya Pradesh,8000,sqft,agricultural,2023-07-17,7364105.48,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00964,22.76997,75.926445,Indore,Madhya Pradesh,8000,sqft,commercial,2022-02-15,50877142.17,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00965,22.636814,75.944263,Indore,Madhya Pradesh,5400,sqft,residential,2021-10-11,17448390.05,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00966,22.652085,75.945756,Indore,Madhya Pradesh,1200,sqft,residential,2022-04-06,4480404.65,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00967,22.686531,75.802761,Indore,Madhya Pradesh,2400,sqft,agricultural,2021-06-28,1572744.11,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00968,22.688994,75.927364,Indore,Madhya Pradesh,3600,sqft,residential,2022-11-28,15081160.4,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00969,22.697583,75.874955,Indore,Madhya Pradesh,2400,sqft,residential,2021-10-27,7511405.73,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00970,22.70394,75.867345,Indore,Madhya Pradesh,5400,sqft,residential,2022-04-11,18265491.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00971,22.63477,75.828025,Indore,Madhya Pradesh,5400,sqft,residential,2023-10-14,19284643.97,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00972,22.686423,75.909153,Indore,Madhya Pradesh,10890,sqft,industrial,2021-04-05,24907628.59,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00973,22.786807,75.912497,Indore,Madhya Pradesh,8000,sqft,residential,2022-11-27,27908453.9,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00974,22.784437,75.909265,Indore,Madhya Pradesh,1200,sqft,residential,2023-12-20,3957527.34,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00975,22.742291,75.863389,Indore,Madhya Pradesh,1200,sqft,agricultural,2022-03-10,925058.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00976,22.702847,75.922044,Indore,Madhya Pradesh,8000,sqft,industrial,2024-04-13,30076895.99,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00977,22.761914,75.87323,Indore,Madhya Pradesh,8000,sqft,mixed_use,2023-01-21,31970474.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00978,22.741314,75.787347,Indore,Madhya Pradesh,1800,sqft,commercial,2021-12-24,12523376.78,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00979,22.72002,75.936138,Indore,Madhya Pradesh,8000,sqft,residential,2021-02-14,21954974.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00980,22.638002,75.887786,Indore,Madhya Pradesh,1800,sqft,mixed_use,2024-04-06,9519524.69,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00981,22.690733,75.817868,Indore,Madhya Pradesh,10890,sqft,mixed_use,2022-09-07,51411934.23,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00982,22.656039,75.793397,Indore,Madhya Pradesh,3600,sqft,residential,2024-10-27,13127532.34,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00983,22.744612,75.824695,Indore,Madhya Pradesh,1800,sqft,commercial,2023-07-20,13160907.82,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00984,22.728357,75.837716,Indore,Madhya Pradesh,10890,sqft,residential,2023-04-23,44834205.51,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00985,22.670146,75.866515,Indore,Madhya Pradesh,10890,sqft,residential,2021-07-23,38177386.78,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00986,22.752578,75.867525,Indore,Madhya Pradesh,8000,sqft,agricultural,2021-05-26,6007445.22,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00987,22.687552,75.830788,Indore,Madhya Pradesh,5400,sqft,residential,2024-04-25,22685334.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00988,22.71348,75.875024,Indore,Madhya Pradesh,3600,sqft,residential,2024-05-23,15895642.66,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-00989,22.646121,75.93512,Indore,Madhya Pradesh,1200,sqft,residential,2022-04-22,4056411.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00990,22.721812,75.863896,Indore,Madhya Pradesh,1800,sqft,residential,2023-04-02,6049482.48,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00991,23.226068,77.377012,Bhopal,Madhya Pradesh,1800,sqft,residential,2022-08-11,5954192.53,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00992,23.32383,77.442004,Bhopal,Madhya Pradesh,3600,sqft,residential,2021-06-15,9633025.27,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00993,23.192234,77.44084,Bhopal,Madhya Pradesh,1200,sqft,mixed_use,2021-12-04,3952231.28,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00994,23.241411,77.392885,Bhopal,Madhya Pradesh,2400,sqft,residential,2023-01-29,8064833.94,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00995,23.210902,77.367712,Bhopal,Madhya Pradesh,2400,sqft,commercial,2024-12-24,12930635.71,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00996,23.222767,77.330629,Bhopal,Madhya Pradesh,8000,sqft,residential,2021-09-29,26786865.62,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00997,23.203153,77.418793,Bhopal,Madhya Pradesh,1200,sqft,residential,2024-10-29,4104672.85,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00998,23.262125,77.473954,Bhopal,Madhya Pradesh,1200,sqft,residential,2024-04-17,3475795.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-00999,23.340319,77.444287,Bhopal,Madhya Pradesh,10890,sqft,industrial,2021-05-18,28364458.15,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01000,23.207588,77.411389,Bhopal,Madhya Pradesh,1200,sqft,agricultural,2022-02-27,766417.53,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01001,23.292186,77.447891,Bhopal,Madhya Pradesh,2400,sqft,agricultural,2022-05-16,1934244.7,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01002,23.18751,77.404909,Bhopal,Madhya Pradesh,8000,sqft,commercial,2021-12-16,35576821.15,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01003,23.182807,77.388818,Bhopal,Madhya Pradesh,1200,sqft,industrial,2023-11-29,3307693.33,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01004,23.286335,77.338242,Bhopal,Madhya Pradesh,5400,sqft,commercial,2021-04-17,27513662.36,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01005,23.202178,77.460331,Bhopal,Madhya Pradesh,3600,sqft,residential,2023-02-17,10578805.35,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01006,23.253918,77.460441,Bhopal,Madhya Pradesh,10890,sqft,residential,2021-11-05,36054182.78,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01007,23.228972,77.424979,Bhopal,Madhya Pradesh,1200,sqft,industrial,2023-05-04,3174668.14,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01008,23.190229,77.379873,Bhopal,Madhya Pradesh,5400,sqft,mixed_use,2023-05-03,18041632.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01009,23.341259,77.343391,Bhopal,Madhya Pradesh,3600,sqft,residential,2024-12-16,10938379.15,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01010,23.306871,77.406883,Bhopal,Madhya Pradesh,10890,sqft,commercial,2022-10-27,61963865.26,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01011,23.347124,77.335188,Bhopal,Madhya Pradesh,1200,sqft,residential,2023-08-20,3605235.21,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01012,23.195717,77.419707,Bhopal,Madhya Pradesh,1200,sqft,industrial,2022-07-21,3165642.04,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01013,23.310378,77.37805,Bhopal,Madhya Pradesh,1800,sqft,residential,2022-06-15,6073198.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01014,23.233215,77.486519,Bhopal,Madhya Pradesh,1200,sqft,mixed_use,2021-07-13,3657524.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01015,23.342483,77.497875,Bhopal,Madhya Pradesh,2400,sqft,commercial,2023-12-30,13436565.1,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01016,23.244753,77.368451,Bhopal,Madhya Pradesh,10890,sqft,agricultural,2022-01-25,8230950.84,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01017,23.320237,77.368633,Bhopal,Madhya Pradesh,1800,sqft,agricultural,2023-12-28,1271837.1,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01018,23.229391,77.353391,Bhopal,Madhya Pradesh,5400,sqft,residential,2022-10-30,18546922.25,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01019,23.241423,77.441354,Bhopal,Madhya Pradesh,1800,sqft,mixed_use,2021-05-15,6964839.03,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01020,23.253906,77.474761,Bhopal,Madhya Pradesh,1800,sqft,residential,2021-05-24,5084362.32,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01021,22.633621,88.307242,Kolkata,West Bengal,2400,sqft,industrial,2023-02-16,16726368.88,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01022,22.53237,88.384271,Kolkata,West Bengal,1200,sqft,residential,2022-09-06,8271711.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01023,22.589852,88.313292,Kolkata,West Bengal,10890,sqft,agricultural,2021-02-23,16816307.01,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01024,22.568002,88.421539,Kolkata,West Bengal,5400,sqft,agricultural,2021-02-19,10239646.5,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01025,22.540286,88.402134,Kolkata,West Bengal,8000,sqft,commercial,2023-07-07,102071131.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01026,22.50652,88.399757,Kolkata,West Bengal,10890,sqft,residential,2022-03-01,81940282.62,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01027,22.607378,88.406228,Kolkata,West Bengal,2400,sqft,residential,2022-09-02,18291298.8,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01028,22.535092,88.366061,Kolkata,West Bengal,8000,sqft,commercial,2023-01-06,102881332.63,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01029,22.649387,88.300211,Kolkata,West Bengal,8000,sqft,agricultural,2022-11-21,13494818.39,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01030,22.529158,88.430399,Kolkata,West Bengal,2400,sqft,mixed_use,2021-08-22,19563586.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01031,22.647753,88.366173,Kolkata,West Bengal,1800,sqft,residential,2021-03-11,15777632.48,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01032,22.618743,88.410252,Kolkata,West Bengal,3600,sqft,residential,2024-12-12,35854511.92,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01033,22.558871,88.424411,Kolkata,West Bengal,3600,sqft,industrial,2024-09-05,20784758.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01034,22.587097,88.405596,Kolkata,West Bengal,1800,sqft,agricultural,2022-05-08,2926478.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01035,22.626083,88.285746,Kolkata,West Bengal,2400,sqft,mixed_use,2023-12-26,21555654.14,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01036,22.578274,88.443049,Kolkata,West Bengal,1200,sqft,commercial,2023-11-24,16547932.79,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01037,22.626658,88.411504,Kolkata,West Bengal,10890,sqft,residential,2023-12-22,97149584.56,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01038,22.652512,88.285638,Kolkata,West Bengal,3600,sqft,residential,2024-04-06,35438579.87,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01039,22.5092,88.391497,Kolkata,West Bengal,8000,sqft,mixed_use,2022-02-27,88527668.92,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01040,22.522614,88.278018,Kolkata,West Bengal,1200,sqft,residential,2021-10-30,7934568.83,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01041,22.568488,88.277867,Kolkata,West Bengal,5400,sqft,commercial,2021-06-11,66911977.22,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01042,22.509161,88.378122,Kolkata,West Bengal,1200,sqft,residential,2024-05-01,9438875.73,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01043,22.658667,88.318646,Kolkata,West Bengal,2400,sqft,residential,2022-10-30,24368213.77,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01044,22.584474,88.427379,Kolkata,West Bengal,8000,sqft,industrial,2022-02-05,42814166.14,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01045,22.559599,88.438882,Kolkata,West Bengal,5400,sqft,mixed_use,2022-11-04,49664423.72,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01046,22.593749,88.292444,Kolkata,West Bengal,10890,sqft,agricultural,2023-09-18,22304150.48,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01047,22.522267,88.43663,Kolkata,West Bengal,1800,sqft,residential,2023-07-26,15082882.62,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01048,22.51113,88.382382,Kolkata,West Bengal,8000,sqft,commercial,2024-09-28,122780320.3,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01049,22.498762,88.34676,Kolkata,West Bengal,2400,sqft,mixed_use,2022-01-13,21281741.62,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01050,22.497962,88.321005,Kolkata,West Bengal,2400,sqft,residential,2023-02-17,23678582.8,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01051,25.596625,85.06947,Patna,Bihar,5400,sqft,commercial,2024-01-14,30975301.63,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01052,25.673179,85.108011,Patna,Bihar,10890,sqft,residential,2022-11-30,38473050.44,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01053,25.57758,85.079153,Patna,Bihar,10890,sqft,residential,2023-05-07,35438494.19,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01054,25.539933,85.072988,Patna,Bihar,1800,sqft,residential,2021-10-04,5469429.59,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01055,25.626066,85.139269,Patna,Bihar,2400,sqft,agricultural,2023-08-13,1607165.74,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01056,25.583913,85.075442,Patna,Bihar,10890,sqft,industrial,2024-06-06,28911512.56,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01057,25.583027,85.048853,Patna,Bihar,5400,sqft,commercial,2022-01-04,26396123.66,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01058,25.547494,85.158799,Patna,Bihar,2400,sqft,commercial,2023-01-16,16235027.92,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01059,25.679197,85.105798,Patna,Bihar,1200,sqft,residential,2024-09-10,4707339.11,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01060,25.576001,85.136742,Patna,Bihar,10890,sqft,commercial,2024-09-02,53294981.14,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01061,25.619394,85.16436,Patna,Bihar,10890,sqft,industrial,2021-07-27,25149796.46,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01062,25.557303,85.127708,Patna,Bihar,5400,sqft,agricultural,2023-11-09,3881059.05,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01063,25.580704,85.171749,Patna,Bihar,8000,sqft,agricultural,2021-08-24,5605211.81,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01064,25.556231,85.207957,Patna,Bihar,5400,sqft,residential,2021-09-01,17450680.39,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01065,25.6382,85.207869,Patna,Bihar,10890,sqft,commercial,2024-07-27,78157317.71,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01066,25.628929,85.057256,Patna,Bihar,10890,sqft,commercial,2024-04-28,74348772.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01067,25.662336,85.05002,Patna,Bihar,8000,sqft,residential,2022-02-08,24226828.37,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01068,25.630449,85.103006,Patna,Bihar,3600,sqft,commercial,2024-03-11,20382735.36,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01069,25.597264,85.080103,Patna,Bihar,10890,sqft,agricultural,2024-04-26,9188569.65,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01070,25.61176,85.199804,Patna,Bihar,2400,sqft,industrial,2021-10-25,5319966.54,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01071,25.588734,85.143748,Patna,Bihar,1200,sqft,commercial,2022-06-03,6940536.26,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01072,25.596127,85.108199,Patna,Bihar,8000,sqft,commercial,2022-07-09,47235742.03,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01073,25.645601,85.092878,Patna,Bihar,1800,sqft,commercial,2021-11-08,10923432.78,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01074,25.675968,85.118559,Patna,Bihar,10890,sqft,mixed_use,2022-08-07,41474998.55,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01075,25.564129,85.091337,Patna,Bihar,1200,sqft,industrial,2022-01-21,3074449.39,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01076,25.531619,85.19705,Patna,Bihar,5400,sqft,residential,2023-10-13,18236145.79,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01077,25.561097,85.098936,Patna,Bihar,5400,sqft,commercial,2021-08-11,30484292.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01078,25.669795,85.190064,Patna,Bihar,3600,sqft,residential,2021-07-09,13014221.24,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01079,25.61372,85.105801,Patna,Bihar,3600,sqft,mixed_use,2022-06-24,16878103.02,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01080,25.576952,85.138363,Patna,Bihar,2400,sqft,commercial,2023-11-22,13314003.82,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01081,20.35127,85.857474,Bhubaneswar,Odisha,2400,sqft,residential,2021-12-17,8528553.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01082,20.218684,85.73701,Bhubaneswar,Odisha,10890,sqft,commercial,2024-01-04,71824951.82,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01083,20.293354,85.80763,Bhubaneswar,Odisha,1800,sqft,residential,2024-05-03,7451489.0,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01084,20.372353,85.834416,Bhubaneswar,Odisha,1800,sqft,residential,2024-11-01,6145043.18,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01085,20.301007,85.786835,Bhubaneswar,Odisha,3600,sqft,residential,2023-01-03,11752494.76,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01086,20.305843,85.738827,Bhubaneswar,Odisha,1200,sqft,residential,2021-07-12,4078057.11,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01087,20.249796,85.827565,Bhubaneswar,Odisha,2400,sqft,residential,2022-11-09,7363111.72,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01088,20.377207,85.828541,Bhubaneswar,Odisha,1200,sqft,residential,2023-07-06,4436586.38,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01089,20.249087,85.819075,Bhubaneswar,Odisha,5400,sqft,industrial,2023-11-17,16972434.49,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01090,20.321801,85.761343,Bhubaneswar,Odisha,10890,sqft,agricultural,2021-05-12,7100800.81,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01091,20.336263,85.840418,Bhubaneswar,Odisha,1200,sqft,residential,2024-03-20,4957940.26,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01092,20.375913,85.735649,Bhubaneswar,Odisha,2400,sqft,residential,2022-03-20,7678339.72,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01093,20.316521,85.803863,Bhubaneswar,Odisha,5400,sqft,industrial,2024-09-01,15611060.24,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01094,20.274915,85.879109,Bhubaneswar,Odisha,3600,sqft,commercial,2022-08-05,23125350.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01095,20.268571,85.895014,Bhubaneswar,Odisha,10890,sqft,residential,2021-08-28,32132618.99,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01096,20.300202,85.80259,Bhubaneswar,Odisha,5400,sqft,mixed_use,2022-01-06,22428555.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01097,20.362987,85.838819,Bhubaneswar,Odisha,1200,sqft,residential,2022-09-08,4297652.28,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01098,20.362998,85.744071,Bhubaneswar,Odisha,1800,sqft,commercial,2023-07-27,9959255.83,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01099,20.377178,85.85661,Bhubaneswar,Odisha,5400,sqft,residential,2024-11-17,17300700.68,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01100,20.251757,85.830036,Bhubaneswar,Odisha,1800,sqft,industrial,2024-03-03,5513659.8,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01101,20.354528,85.866322,Bhubaneswar,Odisha,1800,sqft,residential,2023-12-18,6340820.33,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01102,20.316626,85.842526,Bhubaneswar,Odisha,10890,sqft,residential,2023-05-12,32328321.37,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01103,20.259241,85.894609,Bhubaneswar,Odisha,10890,sqft,agricultural,2022-10-16,7862343.15,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01104,20.278029,85.825503,Bhubaneswar,Odisha,1800,sqft,agricultural,2021-04-01,1333225.2,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01105,20.277103,85.751912,Bhubaneswar,Odisha,1200,sqft,residential,2023-06-18,4050680.52,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01106,20.2538,85.865028,Bhubaneswar,Odisha,10890,sqft,agricultural,2024-03-05,7615278.02,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01107,20.317176,85.896897,Bhubaneswar,Odisha,5400,sqft,agricultural,2022-09-18,3672094.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01108,20.240317,85.89812,Bhubaneswar,Odisha,3600,sqft,residential,2024-07-23,14353533.88,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01109,20.368731,85.898154,Bhubaneswar,Odisha,5400,sqft,residential,2023-09-03,17983415.47,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01110,20.315439,85.886165,Bhubaneswar,Odisha,5400,sqft,agricultural,2023-01-18,4743124.86,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01111,30.683885,76.828714,Chandigarh,Chandigarh,2400,sqft,industrial,2022-06-29,15996623.86,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01112,30.754869,76.75707,Chandigarh,Chandigarh,10890,sqft,agricultural,2022-04-19,19046478.88,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01113,30.652006,76.701981,Chandigarh,Chandigarh,3600,sqft,residential,2024-09-02,28731507.63,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01114,30.656776,76.755173,Chandigarh,Chandigarh,8000,sqft,residential,2021-04-12,77274984.32,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01115,30.692931,76.855429,Chandigarh,Chandigarh,10890,sqft,industrial,2021-11-01,79470414.84,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01116,30.746752,76.807508,Chandigarh,Chandigarh,1800,sqft,residential,2021-08-22,12993262.9,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01117,30.81273,76.805489,Chandigarh,Chandigarh,10890,sqft,residential,2024-06-27,87083430.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01118,30.665226,76.781714,Chandigarh,Chandigarh,1800,sqft,residential,2023-08-25,17386094.17,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01119,30.789729,76.762445,Chandigarh,Chandigarh,2400,sqft,residential,2021-12-03,21720240.02,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01120,30.770802,76.792657,Chandigarh,Chandigarh,10890,sqft,residential,2022-03-11,89610308.48,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01121,30.752678,76.781975,Chandigarh,Chandigarh,5400,sqft,agricultural,2022-11-21,11504791.29,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01122,30.725913,76.793897,Chandigarh,Chandigarh,2400,sqft,residential,2021-09-28,17382925.72,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01123,30.661143,76.800725,Chandigarh,Chandigarh,1200,sqft,mixed_use,2022-01-11,13857508.12,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01124,30.784415,76.808154,Chandigarh,Chandigarh,1800,sqft,residential,2023-03-10,15670685.94,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01125,30.785842,76.700587,Chandigarh,Chandigarh,1200,sqft,mixed_use,2024-02-23,13706376.4,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01126,30.684006,76.800966,Chandigarh,Chandigarh,2400,sqft,industrial,2024-11-10,16081783.06,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01127,30.670194,76.83325,Chandigarh,Chandigarh,2400,sqft,mixed_use,2023-01-25,24178313.07,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01128,30.814645,76.774735,Chandigarh,Chandigarh,2400,sqft,residential,2021-07-17,17895248.61,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01129,30.805876,76.712397,Chandigarh,Chandigarh,1800,sqft,residential,2022-02-02,14351550.16,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01130,30.782749,76.786747,Chandigarh,Chandigarh,1200,sqft,residential,2023-04-26,11685235.25,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01131,30.745113,76.824669,Chandigarh,Chandigarh,5400,sqft,residential,2022-05-12,46977308.35,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01132,30.773063,76.692108,Chandigarh,Chandigarh,3600,sqft,residential,2023-07-31,34059754.81,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01133,30.718469,76.784528,Chandigarh,Chandigarh,1800,sqft,commercial,2022-02-21,25766213.84,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01134,30.708711,76.701662,Chandigarh,Chandigarh,2400,sqft,residential,2023-09-08,21114616.27,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01135,30.643475,76.719502,Chandigarh,Chandigarh,10890,sqft,industrial,2021-03-16,76064606.24,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01136,30.714807,76.77662,Chandigarh,Chandigarh,1200,sqft,residential,2021-11-20,11070862.65,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01137,30.805231,76.776582,Chandigarh,Chandigarh,2400,sqft,industrial,2022-04-04,17035748.62,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01138,30.743214,76.836976,Chandigarh,Chandigarh,5400,sqft,mixed_use,2022-05-17,46978401.43,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01139,30.724182,76.754861,Chandigarh,Chandigarh,5400,sqft,residential,2022-12-13,52068194.47,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01140,30.816448,76.84445,Chandigarh,Chandigarh,8000,sqft,industrial,2024-09-20,68819045.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01141,30.307518,78.10153,Dehradun,Uttarakhand,2400,sqft,industrial,2024-07-25,7432085.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01142,30.265779,77.963834,Dehradun,Uttarakhand,1800,sqft,industrial,2022-01-04,5683001.93,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01143,30.318777,78.114556,Dehradun,Uttarakhand,1200,sqft,residential,2021-06-22,3861688.01,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01144,30.291651,78.049686,Dehradun,Uttarakhand,3600,sqft,commercial,2024-07-31,28350636.96,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01145,30.317157,78.100006,Dehradun,Uttarakhand,10890,sqft,industrial,2022-07-31,27671278.8,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01146,30.232082,78.07398,Dehradun,Uttarakhand,8000,sqft,residential,2024-05-28,27389530.59,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01147,30.291503,78.10693,Dehradun,Uttarakhand,8000,sqft,mixed_use,2023-08-07,43696533.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01148,30.227998,78.083705,Dehradun,Uttarakhand,8000,sqft,residential,2024-08-12,34473740.84,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01149,30.311487,77.98751,Dehradun,Uttarakhand,1200,sqft,residential,2024-05-23,4805772.97,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01150,30.385311,77.964627,Dehradun,Uttarakhand,5400,sqft,commercial,2021-11-11,28634134.39,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01151,30.250146,78.04186,Dehradun,Uttarakhand,8000,sqft,residential,2024-06-30,32826563.62,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01152,30.401705,77.973556,Dehradun,Uttarakhand,10890,sqft,residential,2022-01-17,35036390.73,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01153,30.313309,78.076939,Dehradun,Uttarakhand,1200,sqft,agricultural,2021-01-24,1048930.7,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01154,30.341315,78.085548,Dehradun,Uttarakhand,8000,sqft,agricultural,2021-05-14,7352215.82,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01155,30.305841,78.001026,Dehradun,Uttarakhand,5400,sqft,agricultural,2021-04-26,4096837.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01156,30.316558,78.115147,Dehradun,Uttarakhand,5400,sqft,mixed_use,2023-12-30,29548584.76,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01157,30.285632,77.973747,Dehradun,Uttarakhand,8000,sqft,mixed_use,2022-12-07,38202099.97,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01158,30.331436,78.097249,Dehradun,Uttarakhand,3600,sqft,residential,2022-07-23,15504796.55,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01159,30.297667,78.088343,Dehradun,Uttarakhand,2400,sqft,residential,2024-06-02,9260047.64,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01160,30.326581,78.055184,Dehradun,Uttarakhand,10890,sqft,residential,2021-08-22,33031087.63,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01161,30.39158,78.080726,Dehradun,Uttarakhand,2400,sqft,residential,2024-08-17,9421218.09,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01162,30.328688,77.982407,Dehradun,Uttarakhand,1800,sqft,commercial,2023-02-04,13648437.21,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01163,30.357318,78.098431,Dehradun,Uttarakhand,1200,sqft,residential,2021-09-20,3754977.24,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01164,30.245329,78.094988,Dehradun,Uttarakhand,8000,sqft,industrial,2024-05-13,27568534.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01165,30.380496,78.031784,Dehradun,Uttarakhand,2400,sqft,mixed_use,2021-12-11,10690788.78,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01166,30.262252,78.077368,Dehradun,Uttarakhand,1200,sqft,residential,2024-04-02,4935214.67,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01167,30.297095,78.034344,Dehradun,Uttarakhand,1200,sqft,industrial,2021-06-23,3351687.77,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01168,30.328313,78.099866,Dehradun,Uttarakhand,3600,sqft,residential,2023-07-23,14853117.65,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01169,30.342939,77.942958,Dehradun,Uttarakhand,1200,sqft,commercial,2024-11-24,7611513.56,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01170,30.393269,77.981023,Dehradun,Uttarakhand,8000,sqft,mixed_use,2024-02-25,47145283.25,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01171,26.098339,91.685788,Guwahati,Assam,8000,sqft,residential,2021-02-22,27204199.1,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01172,26.201724,91.807915,Guwahati,Assam,10890,sqft,agricultural,2021-09-20,7491469.76,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01173,26.083284,91.682555,Guwahati,Assam,1200,sqft,residential,2023-11-08,4610851.5,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01174,26.222052,91.815502,Guwahati,Assam,5400,sqft,residential,2022-11-17,15915214.41,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01175,26.06705,91.813942,Guwahati,Assam,2400,sqft,residential,2022-06-09,6707339.31,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01176,26.1449,91.685321,Guwahati,Assam,3600,sqft,commercial,2024-02-08,16980809.56,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01177,26.097925,91.785959,Guwahati,Assam,10890,sqft,residential,2023-04-21,35776674.98,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01178,26.063011,91.774714,Guwahati,Assam,10890,sqft,residential,2023-08-25,40971995.37,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01179,26.093408,91.772604,Guwahati,Assam,5400,sqft,residential,2024-03-07,21380452.34,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01180,26.071011,91.718334,Guwahati,Assam,1800,sqft,commercial,2022-01-25,8646965.52,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01181,26.121246,91.78271,Guwahati,Assam,1200,sqft,residential,2024-09-14,4722607.95,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01182,26.223356,91.725233,Guwahati,Assam,3600,sqft,residential,2024-04-04,14089960.84,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01183,26.127799,91.705915,Guwahati,Assam,10890,sqft,commercial,2024-07-12,57379372.08,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01184,26.148327,91.783427,Guwahati,Assam,3600,sqft,commercial,2023-03-21,18626279.08,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01185,26.098896,91.688705,Guwahati,Assam,3600,sqft,mixed_use,2023-12-09,16539484.03,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01186,26.091815,91.7429,Guwahati,Assam,2400,sqft,agricultural,2022-04-24,1502666.16,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01187,26.129498,91.703281,Guwahati,Assam,3600,sqft,commercial,2022-01-02,20372619.51,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01188,26.2148,91.667599,Guwahati,Assam,1800,sqft,commercial,2023-01-21,8457219.69,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01189,26.158921,91.673295,Guwahati,Assam,2400,sqft,residential,2021-12-14,6705021.6,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01190,26.096105,91.70594,Guwahati,Assam,2400,sqft,commercial,2022-11-27,12678474.97,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01191,26.147127,91.755554,Guwahati,Assam,10890,sqft,mixed_use,2024-05-09,51067162.93,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01192,26.068109,91.792069,Guwahati,Assam,2400,sqft,mixed_use,2023-02-02,9747954.34,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01193,26.103549,91.800251,Guwahati,Assam,3600,sqft,residential,2021-12-12,10767077.75,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01194,26.228688,91.681236,Guwahati,Assam,5400,sqft,residential,2023-02-09,20009115.78,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01195,26.06292,91.707238,Guwahati,Assam,1200,sqft,residential,2021-08-19,3958425.88,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01196,26.07603,91.728827,Guwahati,Assam,10890,sqft,mixed_use,2021-12-06,39167350.2,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01197,26.058687,91.724481,Guwahati,Assam,2400,sqft,industrial,2021-04-10,5568129.07,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01198,26.148267,91.823542,Guwahati,Assam,10890,sqft,residential,2022-09-25,37257957.42,total_inr,transaction,SYNTHETIC_FIXTURE
+SYN-01199,26.095364,91.654211,Guwahati,Assam,3600,sqft,agricultural,2024-05-09,2744158.46,total_inr,asking,SYNTHETIC_FIXTURE
+SYN-01200,26.138386,91.720528,Guwahati,Assam,2400,sqft,commercial,2024-03-04,15679738.56,total_inr,transaction,SYNTHETIC_FIXTURE
