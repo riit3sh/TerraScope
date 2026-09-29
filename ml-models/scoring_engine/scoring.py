@@ -128,10 +128,13 @@ def apply_rera_requirement(record: dict[str, Any], evaluation: dict[str, Any]) -
     rera = record.get("rera")
     applicable = _is_development_context({**record, "evaluation": evaluation})
     positive = isinstance(rera, dict) and rera.get("is_rera_project") is True
+    # Unknown is not the same as negative, but it is not proof of registration
+    # either, so an unverified parcel still carries the requirement's penalty.
+    status = rera.get("is_rera_project") if isinstance(rera, dict) else None
     penalty = RERA_PENALTIES.get(requirement, RERA_PENALTIES["informational"]) if applicable and not positive else 0
     return {
         "applicable": applicable,
-        "is_rera_project": positive if isinstance(rera, dict) else None,
+        "is_rera_project": status,
         "requirement": requirement,
         "penalty": penalty,
     }
@@ -156,10 +159,15 @@ def _data_confidence(record: dict[str, Any]) -> float:
     return max(0.0, min(1.0, present / len(sections)))
 
 
-def _reasoning_summary(scores: dict[str, float], legal_risk: float, composite: float, recommendation: str, rera_penalty: float) -> str:
+def _reasoning_summary(
+    scores: dict[str, float], legal_risk: float, composite: float, recommendation: str, rera_penalty: float, records_missing: bool
+) -> str:
+    # Missing records carry only a small penalty, so say plainly that the legal
+    # score is not backed by any title or encumbrance record.
+    unverified = "; land records not provided, so legal safety is unverified" if records_missing else ""
     return (
         f"{recommendation}: composite {composite:.1f}; legal risk {legal_risk:.1f} "
-        f"(legal safety {scores['legal_safety_score']:.1f}); accessibility {scores['accessibility_score']:.1f}; "
+        f"(legal safety {scores['legal_safety_score']:.1f}{unverified}); accessibility {scores['accessibility_score']:.1f}; "
         f"growth {scores['growth_score']:.1f}; flood safety {scores['flood_safety_score']:.1f}; "
         f"RERA penalty {rera_penalty:.1f}."
     )[:500]
@@ -198,7 +206,10 @@ def compute_verdict(record: dict[str, Any], evaluation: dict[str, Any]) -> dict[
         "composite_score": composite,
         "recommendation": recommendation,
         "confidence": confidence,
-        "reasoning_summary": _reasoning_summary(scores, effective_legal_risk, composite, recommendation, rera["penalty"]),
+        "reasoning_summary": _reasoning_summary(
+            scores, effective_legal_risk, composite, recommendation, rera["penalty"],
+            records_missing=not isinstance(record.get("land_records"), dict),
+        ),
     }
 
 

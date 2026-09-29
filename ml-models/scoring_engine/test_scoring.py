@@ -1,6 +1,7 @@
 from scoring_engine.scoring import (
     accessibility_score,
     compute_evaluation,
+    compute_verdict,
     evaluate_sensitivity,
     get_default_profile,
     legal_risk_score,
@@ -95,3 +96,12 @@ def test_sensitivity_reports_changed_factors_and_magnitude():
     assert result["factors"]
     assert all({"factor", "baseline", "changed", "delta"} <= set(item) for item in result["factors"])
 
+
+
+def test_missing_land_records_are_named_as_unverified_in_the_reasoning() -> None:
+    """A high legal-safety number with no records behind it must say so."""
+    evaluation = {"profile": "homebuyer", "property_type": "residential", "weights": {}, "preferences": {}}
+    unverified = compute_verdict({"land_records": None}, evaluation)
+    assert "land records not provided" in unverified["reasoning_summary"]
+    verified = compute_verdict({"land_records": {"title_clear": True, "encumbrance_flag": False}}, evaluation)
+    assert "land records not provided" not in verified["reasoning_summary"]

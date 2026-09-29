@@ -32,6 +32,10 @@ _COLUMN_ALIASES: dict[str, set[str]] = {
 }
 
 
+# Only these fields are allowed through to the evidence snapshot (see docs/schema/parcel_schema.json).
+RERA_SNAPSHOT_FIELDS = ("rera_registration_number", "promoter_name", "registered_completion_date", "source_url")
+
+
 def _normalize_header(value: Any) -> str:
     normalized = re.sub(r"[^a-z0-9]+", "_", str(value).strip().lower()).strip("_")
     return normalized
@@ -105,11 +109,22 @@ def load_rera_seed_dataset(csv_path: str | Path) -> pd.DataFrame:
 
 
 def match_parcel_to_rera(district: str | None, rera_df: pd.DataFrame) -> dict[str, Any]:
-    """Return the first exact, case-insensitive district match from the seed data."""
+    """Return this parcel's RERA block plus any district-level candidate.
+
+    A district match only proves that *some* registered project shares this
+    parcel's district; it is never proof that this parcel is that project. So
+    ``rera.is_rera_project`` stays ``None`` (unknown) and the matched project
+    travels separately as candidate evidence for the ledger.
+
+    Absence from the seed is equally uninformative -- the seed is one state's
+    partial export -- so a non-match is reported as unknown too, never as
+    ``False``.
+    """
     if not isinstance(rera_df, pd.DataFrame) or "district" not in rera_df.columns:
         raise ValueError("rera_df must be a DataFrame containing a district column.")
+    unknown = {"is_rera_project": None, **{field: None for field in RERA_SNAPSHOT_FIELDS}}
     if district is None or not str(district).strip():
-        return {"is_rera_project": False}
+        return {"rera": unknown, "district_candidate": None, "district_match_count": 0}
 
     normalized_district = str(district).strip().casefold()
     district_values = rera_df["district"].map(
@@ -117,11 +132,15 @@ def match_parcel_to_rera(district: str | None, rera_df: pd.DataFrame) -> dict[st
     )
     matches = rera_df.loc[district_values == normalized_district]
     if matches.empty:
-        return {"is_rera_project": False}
+        return {"rera": unknown, "district_candidate": None, "district_match_count": 0}
 
     # Exact matching is intentionally simple: a parcel near a registered
     # project may not match if the two sources spell the district differently.
-    project = {key: _json_safe(value) for key, value in matches.iloc[0].to_dict().items()}
-    project["is_rera_project"] = True
-    return project
-
+    row = matches.iloc[0].to_dict()
+    # The snapshot schema rejects unknown rera fields, so only the shared fields cross the boundary.
+    candidate = {field: _json_safe(row.get(field)) for field in RERA_SNAPSHOT_FIELDS}
+    completion = candidate.get("registered_completion_date")
+    if isinstance(completion, str) and completion:
+        candidate["registered_completion_date"] = completion[:10]
+    candidate["project_name"] = _json_safe(row.get("project_name"))
+    return {"rera": unknown, "district_candidate": candidate, "district_match_count": int(len(matches))}
