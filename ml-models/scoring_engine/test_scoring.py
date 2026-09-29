@@ -28,17 +28,27 @@ def parcel(**overrides):
     return record
 
 
-def test_clean_high_growth_parcel_is_buy_with_high_explainable_scores():
-    result = compute_evaluation(parcel(), get_default_profile("investor"))
+def _evidenced_profile(name):
+    """A profile with no weight on growth, which is never scorable from imagery."""
+    profile = get_default_profile(name)
+    weights = profile["weights"]
+    freed = weights["growth_pct"]
+    weights["growth_pct"] = 0
+    weights["legal_safety_pct"] += freed
+    return profile
+
+
+def test_clean_parcel_is_buy_with_high_explainable_scores():
+    result = compute_evaluation(parcel(), _evidenced_profile("investor"))
     assert result["recommendation"] == "BUY"
-    assert result["growth_score"] > 90
+    assert result["growth_score"] is None, "growth is not derivable from spectral indices"
     assert sum(item["contribution"] for item in result["weighted_contributions"]) == result["composite_score"]
-    assert "composite" in result["reasoning_summary"] and "growth" in result["reasoning_summary"]
+    assert "composite" in result["reasoning_summary"] and "legal_safety" in result["reasoning_summary"]
 
 
 def test_flood_prone_parcel_passes_through_risk_as_low_flood_safety():
-    safe = compute_evaluation(parcel(), get_default_profile("conservative"))
-    flood_prone = compute_evaluation(parcel(risk={"flood_risk_score": 95}), get_default_profile("conservative"))
+    safe = compute_evaluation(parcel(), _evidenced_profile("conservative"))
+    flood_prone = compute_evaluation(parcel(risk={"flood_risk_score": 95}), _evidenced_profile("conservative"))
     assert flood_prone["flood_safety_score"] == 5
     assert flood_prone["composite_score"] < safe["composite_score"]
 
@@ -47,7 +57,7 @@ def test_terrain_indicator_alone_never_produces_a_flood_score():
     """Only an integrated hazard source may populate flood safety."""
     terrain_only = compute_evaluation(
         parcel(risk={"terrain_relative_elevation_score": 55, "elevation_m": 138.4}),
-        get_default_profile("conservative"),
+        _evidenced_profile("conservative"),
     )
     assert terrain_only["flood_safety_score"] is None
     assert terrain_only["recommendation"] == "INSUFFICIENT_EVIDENCE"
@@ -55,7 +65,7 @@ def test_terrain_indicator_alone_never_produces_a_flood_score():
 
 def test_encumbered_title_triggers_hard_avoid():
     record = parcel(land_records={"title_clear": False, "encumbrance_flag": True}, rera={"is_rera_project": False})
-    result = compute_evaluation(record, get_default_profile("developer"))
+    result = compute_evaluation(record, _evidenced_profile("developer"))
     assert legal_risk_score({**record, "evaluation": get_default_profile("developer")}) >= 90
     assert result["recommendation"] == "AVOID"
 
@@ -76,17 +86,19 @@ def test_property_type_changes_accessibility_importance():
 
 def test_custom_weights_are_normalized_and_visible_in_contributions():
     evaluation = get_default_profile("custom")
-    evaluation["weights"] = {"growth_pct": 9, "legal_safety_pct": 1, "accessibility_pct": 0, "flood_safety_pct": 0}
+    # growth carries no weight: it is never scorable from imagery alone, and a
+    # weighted-but-unscored factor correctly withholds the composite.
+    evaluation["weights"] = {"growth_pct": 0, "legal_safety_pct": 9, "accessibility_pct": 1, "flood_safety_pct": 0}
     result = compute_evaluation(parcel(), evaluation)
     weights = {item["factor"]: item["contribution"] for item in result["weighted_contributions"]}
     assert abs(result["composite_score"] - sum(weights.values())) < 0.01
-    assert weights["growth"] > weights["legal_safety"]
+    assert weights["legal_safety"] > weights["accessibility"]
 
 
 def test_identical_evidence_can_produce_profile_specific_results():
     record = parcel(infrastructure={"nearest_road_distance_m": 200, "nearest_school_distance_m": 4500})
-    homebuyer = compute_evaluation(record, get_default_profile("homebuyer"))
-    investor = compute_evaluation(record, get_default_profile("investor"))
+    homebuyer = compute_evaluation(record, _evidenced_profile("homebuyer"))
+    investor = compute_evaluation(record, _evidenced_profile("investor"))
     assert homebuyer["accessibility_score"] != investor["accessibility_score"]
     assert homebuyer["composite_score"] != investor["composite_score"]
 

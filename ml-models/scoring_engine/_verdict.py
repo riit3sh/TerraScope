@@ -45,6 +45,32 @@ def build_verdict(
     blocking = [f["factor"] for f in factors if f["score"] is None and f["weight_pct"] > 0]
     assessed_weight = round(sum(f["weight_pct"] for f in factors if f["score"] is not None), 2)
 
+    legal = factors[0]
+    disqualifying = (
+        legal["score"] is not None and (100.0 - legal["score"]) > hard_legal_risk_threshold
+    )
+    if disqualifying:
+        # Proven disqualifying evidence decides on its own. Gaps elsewhere cannot
+        # make a parcel with a bad title look merely unassessed.
+        return {
+            "legal_safety_score": factors[0]["score"],
+            "accessibility_score": factors[1]["score"],
+            "flood_safety_score": factors[2]["score"],
+            "growth_score": factors[3]["score"],
+            "weighted_contributions": contributions,
+            "composite_score": None,
+            "factors": factors,
+            "assessed_weight_pct": assessed_weight,
+            "unassessed_factors": blocking,
+            "recommendation": "AVOID",
+            "confidence": None,
+            "reasoning_summary": (
+                f"AVOID on legal risk alone: effective legal risk {100.0 - legal['score']:.0f}/100 "
+                f"exceeds the {hard_legal_risk_threshold:.0f} threshold. "
+                + (f"Other factors remain unassessed ({', '.join(blocking)})." if blocking else "")
+            )[:500],
+        }
+
     if blocking:
         composite: float | None = None
         recommendation = "INSUFFICIENT_EVIDENCE"
@@ -56,10 +82,7 @@ def build_verdict(
         )
     else:
         composite = round(sum(item["contribution"] for item in contributions), 2)
-        legal = factors[0]
-        if legal["score"] is not None and (100.0 - legal["score"]) > hard_legal_risk_threshold:
-            recommendation = "AVOID"
-        elif composite >= buy_threshold:
+        if composite >= buy_threshold:
             recommendation = "BUY"
         elif composite >= wait_threshold:
             recommendation = "WAIT"

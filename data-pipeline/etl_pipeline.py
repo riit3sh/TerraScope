@@ -160,6 +160,35 @@ def _data_coverage(checks: dict[str, Any]) -> float:
     return round(100.0 * sum(value is not None for value in checks.values()) / len(checks), 1)
 
 
+def _satellite_summary(series: list[dict[str, Any]], client: Any, metrics: dict[str, Any]) -> str:
+    """Describe what was actually retrieved, including the resolution caveat."""
+    if not series:
+        return "No usable satellite observations were retrieved."
+    diagnostics = getattr(client, "last_diagnostics", {}) or {}
+    pixels = [row.get("usable_pixel_count") or 0 for row in series]
+    resolution = series[0].get("resolution_m") or 10.0
+    area = metrics.get("area_m2") or 0.0
+    parts = [
+        f"{len(series)} cloud-screened observations from "
+        f"{getattr(client, 'source_reference', 'satellite imagery')} "
+        f"({series[0]['date']} to {series[-1]['date']})",
+        f"{resolution:.0f} m pixels, {min(pixels)}-{max(pixels)} usable inside the parcel",
+    ]
+    if diagnostics.get("scenes_matched"):
+        parts.append(
+            f"{diagnostics['scenes_matched']} scenes matched, "
+            f"{diagnostics.get('observations_rejected', 0)} rejected for cloud or too few pixels"
+        )
+    # A small plot is mostly edge pixels, which borrow reflectance from next door.
+    if area and area < (resolution ** 2) * 20:
+        parts.append(
+            f"the parcel is {area:,.0f} m2, only about {area / (resolution ** 2):.0f} native pixels, "
+            "so values include neighbouring land and single-date readings are unreliable"
+        )
+    parts.append("This is a land-cover signal, not evidence of investment or development approval")
+    return ". ".join(parts) + "."
+
+
 def _validate_snapshot(snapshot: dict[str, Any]) -> None:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
@@ -285,17 +314,17 @@ def build_evidence_snapshot(
             "title": (
                 "SYNTHETIC demo satellite series"
                 if satellite_is_demo
-                else f"{getattr(satellite_client, 'source_reference', 'Satellite')} change series"
+                else "Land-cover change (NDVI/NDBI) from observed imagery"
             ),
             "observed_at": now,
             # Invented data is seed_data, never "derived" from a real observation.
-            "freshness": "seed_data" if satellite_is_demo else "derived",
+            "freshness": "seed_data" if satellite_is_demo else "live",
             "summary": (
                 f"{len(change_series)} INVENTED observations generated for demo mode because no "
-                "AppEEARS credentials are configured. This is not imagery and must not be read as "
+                "imagery provider returned data. This is not imagery and must not be read as "
                 "evidence of real vegetation or construction change."
                 if satellite_is_demo
-                else f"{len(change_series)} polygon-masked observations collected for the requested interval."
+                else _satellite_summary(change_series, satellite_client, metrics)
             ),
         },
         {

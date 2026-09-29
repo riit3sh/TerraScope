@@ -149,9 +149,16 @@ class InfrastructureClient:
         value = math.sin(delta_lat / 2) ** 2 + math.cos(origin_lat) * math.cos(point_lat) * math.sin(delta_lon / 2) ** 2
         return 6_371_008.8 * 2 * math.atan2(math.sqrt(value), math.sqrt(max(0.0, 1 - value)))
 
+    # Bumped whenever the measurement or the returned fields change, so stale
+    # entries are ignored instead of serving results from the old method.
+    CACHE_SCHEMA_VERSION = 2
+
     def _cache_key(self, representative_point: tuple[float, float], radius_meters: float) -> str:
         longitude, latitude = representative_point
-        return f"{round(latitude, 3):.3f},{round(longitude, 3):.3f}:{float(radius_meters):.3f}"
+        return (
+            f"v{self.CACHE_SCHEMA_VERSION}:"
+            f"{round(latitude, 3):.3f},{round(longitude, 3):.3f}:{float(radius_meters):.3f}"
+        )
 
     def _read_cache(self) -> dict[str, Any]:
         try:

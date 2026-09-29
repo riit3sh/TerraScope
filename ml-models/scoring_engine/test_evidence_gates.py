@@ -114,14 +114,21 @@ def test_provider_failure_yields_no_growth_score() -> None:
     assert compute_evaluation(record, EVALUATION)["growth_score"] is None
 
 
-def test_real_observed_change_does_yield_a_growth_score() -> None:
-    """The gate must not block genuine evidence."""
+def test_real_observed_change_still_yields_no_growth_score() -> None:
+    """Real imagery measures land cover, which is not investment growth."""
     record = _with(
         satellite={"change_type": "construction_growth", "change_detected": True, "change_confidence": 0.6},
-        evidence=[{"source_type": "satellite", "source_reference": "NASA AppEEARS HLS", "freshness": "derived"}],
+        evidence=[{"source_type": "satellite",
+                   "source_reference": "Sentinel-2 L2A (Microsoft Planetary Computer)",
+                   "freshness": "live"}],
     )
     result = compute_evaluation(record, EVALUATION)
-    assert isinstance(result["growth_score"], (int, float))
+    assert result["growth_score"] is None
+    growth = next(f for f in result["factors"] if f["factor"] == "growth")
+    assert growth["status"] == "not_integrated"
+    assert "construction growth" in growth["basis"]
+    assert "cannot separate construction" in growth["limitations"]
+    assert any("transaction" in item for item in growth["checklist"])
 
 
 # --- accessibility ---------------------------------------------------------

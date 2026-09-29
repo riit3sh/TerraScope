@@ -139,15 +139,23 @@ def assess_flood(record: dict[str, Any]) -> dict[str, Any]:
 
 
 def assess_growth(record: dict[str, Any], growth_opportunity_score) -> dict[str, Any]:
-    """Growth needs real observed change; a synthetic series cannot support it."""
-    change_type = _section(record, "satellite").get("change_type")
+    """Growth is not derivable from NDVI/NDBI, however real the imagery is.
+
+    Observed land-cover change is real evidence of *land cover* changing. It does
+    not distinguish a new warehouse from a cleared field, a seasonal crop cycle
+    from construction, or any of it from investment value. Inferring an
+    investment-growth score from two spectral indices would be the same
+    unsupported leap the audit removed, just with better inputs.
+    """
+    satellite = _section(record, "satellite")
+    change_type = satellite.get("change_type")
     if satellite_is_synthetic(record):
         return {
             "factor": "growth",
             "score": None,
             "status": "unavailable",
             "basis": "Growth unavailable: the satellite series is synthetic demo data, not observed imagery.",
-            "limitations": "Configure AppEEARS credentials to obtain real NDVI/NDBI observations.",
+            "limitations": "Configure an imagery provider to obtain real observations.",
             "checklist": ["Observed multi-date satellite imagery for this polygon"],
         }
     if change_type in (None, "insufficient_evidence"):
@@ -161,11 +169,23 @@ def assess_growth(record: dict[str, Any], growth_opportunity_score) -> dict[str,
         }
     return {
         "factor": "growth",
-        "score": growth_opportunity_score({**record, "evaluation": {}}),
-        "status": "assessed",
-        "basis": f"Derived from observed satellite change classified as {change_type}.",
-        "limitations": "Built-up change is a proxy for growth, moderated by the nearest road category.",
-        "checklist": [],
+        "score": None,
+        "status": "not_integrated",
+        "basis": (
+            f"Observed land-cover change for this parcel is classified as {change_type.replace('_', ' ')}, "
+            "which is reported as evidence in its own right. No investment-growth score is derived from it."
+        ),
+        "limitations": (
+            "NDVI/NDBI measure vegetation and built-up reflectance. They cannot separate construction "
+            "from seasonal cropping or clearance, and say nothing about prices, demand, planning "
+            "approvals or infrastructure investment. A growth score needs economic evidence, not "
+            "spectral indices."
+        ),
+        "checklist": [
+            "Registered transaction volumes or price trend for the locality",
+            "Approved layouts, building permissions or master-plan land-use change",
+            "Committed infrastructure projects with dates and distances",
+        ],
     }
 
 
