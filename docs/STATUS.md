@@ -14,6 +14,86 @@ The old `scripts/run_local.sh` force-killed whatever held those ports and seeded
 
 Open http://localhost:5173. Docker is not required for this path. The PostGIS snapshot archive is skipped, and the backend still stores every snapshot in `.local-ui-check/backend.sqlite3`.
 
+## Tamil Nadu milestone (2026-10-06)
+
+**Coverage.** Analysis runs only for parcels entirely inside Tamil Nadu. The boundary is OSM relation 96905 minus relation 107001 (Puducherry), from the same Geofabrik extract (ODbL, data to 2026-10-04). Its area is 130,071 km², against the official 130,058 km². Puducherry town and Karaikal fall outside. Parcels outside or crossing the edge get `{"status": "outside_coverage"}` before any collector runs. Nothing is saved, and the UI shows an "Outside coverage" card instead of a report. Search suggestions are bounded to Tamil Nadu and filtered on `state == "Tamil Nadu"`, so "Pondicherry" and "Bengaluru" return nothing.
+
+**Local data** (`terrascope.cmd fetch-data`, stored in `tn-data/`, git-ignored). Downloading took about 1 hour at ~0.7 MB/s; the OSM build took 7 minutes.
+
+| Dataset | Version, dates and licence | Size |
+|---|---|---|
+| Geofabrik southern-zone PBF | data to 2026-10-04T20:20Z, ODbL 1.0 | 558 MB |
+| `tn_osm.sqlite` | roads 914,607; waterways 18,543; water bodies 16,758; hospitals 6,073; bus 4,624; schools 3,166; rail stations 704 | 289 MB |
+| JRC GSW v1.4 occurrence + extent | Landsat 1984-03 to 2021-12, 30 m, Copernicus "Source: EC JRC/Google" | 189 MB (8 tiles) |
+| Copernicus GLO-30 | 2021 release of 2011-2015 TanDEM-X data; a 30 m surface model; Copernicus DEM licence | 1,003 MB (30 tiles) |
+
+Planetary Computer serves both rasters. Its JRC GSW copy ends in 2020, so the newer v1.4 tiles come from JRC's own bucket.
+
+**Accessibility** now comes from the local store; Overpass is used only with `OSM_OVERPASS_FALLBACK=true`. Each distance is measured from the parcel centroid to the nearest point on the feature's full geometry, using an R*Tree index and shapely. Midpoints are never used. Each evidence row carries the extract's data date. Accessibility scoring is unchanged.
+
+**Flood indicators** are evidence only, and Flood Safety stays unscored:
+- JRC surface-water occurrence and maximum extent, inside the parcel and within 500 m
+- GLO-30 parcel elevation, and its elevation relative to the nearest mapped water within 2 km. This is a terrain indicator: not HAND and not a flood probability.
+- distance to the nearest river/canal and the nearest tank/lake
+
+The terrain-position indicator now samples the local DEM instead of Open-Elevation.
+
+**Test parcels** (API, one run each; scores use the investor lens):
+
+| Parcel | Analysis | Accessibility | Flood indicators | Verdict |
+|---|---|---|---|---|
+| Vellore city (79.132, 12.920) | 19.7 s | 86.7 (indicative): trunk road 38 m, school 629 m, hospital 395 m, bus stop 78 m, Vellore Town station 864 m | dry in GSW; within 500 m max occurrence 59%, 1.9% of pixels ever wet; +8.7 m above the Fort moat (155 m); river 1.6 km; basin 387 m | INSUFFICIENT_EVIDENCE (20% of weighting evidenced) |
+| Rural Vellore, Unai (78.960, 12.890) | 11.4 s | 33.7: residential road 1.3 km, no school or rail station within 5 km, hospital 4.9 km, bus stop 2.0 km | dry in GSW to 500 m; hillside at 516 m (range 496-532); no water within 2 km; river 3.3 km; pond 2.7 km | INSUFFICIENT_EVIDENCE |
+| Chennai, south of Velachery Lake (80.212, 12.986) | 15.1 s | 92.2: road 15 m, school 375 m, hospital 638 m, bus 632 m, Puzhudivakkam station 1.2 km | parcel dry; within 500 m max occurrence 77%, 13.8% of pixels ever wet; 8.8 m elevation, +3.8 m above Velachery Lake (167 m); canal 583 m | INSUFFICIENT_EVIDENCE |
+| Puducherry town (79.830, 11.934) | 2.3 s | not collected | not collected | outside_coverage |
+| Bengaluru (77.595, 12.972) | 2.4 s | not collected | not collected | outside_coverage |
+
+Legal Safety is unavailable for every parcel (no land-records source) and Growth is not integrated, so no BUY/WAIT/AVOID is given. In the browser (headless Edge), the same flow passed, including the outside-coverage card for a parcel drawn from Kottakkuppam across the Puducherry border:
+- search restriction
+- analysis in 16 s
+- the Flood indicators tab
+- reopening a saved report
+
+### Proposed Flood Safety rule (for approval; NOT enabled)
+
+Score 0-100, higher is safer, status `indicative`. Start at 100 and apply the following, flooring at 0. "Ever wet" means the share of pixels on which GSW saw water at least once.
+
+1. **Water inside the parcel** (GSW), as a cap:
+   - max occurrence ≥ 50%: cap 10. The parcel is likely a tank bed or channel.
+   - 10-49%: cap 35.
+   - 1-9%: cap 60.
+2. **Water within 500 m**:
+   - ever wet on > 20% of pixels: −15
+   - 5-20%: −8
+3. **Elevation above the nearest mapped water within 2 km**:
+   - < 1 m: −30
+   - 1-3 m: −20
+   - 3-6 m: −10
+   - none within 2 km: no change, flagged "no nearby mapped water"
+4. **Nearest tank/lake (eri)**: < 100 m −15; 100-300 m −8.
+5. **Nearest river/canal**: < 200 m −15; 200-500 m −8.
+6. **Guards:**
+   - Never the sole basis for AVOID.
+   - Shown as indicative.
+   - Withheld when GSW and the DEM are both missing.
+   - Each deduction listed in the factor basis.
+
+Applied to the parcels above, the rule would give:
+- Vellore city: 100, as no rule fires.
+- Unai: 100, from no evidence of water (weak).
+- Chennai/Velachery: 74. That is −8 because 13.8% of pixels within 500 m were ever wet, −10 for +3.8 m above the lake, and −8 for the lake at 168 m; the canal at 583 m gives no deduction.
+
+The team should calibrate these thresholds against known flood events, such as the Chennai 2015 and 2023 inundation extents, before enabling the rule.
+
+### Still failing or limited
+- **Valuation:** 5 of 20 unit tests fail because no trained model file exists (unchanged).
+- **District:** `location.district` is null for all parcels (Nominatim address lookup returns no district field). This predates the milestone.
+- **OSM completeness:** only 3,166 schools are mapped for all of Tamil Nadu. "None within 5 km" is absence in OSM, not proof of absence.
+- **Tank/lake class:** `water=basin` (often a stormwater basin) is counted as a tank/lake, and the Vellore Fort moat counts as a water feature.
+- **DEM:** GLO-30 is a surface model, so urban rooftops and trees raise parcel elevation.
+- **Integration tests:** moved from Pune to Tamil Nadu parcels. Their verdict assertion now accepts `INSUFFICIENT_EVIDENCE`, which has been the contract since 067d541; those tests were already stale before this milestone.
+- **Old reports:** a saved report for Kadapa (Andhra Pradesh), created before the restriction, still opens.
+
 ## Native Windows setup check (2026-10-06)
 
 Setup: `.venv` (Python 3.11.5) with all three services' requirements, including CPU PyTorch and chromadb. Frontend dependencies come from `npm ci` against the lockfile. `.env` was recreated from the template with no credentials: `DATABASE_URL`, `GROQ_API_KEY` and the NASA fields are blank, and `SATELLITE_DEMO_FALLBACK=false`.
