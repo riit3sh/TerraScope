@@ -91,10 +91,53 @@ def test_elevation_only_input_yields_no_flood_score() -> None:
     assert "inland does not establish safety" in flood["limitations"]
 
 
-def test_terrain_indicator_is_reported_separately_not_as_flood() -> None:
+def test_terrain_position_score_is_not_a_flood_headline() -> None:
+    """The unexplained 0-100 terrain figure must not appear as flood safety."""
     flood = next(f for f in compute_evaluation(KADAPA, EVALUATION)["factors"] if f["factor"] == "flood_safety")
-    assert "terrain indicator (55/100)" in flood["basis"]
+    assert "/100" not in flood["basis"]
     assert flood["score"] is None
+
+
+def _component(mechanism, status, summary="evidence"):
+    return {"mechanism": mechanism, "status": status, "source": None, "period": None,
+            "resolution": None, "coverage_share": None, "summary": summary}
+
+
+def test_flood_evidence_gives_a_partial_assessment_without_a_score() -> None:
+    record = _with(flood_indicators={"assessment_status": "partial", "components": [
+        _component("river_flooding", "assessed", "Modelled river inundation first reaches the parcel in the 1-in-20-year scenario."),
+        _component("historical_inundation", "not_integrated"),
+        _component("rainfall_waterlogging", "not_assessed"),
+        _component("coastal_flooding", "not_assessed"),
+    ]})
+    result = compute_evaluation(record, EVALUATION)
+    flood = next(f for f in result["factors"] if f["factor"] == "flood_safety")
+    assert flood["status"] == "partial"
+    assert flood["score"] is None and result["flood_safety_score"] is None
+    assert flood["basis"].startswith("Partial flood assessment available.")
+    assert "1-in-20-year" in flood["basis"]
+    assert "rainfall waterlogging" in flood["basis"] and "coastal flooding" in flood["basis"]
+    # A withheld factor carrying weight still withholds the verdict.
+    assert result["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    # Every factor status must be one the shared schema accepts (the service validates it).
+    import json
+    from pathlib import Path
+
+    schema = json.loads((Path(__file__).resolve().parents[2] / "docs" / "schema" / "parcel_schema.json").read_text(encoding="utf-8"))
+    allowed = schema["properties"]["score_breakdown"]["properties"]["factors"]["items"]["properties"]["status"]["enum"]
+    assert {factor["status"] for factor in result["factors"]} <= set(allowed)
+
+
+def test_only_missing_flood_evidence_never_becomes_safe() -> None:
+    """No usable component: unavailable and unscored - never 100, never 'safe'."""
+    record = _with(flood_indicators={"assessment_status": "unavailable", "components": [
+        _component("river_flooding", "unavailable", "River flood hazard not assessed: provider timeout."),
+        _component("rainfall_waterlogging", "not_assessed"),
+    ]})
+    flood = next(f for f in compute_evaluation(record, EVALUATION)["factors"] if f["factor"] == "flood_safety")
+    assert flood["status"] == "unavailable"
+    assert flood["score"] is None
+    assert "unknown, not safe" in flood["limitations"]
 
 
 # --- growth ----------------------------------------------------------------

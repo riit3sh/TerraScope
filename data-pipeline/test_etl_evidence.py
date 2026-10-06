@@ -49,8 +49,11 @@ def test_infrastructure_summary_carries_the_measured_numbers() -> None:
 
 
 def test_elevation_summary_reports_unavailable_without_inventing_a_value() -> None:
-    assert _elevation_summary(214.37, {"basis": "12.0 m above baseline."}).startswith("Centroid elevation 214.4 m.")
-    assert _elevation_summary(None, {}).startswith("Centroid elevation unavailable.")
+    summary = _elevation_summary(214.37, {"basis": "12.0 m above baseline.", "baseline_m": 202.37, "relief_m": 48.0, "score": 46})
+    assert summary.startswith("Centroid elevation 214.4 m")
+    assert "12.0 m above the median of the surrounding terrain" in summary
+    assert "/100" not in summary and "46" not in summary  # physical measurements, not the 0-100 figure
+    assert _elevation_summary(None, {}).startswith("Elevation unavailable")
 
 
 if __name__ == "__main__":

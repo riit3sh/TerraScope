@@ -99,12 +99,12 @@ def assess_legal(
 
 
 def assess_flood(record: dict[str, Any]) -> dict[str, Any]:
-    """Flood safety only when a real flood source populated risk.flood_risk_score.
+    """Flood safety is scored only when a validated source populates risk.flood_risk_score.
 
-    No flood hazard dataset is integrated today, so the ETL leaves that field
-    null and this returns unavailable. The scored branch exists so that wiring a
-    genuine hazard source in later does not require touching the verdict logic;
-    the terrain indicator must never populate it.
+    Nothing does today: the ETL leaves that field null. When per-mechanism flood
+    evidence exists (modelled river flooding, observed surface water, terrain) the
+    factor is "partial" with that evidence in its basis and NO score; otherwise it is
+    "unavailable". The terrain-position indicator must never populate the score.
     """
     risk = _section(record, "risk")
     hazard = risk.get("flood_risk_score")
@@ -117,32 +117,49 @@ def assess_flood(record: dict[str, Any]) -> dict[str, Any]:
             "limitations": "Check the source's resolution, coverage and observation date.",
             "checklist": [],
         }
-    indicator = risk.get("terrain_relative_elevation_score")
-    note = (
-        f" A relative terrain indicator ({indicator}/100) is reported separately."
-        if isinstance(indicator, (int, float))
-        else ""
-    )
-    # Indicators (surface water seen, height above mapped water, water distances) may be
-    # present as evidence, but no approved rule turns them into a score yet.
-    has_indicators = any(
-        _section(record, "flood_indicators").get(key) for key in ("surface_water", "terrain", "water_distances")
-    )
-    indicator_note = (
-        " Flood indicators are listed as evidence but are not scored: no indicator-to-score rule has been approved."
-        if has_indicators else ""
-    )
+    indicators = _section(record, "flood_indicators")
+    components = [c for c in (indicators.get("components") or []) if isinstance(c, dict)]
+    usable = [c for c in components if c.get("status") in ("assessed", "partial")]
+    if usable:
+        # Real evidence for some mechanisms. It is shown, mechanism by mechanism, but no
+        # validated method combines it into a safety score, so the score stays withheld
+        # (and a missing mechanism can never be read as a perfect one).
+        river = next((c for c in components if c.get("mechanism") == "river_flooding"), {})
+        missing = [
+            c["mechanism"].replace("_", " ") for c in components
+            if c.get("status") not in ("assessed", "partial")
+        ]
+        basis = "Partial flood assessment available. "
+        if river.get("status") in ("assessed", "partial"):
+            basis += f"River flooding (modelled): {river.get('summary')} "
+        else:
+            basis += f"River flooding: {river.get('summary') or 'not assessed.'} "
+        basis += "Assessed: " + ", ".join(c["mechanism"].replace("_", " ") for c in usable) + "."
+        if missing:
+            basis += " Not assessed: " + ", ".join(missing) + "."
+        return {
+            "factor": "flood_safety",
+            "score": None,
+            "status": "partial",
+            "basis": basis[:900],
+            "limitations": (
+                "No overall Flood Safety score: no method combining river, rainfall, coastal and terrain evidence "
+                "has been independently validated, and unassessed mechanisms are unknown, not safe. River hazard "
+                "maps are modelled scenarios at ~90 m for rivers with basins over ~500 km2, not observed floods "
+                "and not building-level safety. Surface water seen by Landsat is not flood history, and height "
+                "above the nearest mapped water is a terrain indicator, not HAND or a flood probability."
+            ),
+            "checklist": list(FLOOD_EVIDENCE_CHECKLIST),
+        }
     return {
         "factor": "flood_safety",
         "score": None,
         "status": "unavailable",
-        "basis": "Flood assessment unavailable: no flood hazard evidence is integrated for this parcel." + note + indicator_note,
+        "basis": "No usable flood evidence was retrieved for this parcel: every flood source was unavailable or not integrated.",
         "limitations": (
             "Coastal, fluvial (river) and pluvial (rainfall/drainage) flooding are distinct and none is "
-            "assessed. No flood hazard or inundation map, historical flood extent, drainage network or "
-            "rainfall record is used. Surface water seen by Landsat is not flood history, and height above "
-            "the nearest mapped water is a terrain indicator, not a flood probability. Being inland does not "
-            "establish safety, and district flood history would not establish risk for this individual plot."
+            "assessed here. Missing evidence is unknown, not safe. Being inland does not establish safety, and "
+            "district flood history would not establish risk for this individual plot."
         ),
         "checklist": list(FLOOD_EVIDENCE_CHECKLIST),
     }

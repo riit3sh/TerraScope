@@ -141,7 +141,7 @@ class ElevationClient:
         centre = elevations[0] if elevations else None
         neighbours = [value for value in elevations[1:] if value is not None]
         if centre is None or len(neighbours) < 4:
-            raise ElevationError("Open-Elevation did not return enough surrounding samples.")
+            raise ElevationError("The elevation source did not return enough surrounding samples.")
         ordered = sorted(neighbours)
         median = (
             ordered[len(ordered) // 2]

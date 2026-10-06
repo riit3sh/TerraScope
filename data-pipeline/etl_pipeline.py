@@ -18,7 +18,9 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from connectors import flood_indicators
 from connectors.elevation_dem import ElevationClient, ElevationError
-from connectors.local_osm import LocalDataMissing, LocalOSM, coverage, load_manifest
+from connectors import river_flood
+from connectors.local_osm import LocalOSM
+from connectors.regions import LocalDataMissing, india_coverage, region_for, slug
 from connectors.osm_infrastructure import InfrastructureClient, InfrastructureError
 from connectors.rera_ingest import load_rera_seed_dataset, match_parcel_to_rera
 from connectors.satellite_provider import get_satellite_client
@@ -48,7 +50,7 @@ class EvidenceSnapshotValidationError(ValueError):
 
 
 class OutsideCoverage(Exception):
-    """The drawn parcel is not entirely inside Tamil Nadu; no evidence is collected."""
+    """The drawn parcel is not inside India; no evidence is collected."""
 
     def __init__(self, result: dict[str, Any]) -> None:
         super().__init__(result.get("reason") or "outside coverage")
@@ -60,7 +62,7 @@ def _overpass_fallback_enabled() -> bool:
 
 
 # Water classes that count as a river/canal, and as a tank/lake ("eri"). An untagged
-# natural=water polygon is most often a tank in Tamil Nadu, so it is included there.
+# natural=water polygon is most often a tank (eri, kere, cheruvu) in South India, so it is included there.
 RIVER_CANAL = {"river", "canal"}
 TANK_LAKE = {"lake", "reservoir", "pond", "basin", "tank", "water"}
 POI_SEARCH_M = 5000.0
@@ -123,6 +125,86 @@ def _water_distances(osm: LocalOSM, geojson_polygon: dict[str, Any]) -> dict[str
         **_hit_fields("nearest_tank_lake", tank, with_class=True),
         "search_radius_m": POI_SEARCH_M,
     }
+
+
+NRSC_REFERENCE = (
+    "NRSC/ISRO Flood Affected Area Atlas of India (1998-2022): https://ndem.nrsc.gov.in/documents/downloads/"
+    "allindia_flood_techdoc.pdf. Its spatial layers are hosted for viewing on the NDEM geoportal; no "
+    "machine-readable download is offered, so it is not integrated."
+)
+
+
+def _river_summary(river: dict[str, Any] | None, error: str | None) -> str:
+    if river is None:
+        return f"River flood hazard not assessed: {error or 'no result'}. This is not evidence of safety."[:500]
+    if river["status"] == "not_modelled":
+        return "No river flood hazard tile covers this location; river flooding is not modelled here. This is not evidence of safety."
+    by_rp = {item["return_period_years"]: item for item in river["scenarios"]}
+    first = next((item for item in river["scenarios"] if item["flooded_area_m2"] > 0), None)
+    if first is None:
+        head = ("No modelled river inundation on the parcel in any scenario up to 1-in-500 years. The maps cover "
+                "rivers with basins over ~500 km2 at ~90 m; they do not show small streams, rainfall waterlogging or coastal surge")
+    else:
+        rp100 = by_rp.get(100) or {}
+        head = (
+            f"Modelled river inundation first reaches the parcel in the 1-in-{first['return_period_years']}-year scenario "
+            f"({first['flooded_share_of_parcel'] * 100:.0f}% of the parcel). 1-in-100-year: "
+            f"{(rp100.get('flooded_share_of_parcel') or 0) * 100:.0f}% of the parcel"
+            + (f", max depth {rp100['max_depth_m']} m" if rp100.get("max_depth_m") is not None else "")
+        )
+    near = (by_rp.get(100) or {}).get("surroundings_flooded_share")
+    if near:
+        head += f". Within {river.get('surroundings_m', 500):.0f} m, {near * 100:.0f}% of the land is modelled as flooded at 1-in-100 years"
+    flags = []
+    if river.get("permanent_water_area_m2"):
+        flags.append(f"{river['permanent_water_area_m2']:,.0f} m2 is permanent water (excluded)")
+    if river.get("quality_flagged_area_m2"):
+        flags.append(f"{river['quality_flagged_area_m2']:,.0f} m2 is in a provider-flagged spurious-depth area (depths withheld)")
+    if river["status"] == "partial":
+        flags.append(f"only {river['assessed_share_of_parcel'] * 100:.0f}% of the parcel could be assessed")
+    return (head + (". " + "; ".join(flags) if flags else "") + ". Modelled scenarios, not observed floods.")[:500]
+
+
+def _flood_components(river, river_error, flood) -> list[dict[str, Any]]:
+    """What each flood mechanism's evidence is, kept separate and never merged into a score."""
+    sw, terrain, water = flood.get("surface_water"), flood.get("terrain"), flood.get("water_distances")
+    errors = flood.get("errors") or {}
+    river_status = "unavailable" if river is None else river["status"]
+    if water:
+        terrain_summary = _water_summary(water, terrain, errors.get("terrain"))
+    else:
+        terrain_summary = (
+            (f"Parcel median elevation {terrain['parcel_elevation_m']} m. " if terrain else "")
+            + f"Nearby water features unavailable: {errors.get('water_distances') or errors.get('terrain')}"
+        )
+    return [
+        {"mechanism": "river_flooding", "status": river_status,
+         "source": river_flood.DATASET,
+         "period": "Modelled return-period scenarios (1-in-10 to 1-in-500 years), not observed events",
+         "resolution": "~90 m", "coverage_share": river.get("assessed_share_of_parcel") if river else None,
+         "summary": _river_summary(river, river_error)},
+        {"mechanism": "historical_inundation", "status": "not_integrated",
+         "source": "NRSC/ISRO Flood Affected Area Atlas of India",
+         "period": "1998-2022", "resolution": None, "coverage_share": None, "summary": NRSC_REFERENCE},
+        {"mechanism": "observed_surface_water", "status": "assessed" if sw else "unavailable",
+         "source": "JRC Global Surface Water v1.4", "period": "1984-2021", "resolution": "~30 m",
+         "coverage_share": None,
+         "summary": (_surface_water_summary(sw) if sw else
+                     f"Unavailable: {errors.get('surface_water') or errors.get('all')}")[:500]},
+        {"mechanism": "terrain_and_nearby_water",
+         "status": "assessed" if terrain and water else "partial" if terrain or water else "unavailable",
+         "source": "Copernicus DEM GLO-30" + (" + OpenStreetMap" if water else ""),
+         "period": "DEM from 2011-2015 acquisitions", "resolution": "~30 m", "coverage_share": None,
+         "summary": terrain_summary[:500]},
+        {"mechanism": "rainfall_waterlogging", "status": "not_assessed", "source": None, "period": None,
+         "resolution": None, "coverage_share": None,
+         "summary": "Not assessed: no rainfall, drainage-capacity or pluvial flood dataset is integrated. Urban "
+                    "waterlogging can occur where no river flooding is modelled."},
+        {"mechanism": "coastal_flooding", "status": "not_assessed", "source": None, "period": None,
+         "resolution": None, "coverage_share": None,
+         "summary": "Not assessed: no storm-surge or sea-level dataset is integrated. Distance from the sea or "
+                    "elevation alone is not used as evidence of safety."},
+    ]
 
 
 def _metres(value: Any) -> str:
@@ -272,8 +354,20 @@ def _infrastructure_summary(amenities: dict[str, Any]) -> str:
 
 
 def _elevation_summary(elevation_m: float | None, flood_proxy: dict[str, Any]) -> str:
-    head = f"Centroid elevation {elevation_m:,.1f} m." if isinstance(elevation_m, (int, float)) else "Centroid elevation unavailable."
-    return f"{head} {flood_proxy.get('basis') or 'No flood-risk basis recorded.'}"[:500]
+    """Physical measurements only; the 0-100 terrain-position figure is not shown as a headline."""
+    if not isinstance(elevation_m, (int, float)):
+        return f"Elevation unavailable: {flood_proxy.get('basis') or 'no value returned.'}"[:500]
+    baseline, relief = flood_proxy.get("baseline_m"), flood_proxy.get("relief_m")
+    parts = [f"Centroid elevation {elevation_m:,.1f} m (Copernicus GLO-30 surface model)"]
+    if isinstance(baseline, (int, float)):
+        difference = elevation_m - baseline
+        parts.append(
+            f"{abs(difference):.1f} m {'above' if difference >= 0 else 'below'} the median of the surrounding "
+            f"terrain within 5 km ({baseline:,.1f} m)"
+        )
+    if isinstance(relief, (int, float)):
+        parts.append(f"local relief {relief:,.0f} m")
+    return ("; ".join(parts) + ". Terrain position only: it does not measure rainfall, drainage, river or coastal flooding.")[:500]
 
 
 def _rera_summary(match: dict[str, Any], district: str | None, seed_path: Path, seed_loaded: bool) -> str:
@@ -358,25 +452,34 @@ def build_evidence_snapshot(
     if start > end:
         raise ValueError("date_from must be on or before date_to.")
 
-    # Coverage first: outside Tamil Nadu nothing is collected at all. A missing
+    # Coverage first: outside India nothing is collected at all. A missing
     # boundary raises LocalDataMissing rather than letting the parcel through.
-    coverage_check = coverage().check(geojson_polygon)
+    coverage_check = india_coverage().check(geojson_polygon)
     if coverage_check["status"] != "inside":
         raise OutsideCoverage(coverage_check)
 
-    try:
-        local_osm: LocalOSM | None = LocalOSM()
-        local_osm_error = None
-    except LocalDataMissing as error:
-        local_osm, local_osm_error = None, str(error)
-    manifest = load_manifest()
+    # Regional data only adds evidence; its absence never blocks the India-wide collectors.
+    region = region_for(geojson_polygon)
+    coverage_check["regional_data"] = region.slug if region else None
+    local_osm: LocalOSM | None = None
+    local_osm_error: str | None = None
+    if region is not None:
+        try:
+            local_osm = LocalOSM(region.osm_store)
+        except LocalDataMissing as error:
+            local_osm_error = str(error)
+    else:
+        main_state = (coverage_check["states"] or [{}])[0].get("name") or "this area"
+        local_osm_error = (
+            f"No regional OpenStreetMap data is installed for {main_state}. "
+            f"Install it with: terrascope.cmd fetch-data {slug(main_state)}"
+        )
     osm_meta = (local_osm.meta if local_osm else {}) or {}
-    dem_local = flood_indicators.dem_installed()
 
     infrastructure_client = InfrastructureClient()
     satellite_client = get_satellite_client()
-    # Local GLO-30 tiles replace the Open-Elevation web call when installed.
-    elevation_client = flood_indicators.LocalDemElevationClient() if dem_local else ElevationClient()
+    # Copernicus GLO-30 (cached tiles, else read remotely) replaces the Open-Elevation web call.
+    elevation_client = flood_indicators.LocalDemElevationClient()
     latitude, longitude = elevation_client.polygon_centroid(geojson_polygon)
     metrics = infrastructure_client.polygon_metrics(geojson_polygon)
 
@@ -424,24 +527,28 @@ def build_evidence_snapshot(
             return dict(_EMPTY_AMENITIES), str(error)
 
     def collect_flood() -> dict[str, Any]:
-        """Flood-relevant indicators. Each part fails on its own and says why."""
+        """Flood-relevant evidence. Each part fails on its own and says why."""
         out: dict[str, Any] = {"surface_water": None, "terrain": None, "water_distances": None, "errors": {}}
         try:
             out["surface_water"] = flood_indicators.surface_water(geojson_polygon)
         except Exception as error:  # noqa: BLE001 - reported, never invented
             out["errors"]["surface_water"] = str(error)
-        if local_osm is None:
-            out["errors"]["water_distances"] = out["errors"]["terrain"] = local_osm_error
-            return out
-        out["water_distances"] = _water_distances(local_osm, geojson_polygon)
-        if dem_local:
-            try:
-                out["terrain"] = flood_indicators.terrain_above_water(geojson_polygon, local_osm)
-            except Exception as error:  # noqa: BLE001
-                out["errors"]["terrain"] = str(error)
+        try:
+            out["terrain"] = flood_indicators.terrain_above_water(geojson_polygon, local_osm)
+        except Exception as error:  # noqa: BLE001
+            out["errors"]["terrain"] = str(error)
+        if local_osm is not None:
+            out["water_distances"] = _water_distances(local_osm, geojson_polygon)
         else:
-            out["errors"]["terrain"] = "Local Copernicus DEM tiles are not installed (terrascope.cmd fetch-data)."
+            out["errors"]["water_distances"] = local_osm_error
         return out
+
+    def collect_river_flood() -> tuple[dict[str, Any] | None, str | None]:
+        try:
+            return river_flood.assess(geojson_polygon), None
+        except Exception as error:  # noqa: BLE001 - a provider failure is "not assessed", never "no flooding"
+            LOGGER.warning("River flood hazard unavailable: %s", error)
+            return None, str(error)[:300]
 
     # These four call different providers and do not depend on each other, so
     # run them together: the analysis takes as long as the slowest, not the sum.
@@ -449,13 +556,14 @@ def build_evidence_snapshot(
     # optional layers also get a deadline; past it the report ships without them
     # rather than making the user wait, and says which layer is missing.
     deadline = float(os.getenv("EVIDENCE_COLLECTION_DEADLINE_SECONDS", "35"))
-    pool = ThreadPoolExecutor(max_workers=5)
+    pool = ThreadPoolExecutor(max_workers=6)
     try:
         location_future = pool.submit(collect_location)
         satellite_future = pool.submit(satellite_client.get_change_series, geojson_polygon, start, end)
         amenities_future = pool.submit(collect_amenities)
         terrain_future = pool.submit(collect_terrain)
         flood_future = pool.submit(collect_flood)
+        river_future = pool.submit(collect_river_flood)
 
         started = time.monotonic()
 
@@ -486,6 +594,9 @@ def build_evidence_snapshot(
              "errors": {"all": f"Flood indicators exceeded the {deadline:.0f}s evidence deadline."}},
             "Flood indicators",
         )
+        river, river_error = finish(
+            river_future, (None, f"River flood hazard maps exceeded the {deadline:.0f}s evidence deadline."), "River flood hazard"
+        )
     finally:
         # Do not block the response on a request that already missed its deadline.
         pool.shutdown(wait=False)
@@ -494,8 +605,8 @@ def build_evidence_snapshot(
 
     if local_osm is not None:
         local_osm.close()
-    gsw_meta = manifest.get("jrc_gsw") or {}
-    dem_meta = manifest.get("copernicus_dem") or {}
+    components = _flood_components(river, river_error, flood)
+    usable = [c for c in components if c["status"] in ("assessed", "partial")]
 
     rera_df, rera_seed_path, rera_seed_loaded = _load_rera_or_empty()
     rera_match = match_parcel_to_rera(location["district"], rera_df)
@@ -527,8 +638,9 @@ def build_evidence_snapshot(
             "evidence_id": f"{snapshot_id}:osm",
             "source_type": "openstreetmap",
             "source_reference": (
-                f"OpenStreetMap, Geofabrik southern-zone extract ({osm_meta.get('extract_file', 'local')})"
-                if local_osm else "Overpass API (opt-in fallback)" if _overpass_fallback_enabled() else "OpenStreetMap (not installed)"
+                f"OpenStreetMap, Geofabrik extract ({osm_meta.get('extract_file', 'local')}), region {region.slug}"
+                if local_osm and region else "Overpass API (opt-in fallback)" if _overpass_fallback_enabled()
+                else "OpenStreetMap (regional data not installed)"
             ),
             "title": "Nearby infrastructure",
             # The evidence date is the extract's data date, not the moment of the query.
@@ -541,32 +653,45 @@ def build_evidence_snapshot(
                 "No road or school distance is reported rather than an estimated one."
                 if amenities_error
                 else _local_infrastructure_summary(amenities) if local_osm else _infrastructure_summary(amenities)
-            ),
+            )[:500],
         },
         {
             "evidence_id": f"{snapshot_id}:elevation",
-            "source_type": "copernicus_dem" if dem_local else "open_elevation",
-            "source_reference": (
-                "Copernicus DEM GLO-30 (local tiles, via Microsoft Planetary Computer)" if dem_local else "Open-Elevation API"
-            ),
-            "title": "Representative elevation (terrain indicator, not flood risk)",
-            "observed_at": f"{dem_meta.get('product_date')}T00:00:00Z" if dem_local and dem_meta.get("product_date") else now,
-            "freshness": "cached" if dem_local else "live",
-            "licence": dem_meta.get("licence") if dem_local else None,
-            "resolution": dem_meta.get("resolution") if dem_local else None,
-            "observation_period": dem_meta.get("observation_period") if dem_local else None,
+            "source_type": "copernicus_dem",
+            "source_reference": "Copernicus DEM GLO-30 (via Microsoft Planetary Computer; "
+                                + flood_indicators.dem_access(latitude, longitude) + ")",
+            "title": "Elevation and terrain position (not flood risk)",
+            "observed_at": f"{flood_indicators.DEM_PRODUCT_DATE}T00:00:00Z",
+            "freshness": "cached",
+            "licence": flood_indicators.DEM_LICENCE,
+            "resolution": "~30 m surface model (includes buildings and trees)",
+            "observation_period": flood_indicators.DEM_PERIOD,
             "summary": _elevation_summary(elevation_m, flood_proxy),
+        },
+        {
+            "evidence_id": f"{snapshot_id}:river-flood",
+            "source_type": "jrc_flood_hazard",
+            "source_reference": f"{river_flood.DATASET} (doi:10.2905/JRC.VD32YWG)",
+            "title": "Modelled river flooding by return period (not observed events)",
+            # The maps are the 2026-01-12 release of modelled scenarios, not an observation date.
+            "observed_at": "2026-01-12T00:00:00Z",
+            "freshness": "live" if river and river.get("cache") == "new" else "cached",
+            "licence": river_flood.LICENCE,
+            "resolution": "~90 m",
+            "observation_period": "Modelled scenarios, 1-in-10 to 1-in-500 years",
+            "summary": _river_summary(river, river_error),
         },
         {
             "evidence_id": f"{snapshot_id}:surface-water",
             "source_type": "jrc_gsw",
-            "source_reference": "JRC Global Surface Water v1.4 (EC JRC/Google), local tiles",
+            "source_reference": "JRC Global Surface Water v1.4 (EC JRC/Google)"
+                                + (f", {flood['surface_water']['data_access']}" if flood.get("surface_water") else ""),
             "title": "Surface water observed 1984-2021 (not flood history)",
             "observed_at": "2021-12-31T00:00:00Z",
             "freshness": "cached",
-            "licence": gsw_meta.get("licence") or "Copernicus Programme, free without restriction. Source: EC JRC/Google",
+            "licence": flood_indicators.GSW_LICENCE,
             "resolution": "30 m",
-            "observation_period": gsw_meta.get("observation_period") or "1984-03 to 2021-12",
+            "observation_period": "1984-03 to 2021-12",
             "summary": (
                 _surface_water_summary(flood["surface_water"]) if flood.get("surface_water")
                 else f"Surface-water evidence unavailable: {flood['errors'].get('surface_water') or flood['errors'].get('all')}"
@@ -576,7 +701,7 @@ def build_evidence_snapshot(
             "evidence_id": f"{snapshot_id}:water-features",
             "source_type": "osm_water",
             "source_reference": (
-                f"OpenStreetMap water features ({osm_meta.get('extract_file', 'local extract')})"
+                f"OpenStreetMap water features ({osm_meta.get('extract_file', 'regional data not installed')})"
                 + (" + Copernicus DEM GLO-30" if flood.get("terrain") else "")
             ),
             "title": "Distance and height relative to mapped rivers, canals and tanks",
@@ -613,6 +738,7 @@ def build_evidence_snapshot(
         "flood_proxy": flood_proxy.get("score"),
         "surface_water": flood.get("surface_water"),
         "water_features": flood.get("water_distances"),
+        "river_flood_hazard": river,
         "rera_status": rera.get("is_rera_project"),
         "land_records": None,  # no land-records connector exists yet
     })
@@ -646,10 +772,16 @@ def build_evidence_snapshot(
         # Evidence only. Flood Safety stays unscored until a rule is approved.
         "flood_indicators": {
             "scoring_status": "not_scored",
+            # Evidence exists for some mechanisms but no validated method combines them into a score.
+            "assessment_status": "partial" if usable else "unavailable",
+            "components": components,
+            "river_flood": river,
             "surface_water": flood.get("surface_water"),
             "terrain": flood.get("terrain"),
             "water_distances": flood.get("water_distances"),
-            "unavailable": {key: value for key, value in (flood.get("errors") or {}).items() if value} or None,
+            "unavailable": {
+                key: value for key, value in {**(flood.get("errors") or {}), "river_flood": river_error}.items() if value
+            } or None,
         },
         "coverage": coverage_check,
         "evidence": evidence,

@@ -800,6 +800,7 @@
                   "indicative",
                   "unavailable",
                   "not_integrated",
+                  "partial",
                   null
                 ]
               },
@@ -1099,6 +1100,79 @@
             "object",
             "null"
           ]
+        },
+        "assessment_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "partial",
+            "unavailable",
+            null
+          ]
+        },
+        "river_flood": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "components": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mechanism": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "status": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "period": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "resolution": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "coverage_share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              },
+              "summary": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
         }
       }
     },
@@ -1117,6 +1191,7 @@
           "enum": [
             "inside",
             "outside",
+            "outside_india",
             null
           ]
         },
@@ -1139,6 +1214,58 @@
           ]
         },
         "boundary_as_of": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "inside_india_share": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "states": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "iso": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "share": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 1
+              }
+            }
+          }
+        },
+        "crosses_state_border": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "regional_data": {
           "type": [
             "string",
             "null"

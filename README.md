@@ -41,26 +41,57 @@ Needs Python 3.11 (`py -3.11`) and Node.js. From the repository root:
 ```bat
 copy .env.example .env      :: then blank DATABASE_URL and any placeholder keys
 terrascope.cmd setup        :: .venv + pip requirements + npm ci (first run only)
-terrascope.cmd fetch-data   :: local Tamil Nadu data, ~2.5 GB into tn-data\ (first run only)
+terrascope.cmd fetch-data   :: India coverage boundary, ~46 MB into data-cache\ (first run only)
+terrascope.cmd fetch-data tamil-nadu   :: optional regional cache (any state/UT slug; --list shows them)
 terrascope.cmd start        :: starts all four services, waits for health, opens http://localhost:5173
 terrascope.cmd status
 terrascope.cmd stop
 terrascope.cmd seed-demo    :: optional: one FIXTURE report for UI checks
 ```
 
-TerraScope covers **Tamil Nadu only**. Parcels outside it, or in the Puducherry/Karaikal
-enclaves, get an "outside coverage" answer and no evidence is collected. `fetch-data`
-builds what analyses read from disk:
+**Coverage: all of India.** Every state and union territory is accepted, including
+Puducherry and the other UTs. A parcel is rejected, before any evidence is collected, only
+when it lies outside India (more than 1% of its area beyond the boundary). The boundary is
+geoBoundaries gbOpen IND ADM1 (DataMeet India / Election Commission of India, CC BY 2.5 IN).
+It is not a Survey of India boundary, and its coastline and borders are generalised. A parcel
+crossing a state border lists every state it touches, with its share.
 
-| Data | Source and licence | Used for |
+**What works everywhere in India, with no regional download:**
+
+- Sentinel-2 land cover.
+- JRC river flood hazard maps.
+- JRC Global Surface Water.
+- Copernicus DEM elevation.
+
+These rasters are read remotely, window by window, and cached results are reused.
+
+**What needs a regional cache** (`fetch-data <region>`):
+
+- accessibility (roads, schools, hospitals, bus, rail)
+- distances to rivers, canals and tanks
+- elevation relative to the nearest mapped water
+
+Without a regional cache, those layers say so and give the install command. The other
+collectors still run. Nothing India-wide is downloaded automatically. A region build checks
+disk space and reuses any extract and tiles already on disk.
+
+| Data (`data-cache\`) | Source and licence | Used for |
 |---|---|---|
-| `tn_osm.sqlite`, `tn_boundary.geojson` | OpenStreetMap via the Geofabrik southern-zone extract, ODbL 1.0 | coverage check; roads, schools, hospitals, bus, rail; rivers, canals, tanks |
-| `gsw/` | JRC Global Surface Water v1.4 (1984-2021), Copernicus, "Source: EC JRC/Google" | surface water seen inside the parcel and within 500 m |
-| `dem/` | Copernicus DEM GLO-30 via Planetary Computer, Copernicus DEM licence | parcel elevation; height above the nearest mapped water |
+| `india\` | geoBoundaries IND ADM1, CC BY 2.5 IN | coverage check, state attribution |
+| `regions\<slug>\osm.sqlite` | OpenStreetMap via the Geofabrik India zone extract, ODbL 1.0 | accessibility; rivers, canals, tanks |
+| `rasters\gsw\` | JRC Global Surface Water v1.4 (1984-2021), Copernicus, "Source: EC JRC/Google" | surface water seen inside the parcel and within 500 m |
+| `rasters\dem\` | Copernicus DEM GLO-30 via Planetary Computer, Copernicus DEM licence | elevation; height above the nearest mapped water |
+| `flood-hazard\` | JRC global river flood hazard maps v2.1.2, CC BY 4.0 (doi:10.2905/JRC.VD32YWG) | tile index and cached per-parcel results |
 
-`manifest.json` in `tn-data\` records each dataset's date and size. Overpass is used only
-when `OSM_OVERPASS_FALLBACK=true` and the local store is missing. Flood indicators are
-evidence only: Flood Safety stays unscored.
+**Flood evidence is reported per mechanism, with no overall score.** The mechanisms are:
+
+- modelled river flooding by return period (1-in-10 to 1-in-500 years, ~90 m)
+- observed surface water
+- terrain and nearby water
+- rainfall/waterlogging and coastal flooding, which are not assessed
+
+Flood Safety stays unscored until a combining method is validated. Overpass is used only
+when `OSM_OVERPASS_FALLBACK=true` and no regional store is installed.
 
 `start` reuses a port only when it already serves the healthy TerraScope service.
 It refuses ports held by anything else, and `stop` only stops processes started from

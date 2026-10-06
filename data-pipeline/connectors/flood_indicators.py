@@ -1,33 +1,66 @@
-"""Flood-relevant indicators from local rasters. EVIDENCE ONLY - nothing here is a score.
+"""Flood-relevant indicators from rasters. EVIDENCE ONLY - nothing here is a score.
 
 * JRC Global Surface Water v1.4 - where open water was SEEN by Landsat, 1984-2021.
-  It is not a flood-inundation history: short floods between revisits, floods under
+  It is not a flood-event history: short floods between revisits, floods under
   monsoon cloud and most urban street flooding are not captured.
 * Copernicus DEM GLO-30 - a surface model (buildings and trees included). The parcel's
-  height above the nearest mapped water feature is a TERRAIN INDICATOR, not HAND
-  (no drainage network or flow routing) and not a flood probability.
+  elevation relative to the nearest mapped water feature is a TERRAIN INDICATOR, not
+  HAND (no drainage connectivity is modelled) and not a flood probability.
+
+Tiles are read from the shared local cache (``data-cache/rasters``) when a region has
+been fetched, and otherwise read remotely, window by window, from the provider. A
+read that fails is reported as unavailable, never as "no water".
 """
 
 from __future__ import annotations
 
 import math
+import os
+import threading
+import time
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import rasterio
+import requests
 import shapely
 from rasterio.features import geometry_mask
 from rasterio.merge import merge
 from shapely.geometry import mapping, shape
 
 from connectors.elevation_dem import ElevationClient, ElevationError
-from connectors.local_osm import LocalDataMissing, LocalOSM, data_dir, load_manifest
+from connectors.local_osm import LocalOSM
+from connectors.regions import LocalDataMissing, data_root
 
+
+# Bounded remote reads: a slow provider fails fast instead of stalling an analysis.
+for _key, _value in {
+    "GDAL_HTTP_TIMEOUT": "20",
+    "GDAL_HTTP_CONNECTTIMEOUT": "10",
+    "GDAL_HTTP_MAX_RETRY": "2",
+    "GDAL_HTTP_RETRY_DELAY": "1",
+    "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
+    "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": ".tif",
+    "VSI_CACHE": "TRUE",
+}.items():
+    os.environ.setdefault(_key, _value)
 
 BUFFER_M = 500.0
 WATER_SEARCH_M = 2000.0
 GSW_NODATA_MIN = 101  # occurrence is 0-100 %; 255 marks no observation
+GSW_REMOTE = "https://storage.googleapis.com/global-surface-water/downloads2021"
+DEM_REMOTE = "https://elevationeuwest.blob.core.windows.net/copernicus-dem/COP30_hh"
+PC_SIGN = "https://planetarycomputer.microsoft.com/api/sas/v1/sign"
+GSW_LICENCE = "Copernicus Programme, free of charge without restriction of use. Source: EC JRC/Google"
+DEM_LICENCE = ("Copernicus DEM licence (free use). (c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH "
+               "2014-2018 provided under COPERNICUS by the European Union and ESA")
+DEM_PRODUCT_DATE = "2021-04-22"
+DEM_PERIOD = "TanDEM-X acquisitions 2011-2015"
+
+
+def rasters_dir() -> Path:
+    return data_root() / "rasters"
 
 
 def _transformers(lon0: float, lat0: float):
@@ -56,24 +89,24 @@ def buffered(parcel, metres: float):
     return shapely.transform(shapely.transform(parcel, to_m).buffer(metres), to_deg)
 
 
-def _read_window(paths: list[Path], bounds: tuple[float, float, float, float]):
-    """Mosaic of the tiles covering ``bounds`` (all tiles are EPSG:4326)."""
-    sources = []
+def _read_window(sources: list[str], bounds: tuple[float, float, float, float]):
+    """Mosaic of the tiles (local paths or remote URLs) covering ``bounds``."""
+    opened = []
     try:
-        for path in paths:
-            source = rasterio.open(path)
-            b = source.bounds
+        for source in sources:
+            dataset = rasterio.open(source)
+            b = dataset.bounds
             if b.right > bounds[0] and b.left < bounds[2] and b.top > bounds[1] and b.bottom < bounds[3]:
-                sources.append(source)
+                opened.append(dataset)
             else:
-                source.close()
-        if not sources:
+                dataset.close()
+        if not opened:
             return None, None
-        array, transform = merge(sources, bounds=bounds)
+        array, transform = merge(opened, bounds=bounds)
         return array[0], transform
     finally:
-        for source in sources:
-            source.close()
+        for dataset in opened:
+            dataset.close()
 
 
 def _masked(array, transform, geometry) -> np.ndarray:
@@ -81,19 +114,42 @@ def _masked(array, transform, geometry) -> np.ndarray:
     return array[mask]
 
 
+def _tiles(bounds, step: int):
+    """(west, south) corners of the ``step``-degree grid cells overlapping ``bounds``."""
+    west, south, east, north = bounds
+    for x in range(math.floor(west / step) * step, math.floor(east / step) * step + 1, step):
+        for y in range(math.floor(south / step) * step, math.floor(north / step) * step + 1, step):
+            yield x, y
+
+
+def _hemi(value: int, positive: str, negative: str, width: int) -> str:
+    return f"{positive if value >= 0 else negative}{abs(value):0{width}d}" if width else f"{abs(value)}{positive if value >= 0 else negative}"
+
+
 # --- JRC Global Surface Water ---------------------------------------------------
 
-def surface_water(geojson_polygon: dict[str, Any], directory: Path | None = None) -> dict[str, Any]:
-    folder = (directory or data_dir()) / "gsw"
-    occurrence_tiles = sorted(folder.glob("occurrence_*.tif"))
-    extent_tiles = sorted(folder.glob("extent_*.tif"))
-    if not occurrence_tiles or not extent_tiles:
-        raise LocalDataMissing("JRC Global Surface Water tiles are not installed. Run: terrascope.cmd fetch-data")
+def gsw_sources(layer: str, bounds) -> tuple[list[str], str]:
+    """Tile paths for ``layer``; local where cached, remote otherwise."""
+    sources, local = [], 0
+    for west, south in _tiles(bounds, 10):
+        # JRC tiles are named by their north-west corner: 70E_20N covers 70-80E, 10-20N.
+        name = f"{layer}_{_hemi(west, 'E', 'W', 0)}_{_hemi(south + 10, 'N', 'S', 0)}v1_4_2021.tif"
+        path = rasters_dir() / "gsw" / name
+        if path.exists():
+            sources.append(str(path)); local += 1
+        else:
+            sources.append(f"/vsicurl/{GSW_REMOTE}/{layer}/{name}")
+    return sources, "local tiles" if local == len(sources) else "read remotely from JRC" if not local else "local and remote tiles"
+
+
+def surface_water(geojson_polygon: dict[str, Any]) -> dict[str, Any]:
     parcel = shape(geojson_polygon)
     ring = buffered(parcel, BUFFER_M)
     bounds = ring.bounds
-    occurrence, transform = _read_window(occurrence_tiles, bounds)
-    extent, extent_transform = _read_window(extent_tiles, bounds)
+    occurrence_sources, access = gsw_sources("occurrence", bounds)
+    extent_sources, _ = gsw_sources("extent", bounds)
+    occurrence, transform = _read_window(occurrence_sources, bounds)
+    extent, extent_transform = _read_window(extent_sources, bounds)
     if occurrence is None or extent is None:
         raise LocalDataMissing("No JRC Global Surface Water tile covers this parcel.")
 
@@ -110,49 +166,75 @@ def surface_water(geojson_polygon: dict[str, Any], directory: Path | None = None
             "water_ever_fraction": round(float((ext == 1).mean()), 4) if ext.size else None,
         }
 
-    inside = stats(parcel)
-    around = stats(ring)
     return {
-        "parcel": inside,
-        "within_buffer": around,
+        "parcel": stats(parcel),
+        "within_buffer": stats(ring),
         "buffer_m": BUFFER_M,
         "observation_period": "1984-03 to 2021-12",
         "resolution_m": 30,
         "dataset": "JRC Global Surface Water v1.4",
+        "data_access": access,
     }
 
 
 # --- Copernicus DEM ------------------------------------------------------------
 
-def _dem_tile(directory: Path, lat: float, lon: float) -> Path:
+def _dem_name(lat: float, lon: float) -> str:
     lat_i, lon_i = math.floor(lat), math.floor(lon)
-    ns, ew = ("N" if lat_i >= 0 else "S"), ("E" if lon_i >= 0 else "W")
-    return directory / "dem" / f"Copernicus_DSM_COG_10_{ns}{abs(lat_i):02d}_00_{ew}{abs(lon_i):03d}_00_DEM.tif"
+    return f"Copernicus_DSM_COG_10_{_hemi(lat_i, 'N', 'S', 2)}_00_{_hemi(lon_i, 'E', 'W', 3)}_00_DEM.tif"
 
 
-def dem_installed(directory: Path | None = None) -> bool:
-    return any(((directory or data_dir()) / "dem").glob("*.tif"))
+_signed: dict[str, tuple[str, float]] = {}
+_signed_lock = threading.Lock()
 
 
-def sample_dem(points: list[tuple[float, float]], directory: Path | None = None) -> list[float | None]:
-    """Elevation at ``(lat, lon)`` points; None where no tile covers the point."""
-    folder = directory or data_dir()
-    values: list[float | None] = []
-    for lat, lon in points:
-        path = _dem_tile(folder, lat, lon)
-        if not path.exists():
-            values.append(None)
-            continue
-        with rasterio.open(path) as source:
-            value = float(next(source.sample([(lon, lat)]))[0])
-        values.append(value if math.isfinite(value) and value > -1000 else None)
+def _sign(href: str) -> str:
+    """Planetary Computer SAS-signed URL, reused for 30 minutes."""
+    with _signed_lock:
+        cached = _signed.get(href)
+        if cached and cached[1] > time.time():
+            return cached[0]
+    response = requests.get(PC_SIGN, params={"href": href}, timeout=15)
+    response.raise_for_status()
+    url = response.json()["href"]
+    with _signed_lock:
+        _signed[href] = (url, time.time() + 1800)
+    return url
+
+
+def dem_source(lat: float, lon: float) -> str:
+    name = _dem_name(lat, lon)
+    path = rasters_dir() / "dem" / name
+    return str(path) if path.exists() else _sign(f"{DEM_REMOTE}/{name}")
+
+
+def dem_access(lat: float, lon: float) -> str:
+    return "local tiles" if (rasters_dir() / "dem" / _dem_name(lat, lon)).exists() else "read remotely from Planetary Computer"
+
+
+def sample_dem(points: list[tuple[float, float]]) -> list[float | None]:
+    """Elevation at ``(lat, lon)`` points; None where no tile covers the point (e.g. open sea)."""
+    by_tile: dict[str, list[int]] = {}
+    for index, (lat, lon) in enumerate(points):
+        by_tile.setdefault(_dem_name(lat, lon), []).append(index)
+    values: list[float | None] = [None] * len(points)
+    for indices in by_tile.values():
+        lat, lon = points[indices[0]]
+        try:
+            source = dem_source(lat, lon)
+            with rasterio.open(source) as dataset:
+                for index, sample in zip(indices, dataset.sample([(points[i][1], points[i][0]) for i in indices])):
+                    value = float(sample[0])
+                    values[index] = value if math.isfinite(value) and value > -1000 else None
+        except (rasterio.errors.RasterioIOError, requests.RequestException):
+            continue  # no tile (sea) or provider error: those samples stay None
     return values
 
 
 class LocalDemElevationClient(ElevationClient):
-    """The existing terrain-position indicator, sampled from local GLO-30 tiles."""
+    """The terrain-position indicator, sampled from Copernicus GLO-30 (local or remote tiles)."""
 
-    source_reference = "Copernicus DEM GLO-30 (local tiles, via Microsoft Planetary Computer)"
+    source_reference = "Copernicus DEM GLO-30 (via Microsoft Planetary Computer)"
 
     def get_elevations(self, points: list[tuple[float, float]]) -> list[float | None]:
         return sample_dem(points)
@@ -160,31 +242,29 @@ class LocalDemElevationClient(ElevationClient):
     def get_elevation(self, lat: float, lon: float) -> float:
         value = sample_dem([(lat, lon)])[0]
         if value is None:
-            raise ElevationError("No local Copernicus DEM tile covers this point.")
+            raise ElevationError("No Copernicus DEM value is available at this point.")
         return value
 
 
-def _dem_window(bounds, directory: Path):
-    corners = {(_dem_tile(directory, lat, lon)) for lat in (bounds[1], bounds[3]) for lon in (bounds[0], bounds[2])}
-    return _read_window(sorted(path for path in corners if path.exists()), bounds)
+def _dem_window(bounds):
+    sources = [dem_source(south + 0.5, west + 0.5) for west, south in _tiles(bounds, 1)]
+    return _read_window(sources, bounds)
 
 
-def terrain_above_water(
-    geojson_polygon: dict[str, Any], osm: LocalOSM, directory: Path | None = None
-) -> dict[str, Any]:
-    """Parcel elevation and its height above the nearest mapped water feature."""
-    folder = directory or data_dir()
+def terrain_above_water(geojson_polygon: dict[str, Any], osm: LocalOSM | None) -> dict[str, Any]:
+    """Parcel elevation, and - when a regional OSM store is installed - its height
+    relative to the nearest mapped water feature."""
     parcel = shape(geojson_polygon)
     centre = parcel.centroid
-    waterway = osm.nearest(centre.x, centre.y, "waterway", max_distance_m=WATER_SEARCH_M)
-    water_body = osm.nearest(centre.x, centre.y, "water", max_distance_m=WATER_SEARCH_M)
+    waterway = osm.nearest(centre.x, centre.y, "waterway", max_distance_m=WATER_SEARCH_M) if osm else None
+    water_body = osm.nearest(centre.x, centre.y, "water", max_distance_m=WATER_SEARCH_M) if osm else None
     candidates = [(hit, kind) for hit, kind in ((waterway, "waterway"), (water_body, "water body")) if hit]
     nearest, kind = min(candidates, key=lambda pair: pair[0]["distance_m"]) if candidates else (None, None)
 
     region = parcel if nearest is None else parcel.union(shapely.Point(nearest["lon"], nearest["lat"]).buffer(0.001))
-    dem, transform = _dem_window(region.bounds, folder)
+    dem, transform = _dem_window(region.bounds)
     if dem is None:
-        raise LocalDataMissing("No local Copernicus DEM tile covers this parcel.")
+        raise LocalDataMissing("No Copernicus DEM tile covers this parcel.")
     inside = _masked(dem, transform, parcel).astype("float64")
     inside = inside[np.isfinite(inside) & (inside > -1000)]
     if not inside.size:
@@ -201,9 +281,11 @@ def terrain_above_water(
         "nearest_water_feature_distance_m": nearest["distance_m"] if nearest else None,
         "water_feature_elevation_m": None,
         "elevation_above_nearest_water_m": None,
-        "search_radius_m": WATER_SEARCH_M,
-        "dataset": "Copernicus DEM GLO-30 + OpenStreetMap water features",
+        "search_radius_m": WATER_SEARCH_M if osm else None,
+        "water_features_available": osm is not None,
+        "dataset": "Copernicus DEM GLO-30" + (" + OpenStreetMap water features" if osm else ""),
         "resolution_m": 30,
+        "data_access": dem_access(centre.y, centre.x),
     }
     if nearest:
         # A surface model reads bank vegetation or a bridge over a narrow drain, so take
@@ -216,10 +298,3 @@ def terrain_above_water(
             result["water_feature_elevation_m"] = round(water_level, 1)
             result["elevation_above_nearest_water_m"] = round(parcel_elevation - water_level, 1)
     return result
-
-
-def dataset_notes() -> dict[str, Any]:
-    """Licence, version and date of each raster, as recorded by fetch-data."""
-    manifest = load_manifest()
-    return {"jrc_gsw": manifest.get("jrc_gsw") or {}, "copernicus_dem": manifest.get("copernicus_dem") or {}}
-

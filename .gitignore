@@ -43,5 +43,6 @@ valuation/artifacts/*.joblib
 # tsc -b emits these from vite.config.ts
 frontend/vite.config.js
 frontend/vite.config.d.ts
-# Local Tamil Nadu evidence data (terrascope.cmd fetch-data)
+# Local evidence data: India boundary, regional caches, rasters (terrascope.cmd fetch-data)
+data-cache/
 tn-data/

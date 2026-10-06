@@ -116,15 +116,9 @@ def _downstream_error(response: httpx.Response, service: str) -> HTTPException:
     return HTTPException(status_code=status, detail=f"{service}: {detail}")
 
 
-# TerraScope covers Tamil Nadu only. The viewbox bounds the search; the state filter
-# drops Puducherry/Karaikal and neighbouring-state results that fall inside the box.
-TAMIL_NADU_VIEWBOX = "76.2,13.6,80.4,8.0"
-COVERED_STATE = "Tamil Nadu"
-
-
 @router.get("/api/v1/search/geocode")
 async def geocode_search(q: str) -> list[dict[str, Any]]:
-    """Tamil Nadu-only Nominatim suggestions with caching and a one-request/second guard."""
+    """India-wide Nominatim suggestions (states and union territories), cached and rate-limited to one request/second."""
     global _last_geocode_request_at
     query = q.strip()
     if len(query) < 2:
@@ -143,10 +137,7 @@ async def geocode_search(q: str) -> list[dict[str, Any]]:
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     "https://nominatim.openstreetmap.org/search",
-                    params={
-                        "q": query, "format": "jsonv2", "addressdetails": 1, "countrycodes": "in",
-                        "viewbox": TAMIL_NADU_VIEWBOX, "bounded": 1, "limit": 10,
-                    },
+                    params={"q": query, "format": "jsonv2", "addressdetails": 1, "countrycodes": "in", "limit": 5},
                     headers={"Accept": "application/json", "User-Agent": user_agent},
                     timeout=httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=3.0),
                 )
@@ -160,8 +151,7 @@ async def geocode_search(q: str) -> list[dict[str, Any]]:
     suggestions = [
         {"lat": float(item["lat"]), "lon": float(item["lon"]), "display_name": item["display_name"]}
         for item in results
-        if (item.get("address") or {}).get("state") == COVERED_STATE
-    ][:5]
+    ]
     _geocode_cache[cache_key] = suggestions
     return suggestions
 
