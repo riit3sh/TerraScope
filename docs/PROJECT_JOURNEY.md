@@ -44,7 +44,7 @@ the reason the approach changed.
 | 2026-09-22 – 27 | Local development on a ZIP copy: upload fixes, valuation module, parallel evidence collection. Docker unusable |
 | 2026-09-28 | Local Git checkpoint. getaddrinfo fixed in code. Synthetic prices refused (local-only commits) |
 | 2026-09-29 | Collaborator access granted. Work pushed to `sai/terrascope-progress`, draft PR [riit3sh/TerraScope#1](https://github.com/riit3sh/TerraScope/pull/1). Evidence audit. Accessibility geometry. Real Sentinel-2 |
-| 2026-10-06 | Setup recovered on a fresh clone. Safe Windows launcher. Tamil Nadu coverage and local-data milestone started |
+| 2026-10-06 | Setup recovered on a fresh clone. Safe Windows launcher. Tamil Nadu coverage and local data (`80eadd5`), then the scope corrected to all of India, with JRC river flood hazard |
 
 ## Status summary
 
@@ -57,7 +57,7 @@ the reason the approach changed.
 | J-05 | Docker Compose path never verified | unresolved |
 | J-06 | Analysis failed with `[Errno 11001] getaddrinfo failed` | fixed and verified |
 | J-07 | data-pipeline needed PostGIS; local persistence | fixed and verified |
-| J-08 | Undefined `_downstream_error` (regression from J-06) | unresolved |
+| J-08 | Undefined `_downstream_error` (regression from J-06) | fixed and verified |
 | J-09 | Unsafe local launchers | fixed and verified |
 | J-10 | Setup recovery on a fresh clone | fixed and verified |
 | J-11 | Seeded demo report claimed live evidence | fixed and verified |
@@ -73,12 +73,18 @@ the reason the approach changed.
 | J-21 | Invented satellite series as fallback | superseded by J-22 |
 | J-22 | Real Sentinel-2 observations via Planetary Computer | fixed and verified |
 | J-23 | Accessibility measured to road midpoints; preferences ignored | fixed and verified |
-| J-24 | Overpass slowness and timeouts | in progress |
+| J-24 | Overpass slowness and timeouts | superseded by J-28 / J-30 (local OSM; Overpass opt-in) |
 | J-25 | RAG import error hid its real cause | fixed and verified |
 | J-26 | Groq explanations never run with a real key | unresolved |
 | J-27 | Repository access and publication | fixed and verified |
-| J-28 | Tamil Nadu coverage and local-data milestone | in progress |
+| J-28 | Tamil Nadu coverage and local-data milestone | superseded by J-30 |
 | J-29 | Minor open items | unresolved |
+| J-30 | Scope correction: India-wide coverage, regional caches | fixed and verified |
+| J-31 | Flood assessment from river flood hazard maps | fixed and verified (evidence only; no score by design) |
+| J-32 | NRSC historical flood footprints not machine-readable | unresolved (access blocker) |
+| J-33 | Launcher bound `stop` to `$Region` and ran `start` | fixed and verified |
+| J-34 | `partial` factor status rejected by the shared schema | fixed and verified |
+| J-35 | Integration tests wrote fixtures into the user's saved reports | fixed and verified |
 
 ---
 
@@ -243,12 +249,14 @@ the reason the approach changed.
     enrichment and evaluation. No definition exists anywhere in the repository.
   - **Hypothesis, not reproduced:** a non-2xx response from data-pipeline or ml-models would raise
     `NameError` and surface as a generic 500, instead of a 502 that names the service.
-- **Changes:** none yet.
-- **Verification:** `grep` finds no definition. `git log -S` shows it was removed in local-only `a13a70b`,
-  published in `ef01630`.
-- **Remaining limitations:** downstream HTTP errors are probably reported badly until this is fixed.
-- **Commits:** introduced by `ef01630`.
-- **Status:** unresolved.
+- **Changes:** `_downstream_error()` was defined again in `backend-api/routers/parcels.py` (`80eadd5`). It relays
+  4xx and 503 replies with their status and message, and turns other failures into a 502 that names the service.
+- **Verification:** `grep` found no definition before the fix. `git log -S` shows it was removed in local-only
+  `a13a70b`, published in `ef01630`. On 2026-10-06, `backend-api/tests/test_reports.py::test_pipeline_errors_are_relayed_with_their_status`
+  checked that a 503 from data-pipeline stays a 503 whose detail names the service and the fix. It passed.
+- **Remaining limitations:** none known.
+- **Commits:** introduced by `ef01630`; fixed in `80eadd5`; test added in the India milestone commit.
+- **Status:** fixed and verified.
 
 ## J-09 Unsafe local launchers
 
@@ -599,7 +607,9 @@ the reason the approach changed.
   deadline. GET versus POST was not compared.
 - **Plan:** J-28 replaces live Overpass with a local OSM extract, and keeps Overpass as an opt-in fallback.
 - **Commits:** `79b83fa`, `386be6f`.
-- **Status:** in progress (through J-28).
+- **Resolution:** accessibility now comes from a regional local OSM store (J-28, J-30). Overpass is used only when
+  `OSM_OVERPASS_FALLBACK=true` and no store is installed, so analyses no longer wait on public servers.
+- **Status:** superseded by J-28 / J-30.
 
 ## J-25 RAG import error hid its real cause
 
@@ -673,7 +683,10 @@ the reason the approach changed.
 - **Verification:** none yet.
 - **Remaining limitations:** the flood-score rule will be proposed for team approval and not enabled.
 - **Commits:** none yet.
-- **Status:** in progress.
+- **Outcome (2026-10-06):** delivered in `80eadd5`, `d39f627` and `d27902f`, and verified on four parcels
+  (docs/STATUS.md). The same day the scope was corrected to all of India (J-30). The Tamil Nadu boundary and
+  the state filter on place search were removed. The TN data became the first regional cache.
+- **Status:** superseded by J-30.
 
 ## J-29 Minor open items
 
@@ -684,3 +697,127 @@ the reason the approach changed.
   with the scaffold.
 - `docs/STATUS.md` reports 2026-10-06 unit results from one test file per service (J-10).
 - **Status:** unresolved.
+
+## J-30 Scope correction: India-wide coverage and regional caches
+
+- **Date / problem:** 2026-10-06. The product must cover all of India, union territories included. The Tamil
+  Nadu-only restriction from J-28 refused valid Indian parcels (Puducherry, Kadapa, Patna) and limited search
+  to Tamil Nadu.
+- **Root cause:** J-28 implemented Tamil Nadu as the product's coverage, rather than as the first regional dataset.
+- **Changes:**
+  - **Coverage** (`data-pipeline/connectors/regions.py`): the India outline is the union of geoBoundaries gbOpen
+    IND ADM1 (36 states/UTs, DataMeet / ECI, CC BY 2.5 IN). Up to 1% of a parcel may lie outside the
+    generalised boundary. States are listed with their shares, so a border parcel is never assigned to its
+    centroid's state. `outside_india` is returned before any collector runs.
+  - **Regions:** `fetch_data.py` (renamed from `tn_data.py`) builds `data-cache/regions/<slug>/` for any of
+    the 36 states/UTs, choosing the Geofabrik India zone by `.poly` coverage. It checks disk space, reuses
+    extracts and tiles already on disk, and never downloads India-wide data unasked. `tamil-nadu` bundles
+    Puducherry.
+  - **Collectors:** when a region is missing, accessibility and water distances report the install command,
+    and every other collector still runs. GSW and DEM tiles are read remotely when they are not cached.
+  - **Search and copy:** India-wide place search and UI copy.
+  - **Launcher:** `fetch-data [region]` and `TERRASCOPE_DATA_DIR`.
+- **Data handling:** `tn-data/` was moved, not deleted, into `data-cache/`. The previous store is kept in
+  `regions/tamil-nadu/previous-build-2026-10-06/`. The new India boundary is 49 MB. The rebuilt region took
+  9 minutes from the PBF already on disk, plus 28 MB of DEM tiles for Mahe and Yanam.
+- **Verification (2026-10-06):**
+  - **Unit tests:** state borders, enclaves, outside India, the boundary tolerance, region selection, and an
+    Indian parcel with no regional cache.
+  - **Live API:** six parcels (docs/STATUS.md). Puducherry was accepted with local accessibility. Kadapa and
+    Patna were analysed without regional data. Colombo was rejected in 2.3 s.
+  - **Browser:** Puducherry search, analysis and reopen worked. A box drawn across the Nepal border from Raxaul
+    was refused ("Only 72.9% … inside India").
+- **Remaining limitations:**
+  - The boundary is not a Survey of India product.
+  - Geofabrik's northern zone covers 41% of Ladakh and 79% of J&K as drawn.
+  - Accessibility outside installed regions needs `fetch-data <region>`.
+- **Status:** fixed and verified.
+
+## J-31 Flood assessment from river flood hazard maps
+
+- **Date / problem:** 2026-10-06. The report said "Flood assessment unavailable" even when useful evidence
+  existed, and headlined an unexplained terrain score ("46/100").
+- **Source checks (2026-10-06):** JRC global river flood hazard maps v2.1.2.
+  - **Release and licence:** released 2026-01-12, CC BY 4.0, doi:10.2905/JRC.VD32YWG. Open HTTP download from
+    the JRC FTP mirror, with no account.
+  - **Format:** 3 arc-second (~90 m) tiled COG-style GeoTIFFs. Return periods 1-in-10 to 1-in-500 years, plus
+    permanent-water and spurious-depth layers.
+  - **Cell values (checked on real tiles):** depth is -9999 for both "no modelled inundation" and open sea, with
+    no 0-depth cells. Permanent-water cells carry depths. Spurious-depth areas are flagged with 1.
+  - **Earth Engine:** not used; it would need an account.
+- **Changes:**
+  - **Connector** (`connectors/river_flood.py`): window reads per return period, with the exact area overlap
+    of each pixel with the parcel. Valid zero depth is kept separate from no-data. Permanent water is excluded.
+    Flagged depths are withheld. Areas with no tile are "not modelled", and a provider failure is
+    "unavailable" and not cached. Results are cached per polygon and format version. Each scenario also gives
+    the share of land within 500 m modelled as flooded.
+  - **Report:** `flood_indicators.components` keeps river, historical, surface water, terrain, rainfall and
+    coastal separate. Flood Safety gets status `partial` with that evidence and **no score**. A new report
+    panel shows the scenario table and the components. The terrain 0-100 figure was removed from the
+    headline and the elevation row, which now give metres.
+- **Verification (2026-10-06):**
+  - **Unit tests:** no-data vs zero depth, permanent water, flagged cells, unmodelled, partial tile edge,
+    provider failure, cache reuse.
+  - **Live results:** Velachery was flooded from 1-in-20, 100% at 1-in-100. VIT, Kadapa and Patna were dry on
+    the parcel.
+  - **Patna check:** the tile read was checked independently. 65,564 of 86,400 cells around Patna are flooded
+    at 1-in-100, while the parcel cell itself is dry. Hence the added within-500-m share (35%).
+- **Remaining limitations:**
+  - These are modelled scenarios, river-only, ~90 m, basins over ~500 km².
+  - No rainfall/pluvial or coastal dataset is integrated.
+  - No overall score until a combining method is validated (by design). The earlier "start at 100" rule stays
+    disabled.
+- **Status:** fixed and verified (evidence only).
+
+## J-32 NRSC historical flood footprints not machine-readable
+
+- **Date / problem:** 2026-10-06. We investigated the NRSC/ISRO Flood Affected Area Atlas of India (1998-2022)
+  as an observed-inundation source.
+- **Findings:**
+  - **Host:** `ndrf.nrsc.gov.in` does not resolve (local DNS and the web fetcher both fail). The technical
+    document is reachable at `https://ndem.nrsc.gov.in/documents/downloads/allindia_flood_techdoc.pdf`
+    (6 pages). The atlas PDF (179 pages) is reachable too.
+  - **Data access:** the document states "Digital spatial maps shall be hosted on National Database for
+    Emergency Management (NDEM) geoportal". NDEM is an interactive viewer. The old `hydrologicaldisasters`
+    page returns 404, and no download or licence for the spatial layers was found. Extracting vectors from
+    its map services would be scraping a viewing service, which we do not do.
+  - **Atlas content:** the atlas is cumulative 1998-2022 inundation from IRS and foreign optical/SAR imagery.
+    Its disclaimer says flash floods may be missed and that rainwater accumulation may be included.
+- **Decision:** not integrated. The report lists "Historical inundation (observed): not integrated", with the
+  reference. Atlas text is not presented as a parcel-level assessment.
+- **Status:** unresolved (needs a permitted machine-readable release, or a data request to NRSC).
+
+## J-33 Launcher bound `stop` to `$Region` and ran `start`
+
+- **Date / problem:** 2026-10-06. After `fetch-data [region]` was added, `terrascope.cmd stop` and
+  `terrascope.cmd fetch-data` both ran `start`.
+- **Root cause (confirmed):** giving `$Region` a `[Parameter(Position = 1)]` attribute made the script an
+  advanced function. PowerShell then stops binding parameters without an explicit position, so `stop` bound
+  to `$Region` and `$Command` kept its default, `start`.
+- **Changes:** `$Command` is now `[Parameter(Position = 0)]`, with a comment explaining why.
+- **Verification:** `status`, `stop` and `fetch-data` each did their own job afterwards (2026-10-06). The
+  services had been healthy, so the faulty runs only reused them. No process was harmed.
+- **Status:** fixed and verified.
+
+## J-34 `partial` factor status rejected by the shared schema
+
+- **Date / problem:** 2026-10-06. Every evaluation in the live API run returned HTTP 502:
+  `score_breakdown.factors.2.status: 'partial' is not one of [...]`.
+- **Root cause:** the new flood status was added to the scoring code but not to
+  `docs/schema/parcel_schema.json`. The unit tests call the scoring function directly and skip schema
+  validation, so they passed.
+- **Changes:** `partial` was added to the enum. A test asserts that every produced factor status is allowed
+  by the schema.
+- **Verification:** all five Indian parcels evaluated with HTTP 200 afterwards.
+- **Status:** fixed and verified.
+
+## J-35 Integration tests wrote fixtures into the user's saved reports
+
+- **Date / problem:** 2026-10-06. `tests/integration` posted to the live backend on :8000, so every run added
+  test reports to `.local-ui-check/backend.sqlite3`. The reports from earlier runs remain there, because the
+  user's database is never edited.
+- **Changes:** the client fixture starts its own backend-api on a free port, with a temporary
+  `BACKEND_STORE_PATH`, wired to the live data-pipeline and ml-models. On Windows it kills the whole process
+  tree on teardown: the venv `python.exe` is a launcher whose child kept the temporary database open.
+- **Verification:** a full run on 2026-10-06 gave 17 passed and 3 skipped. The user's snapshot count was 90 before and 90 after, and no test backend process was left running.
+- **Status:** fixed and verified.

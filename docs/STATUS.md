@@ -5,8 +5,10 @@ Last updated: 2026-10-06 · branch `sai/terrascope-progress` (pushed to origin).
 ## Run it
 
 ```bat
-terrascope.cmd setup     :: first run only: .venv + requirements + npm ci
-terrascope.cmd start     :: backend :8000, data-pipeline :8001, ml-models :8002, UI :5173
+terrascope.cmd setup                  :: first run only: .venv + requirements + npm ci
+terrascope.cmd fetch-data             :: first run only: India boundary (~46 MB)
+terrascope.cmd fetch-data tamil-nadu  :: optional regional cache (any state/UT; --list)
+terrascope.cmd start                  :: backend :8000, data-pipeline :8001, ml-models :8002, UI :5173
 terrascope.cmd stop
 ```
 
@@ -14,7 +16,76 @@ The old `scripts/run_local.sh` force-killed whatever held those ports and seeded
 
 Open http://localhost:5173. Docker is not required for this path. The PostGIS snapshot archive is skipped, and the backend still stores every snapshot in `.local-ui-check/backend.sqlite3`.
 
-## Tamil Nadu milestone (2026-10-06)
+## India-wide coverage and river flood hazard (2026-10-06)
+
+**Scope correction.** TerraScope covers all of India. The Tamil Nadu work from the previous milestone is now the first regional cache, `tamil-nadu`, which also covers Puducherry. It is no longer a restriction.
+
+**Coverage.**
+- **Boundary:** geoBoundaries gbOpen IND ADM1 (DataMeet India / Election Commission of India, CC BY 2.5 IN, 36 states and UTs). The source data was updated 2023-04-05 and the build is dated 2023-12-12. It is not a Survey of India boundary; coastlines and borders are generalised.
+- **Acceptance:** a parcel is accepted when at most 1% of its area falls outside the India outline. Otherwise it gets `outside_india` before any collector runs, and nothing is saved.
+- **State attribution:** a parcel crossing a state border lists every state, with its share.
+- **Search:** India-wide, union territories included.
+- **Missing data:** a missing regional cache is reported per layer, with the install command (for example `terrascope.cmd fetch-data andhra-pradesh`), and never blocks the other collectors.
+
+**Regional data.** `fetch-data <slug>` works for all 36 states and UTs. It picks the Geofabrik India zone by its `.poly` coverage, checks disk space, reuses any extract and tiles already on disk, and builds `data-cache/regions/<slug>/osm.sqlite`. Nothing India-wide is downloaded automatically. The old `tn-data/` was moved, not deleted, into `data-cache/`; the previous store is kept under `regions/tamil-nadu/previous-build-2026-10-06/`. The rebuilt `tamil-nadu` cache took 9 minutes from the PBF already on disk and needed 2 new DEM tiles (28 MB, for Mahe and Yanam). Known limit: Geofabrik's northern zone covers 41% of Ladakh and 79% of Jammu & Kashmir as drawn in the boundary file.
+
+**Flood evidence (no score).**
+- **JRC river flood hazard maps v2.1.2** (2026-01-12, CC BY 4.0, ~90 m, return periods 1-in-10 to 1-in-500 years). Read remotely by HTTP range requests, with no account; results are cached per parcel. Cell semantics were checked against the tiles:
+  - -9999 means "no modelled inundation", and also covers open sea, so it is never read as "safe".
+  - Permanent-water cells are excluded from exposure.
+  - Spurious-depth cells are flagged, and their depths withheld.
+  - Areas no tile covers are "not modelled".
+  - A failed read is "unavailable" and is not cached.
+  - Each scenario also reports the share of land within 500 m modelled as flooded.
+- **NRSC Flood Affected Area Atlas (1998-2022): not integrated.** The technical document says the spatial maps are "hosted on NDEM geoportal". NDEM offers viewing, and no machine-readable download was found (the old `hydrologicaldisasters` page returns 404). The original `ndrf.nrsc.gov.in` host does not resolve; the document is reachable at `ndem.nrsc.gov.in/documents/downloads/allindia_flood_techdoc.pdf`.
+- **Kept and labelled:** surface water seen 1984-2021 (not flood history), terrain relative to mapped water (not HAND), and rainfall/waterlogging and coastal flooding, both marked not assessed.
+- **Report:** shows "Partial flood assessment available" with a scenario table and the six mechanisms. The 0-100 terrain figure is no longer shown; the elevation row gives metres. Flood Safety stays unscored (status `partial`), and the "start at 100" rule is not enabled.
+
+**Test parcels** (about 100 m squares, via the API, 2026-10-06; scores use the investor lens).
+
+| Parcel (SW corner, size) | Why chosen | Analysis | Accessibility | River flooding (parcel / land within 500 m flooded, at 1-in-100) | Other flood evidence |
+|---|---|---|---|---|---|
+| VIT Vellore (79.1550 E, 12.9688 N; 0.0009°) | named in the request; VIT campus | 19.3 s | 86.5: road 108 m, hospital 75 m, school 568 m | none in any scenario / 0% (2.5% at 1-in-200) | +12.3 m above VIT Lake (378 m) |
+| Chennai, Velachery (80.2120 E, 12.9856 N; 0.0008°) | beside Velachery Lake | 15.6 s | 92.2 | from 1-in-20 (19%); 100% at 1-in-100, max 2.49 m / 77% | lake 162 m, +3.6 m; GSW buffer up to 77% occurrence |
+| Kadapa (78.8441 E, 14.4507 N; 0.0009°) | the team's existing Kadapa pilot point | 18.2 s | unavailable: no regional cache (install command shown) | none / 0% | elevation 136 m (DEM read remotely) |
+| Patna (85.1440 E, 25.6210 N; 0.0009°) | first land square south of the Ganga by GSW and the permanent-water mask | 18.4 s | unavailable: no regional cache | parcel cell dry in all scenarios / 35% of land within 500 m flooded from 1-in-10 | GSW buffer 39% ever wet |
+| Puducherry, White Town (79.8330 E, 11.9340 N; 0.0009°) | union territory, now accepted | 12.2 s | 96.3 | 53% only at 1-in-500 / 17% at 1-in-100 | +1.9 m above a drain 93 m away |
+| Colombo (79.8612 E, 6.9271 N) | outside India | 2.3 s | not collected | not collected | `outside_india` |
+
+Every Indian parcel gives verdict INSUFFICIENT_EVIDENCE: Legal Safety has no land-records source, Growth is not integrated, and Flood is partial and unscored.
+
+In the browser (headless Edge):
+- searched "Puducherry railway station", drew a box about 450 × 370 m and analysed it in 18.5 s
+- the flood panel showed 7 scenario rows (from 1-in-20: 59% of the parcel; 1-in-100: 86%, max 3.96 m)
+- reopened the saved report with the same panel
+- a box drawn across the Nepal border from Raxaul gave "Only 72.9% of the parcel lies inside India", with no report
+- no page errors or failed requests
+
+**Tests.**
+- data-pipeline: 50 passed. New: India coverage and state borders, region selection, no-regional-data analysis, river-flood no-data / zero depth / permanent water / flags / unmodelled / partial / provider failure / cache reuse.
+- ml-models: 37 passed. backend-api: 4 passed, on an isolated store.
+- valuation: unchanged (15 passed, 5 failed for want of a trained model).
+- frontend build: passes.
+- integration: 17 passed, 3 skipped (price arithmetic, no model) in 6 min. An earlier run had one transient 120 s read timeout on the first document upload (hypothesis: the first download of the embedding model) and passed on rerun.
+
+The integration suite now starts its own backend with a temporary database. The user's saved-report count was unchanged by the run (90 before, 90 after).
+
+**Problems found and fixed during this milestone.**
+- The new `partial` factor status was missing from the shared schema. The live evaluate call returned HTTP 502 until the enum was extended; a regression test was added.
+- Giving `$Region` a `[Parameter()]` attribute made PowerShell stop binding `$Command` by position, so `stop` and `fetch-data` silently ran `start`. Both positions are now explicit.
+- The integration-test teardown killed only the venv launcher on Windows, so the uvicorn child could keep the temporary database open. It now kills the process tree.
+
+**Still limited.**
+- Valuation has no price model.
+- `location.district` is null.
+- OSM school coverage is sparse.
+- No rainfall/pluvial or coastal-surge dataset is integrated.
+- No historical inundation layer is integrated (NRSC, see above).
+- GSW buffers on the coast include the sea.
+- The DEM is a surface model, so buildings and trees raise elevations.
+- The integration suite takes about 25 minutes, because each test runs real analyses.
+
+## Tamil Nadu milestone (2026-10-06, superseded by the India-wide section above)
 
 **Coverage.** Analysis runs only for parcels entirely inside Tamil Nadu. The boundary is OSM relation 96905 minus relation 107001 (Puducherry), from the same Geofabrik extract (ODbL, data to 2026-10-04). Its area is 130,071 km², against the official 130,058 km². Puducherry town and Karaikal fall outside. Parcels outside or crossing the edge get `{"status": "outside_coverage"}` before any collector runs. Nothing is saved, and the UI shows an "Outside coverage" card instead of a report. Search suggestions are bounded to Tamil Nadu and filtered on `state == "Tamil Nadu"`, so "Pondicherry" and "Bengaluru" return nothing.
 
