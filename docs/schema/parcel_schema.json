@@ -380,6 +380,64 @@
             "boolean",
             "null"
           ]
+        },
+        "nearest_hospital_distance_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "nearest_hospital_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_bus_distance_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "nearest_bus_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_rail_station_distance_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "nearest_rail_station_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_bus_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_rail_station_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "search_radius_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
         }
       }
     },
@@ -864,6 +922,24 @@
               "string",
               "null"
             ]
+          },
+          "licence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resolution": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observation_period": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       }
@@ -975,6 +1051,94 @@
           "format": "date"
         },
         "analysis_snapshot_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "flood_indicators": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Flood-relevant EVIDENCE only (surface water seen 1984-2021, terrain relative to mapped water, water distances). Never a score.",
+      "additionalProperties": false,
+      "properties": {
+        "scoring_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "not_scored",
+            null
+          ]
+        },
+        "surface_water": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "terrain": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "water_distances": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "unavailable": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    },
+    "coverage": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "inside",
+            "outside",
+            null
+          ]
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "boundary_source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "boundary_licence": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "boundary_as_of": {
           "type": [
             "string",
             "null"

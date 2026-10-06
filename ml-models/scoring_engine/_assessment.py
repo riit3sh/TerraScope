@@ -123,16 +123,26 @@ def assess_flood(record: dict[str, Any]) -> dict[str, Any]:
         if isinstance(indicator, (int, float))
         else ""
     )
+    # Indicators (surface water seen, height above mapped water, water distances) may be
+    # present as evidence, but no approved rule turns them into a score yet.
+    has_indicators = any(
+        _section(record, "flood_indicators").get(key) for key in ("surface_water", "terrain", "water_distances")
+    )
+    indicator_note = (
+        " Flood indicators are listed as evidence but are not scored: no indicator-to-score rule has been approved."
+        if has_indicators else ""
+    )
     return {
         "factor": "flood_safety",
         "score": None,
         "status": "unavailable",
-        "basis": "Flood assessment unavailable: no flood hazard evidence is integrated for this parcel." + note,
+        "basis": "Flood assessment unavailable: no flood hazard evidence is integrated for this parcel." + note + indicator_note,
         "limitations": (
             "Coastal, fluvial (river) and pluvial (rainfall/drainage) flooding are distinct and none is "
-            "assessed. No flood hazard or inundation map, historical flood extent, watercourse distance, "
-            "drainage network or rainfall record is used. Being inland does not establish safety, and "
-            "district flood history would not establish risk for this individual plot."
+            "assessed. No flood hazard or inundation map, historical flood extent, drainage network or "
+            "rainfall record is used. Surface water seen by Landsat is not flood history, and height above "
+            "the nearest mapped water is a terrain indicator, not a flood probability. Being inland does not "
+            "establish safety, and district flood history would not establish risk for this individual plot."
         ),
         "checklist": list(FLOOD_EVIDENCE_CHECKLIST),
     }

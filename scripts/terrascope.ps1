@@ -7,6 +7,7 @@
   terrascope.cmd start      start data-pipeline :8001, ml-models :8002, backend-api :8000, UI :5173
   terrascope.cmd stop       stop the services this checkout started
   terrascope.cmd status     show what is on each port and whether it is healthy
+  terrascope.cmd fetch-data download and build the local Tamil Nadu data in tn-data\ (~2.5 GB, needed before analysing)
   terrascope.cmd seed-demo  add one FIXTURE report to the saved-reports list (explicit, never automatic)
 
   A port that already serves the matching healthy TerraScope service is reused.
@@ -18,7 +19,7 @@
   and the backend still stores every snapshot.
 #>
 param(
-    [ValidateSet('start', 'stop', 'status', 'setup', 'seed-demo')]
+    [ValidateSet('start', 'stop', 'status', 'setup', 'fetch-data', 'seed-demo')]
     [string]$Command = 'start',
     [switch]$NoBrowser
 )
@@ -96,6 +97,7 @@ function Initialize-Env {
     Set-DefaultEnv 'RERA_SEED_PATH' (Join-Path $Root 'data-pipeline\data\raw\maharera_seed.csv')
     Set-DefaultEnv 'VALUATION_MODEL_PATH' (Join-Path $Root 'valuation\artifacts\land_price_model.joblib')
     Set-DefaultEnv 'NOMINATIM_USER_AGENT' 'terrascope-local-dev/0.1.0'
+    Set-DefaultEnv 'TERRASCOPE_TN_DATA_DIR' (Join-Path $Root 'tn-data')
     # Compose service names do not resolve outside Docker.
     $env:DATA_PIPELINE_URL = 'http://127.0.0.1:8001'
     $env:ML_MODELS_URL = 'http://127.0.0.1:8002'
@@ -242,6 +244,14 @@ function Invoke-Status {
     }
 }
 
+function Invoke-FetchData {
+    if (-not (Test-Path -LiteralPath $Py)) { throw "Missing .venv. Run: terrascope.cmd setup" }
+    Initialize-Env
+    & $Py (Join-Path $Root 'data-pipeline\tn_data.py') --data-dir $env:TERRASCOPE_TN_DATA_DIR
+    if ($LASTEXITCODE) { throw "fetch-data failed (see the messages above). Re-running resumes from the files already downloaded." }
+    Write-Host "Local data ready. Restart the services to load it: terrascope.cmd stop, then terrascope.cmd start"
+}
+
 function Invoke-SeedDemo {
     Initialize-Env
     New-Item -ItemType Directory -Force -Path $RunDir | Out-Null
@@ -257,6 +267,7 @@ try {
         'start' { Invoke-Start }
         'stop' { Invoke-Stop }
         'status' { Invoke-Status }
+        'fetch-data' { Invoke-FetchData }
         'seed-demo' { Invoke-SeedDemo }
     }
 } catch {

@@ -179,3 +179,8 @@
 .score-line.unassessed strong{color:#7e8c87;font-size:12px}
 .score-status{display:block;margin-top:6px;color:#75847e;font:9px 'DM Mono';letter-spacing:.1em;text-transform:uppercase}
 @media(max-width:560px){.evidence-status{padding:32px 0}.factor-head em{margin-left:0}}
+.coverage-card{position:fixed;z-index:2500;left:50%;top:50%;transform:translate(-50%,-50%);width:min(470px,calc(100% - 32px));padding:32px;background:#131d1e;border:1px solid #884c43;box-shadow:0 20px 60px #0009}
+.coverage-card h2{font-size:26px;margin:12px 0 10px}
+.coverage-card p{color:#b9c4c0;font-size:13px;line-height:1.7}
+.coverage-card small{display:block;color:#7f8c88;font-size:11px;margin:12px 0 18px;line-height:1.5}
+.evidence-details{display:block;color:#7f8c88;margin-top:2px}

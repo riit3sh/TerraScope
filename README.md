@@ -41,11 +41,26 @@ Needs Python 3.11 (`py -3.11`) and Node.js. From the repository root:
 ```bat
 copy .env.example .env      :: then blank DATABASE_URL and any placeholder keys
 terrascope.cmd setup        :: .venv + pip requirements + npm ci (first run only)
+terrascope.cmd fetch-data   :: local Tamil Nadu data, ~2.5 GB into tn-data\ (first run only)
 terrascope.cmd start        :: starts all four services, waits for health, opens http://localhost:5173
 terrascope.cmd status
 terrascope.cmd stop
 terrascope.cmd seed-demo    :: optional: one FIXTURE report for UI checks
 ```
+
+TerraScope covers **Tamil Nadu only**. Parcels outside it, or in the Puducherry/Karaikal
+enclaves, get an "outside coverage" answer and no evidence is collected. `fetch-data`
+builds what analyses read from disk:
+
+| Data | Source and licence | Used for |
+|---|---|---|
+| `tn_osm.sqlite`, `tn_boundary.geojson` | OpenStreetMap via the Geofabrik southern-zone extract, ODbL 1.0 | coverage check; roads, schools, hospitals, bus, rail; rivers, canals, tanks |
+| `gsw/` | JRC Global Surface Water v1.4 (1984-2021), Copernicus, "Source: EC JRC/Google" | surface water seen inside the parcel and within 500 m |
+| `dem/` | Copernicus DEM GLO-30 via Planetary Computer, Copernicus DEM licence | parcel elevation; height above the nearest mapped water |
+
+`manifest.json` in `tn-data\` records each dataset's date and size. Overpass is used only
+when `OSM_OVERPASS_FALLBACK=true` and the local store is missing. Flood indicators are
+evidence only: Flood Safety stays unscored.
 
 `start` reuses a port only when it already serves the healthy TerraScope service.
 It refuses ports held by anything else, and `stop` only stops processes started from

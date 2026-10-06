@@ -38,10 +38,14 @@ services:
       TERRASCOPE_SATELLITE_CACHE_PATH: ${TERRASCOPE_SATELLITE_CACHE_PATH:-/app/.cache/terrascope_satellite.json}
       NOMINATIM_USER_AGENT: ${NOMINATIM_USER_AGENT:-terrascope-local-demo/0.1.0}
       RERA_SEED_PATH: ${RERA_SEED_PATH:-/app/data/raw/maharera_seed.csv}
+      # Local Tamil Nadu data built on the host by `terrascope.cmd fetch-data`.
+      TERRASCOPE_TN_DATA_DIR: /app/tn-data
+      OSM_OVERPASS_FALLBACK: ${OSM_OVERPASS_FALLBACK:-false}
     ports:
       - "8001:8001"
     volumes:
       - satellite-cache:/app/.cache
+      - ./tn-data:/app/tn-data:ro
     depends_on:
       postgres:
         condition: service_healthy

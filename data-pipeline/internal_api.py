@@ -9,7 +9,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from db.repository import SnapshotAlreadyExistsError, get_analysis_snapshot, init_db, save_analysis_snapshot
-from etl_pipeline import EvidenceSnapshotValidationError, build_evidence_snapshot
+from connectors.local_osm import LocalDataMissing
+from etl_pipeline import EvidenceSnapshotValidationError, OutsideCoverage, build_evidence_snapshot
 
 
 LOGGER = logging.getLogger(__name__)
@@ -44,6 +45,11 @@ def build_analysis(request: AnalysisBuildRequest) -> dict[str, Any]:
             request.address,
         )
         return save_analysis_snapshot(snapshot)
+    except OutsideCoverage as outside:
+        # Not an error: a definite answer, given before any collector ran.
+        return {"status": "outside_coverage", "coverage": outside.result}
+    except LocalDataMissing as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
     except (ValueError, EvidenceSnapshotValidationError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except SnapshotAlreadyExistsError as error:

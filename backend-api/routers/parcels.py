@@ -104,9 +104,27 @@ def _connection_error(action: str, error: httpx.HTTPError) -> HTTPException:
     )
 
 
+def _downstream_error(response: httpx.Response, service: str) -> HTTPException:
+    """Relay a downstream failure with its own status and message."""
+    try:
+        detail = response.json().get("detail")
+    except ValueError:
+        detail = None
+    detail = detail or response.text or f"HTTP {response.status_code}"
+    # Client errors (bad polygon, missing data) keep their status; server failures become 502.
+    status = response.status_code if 400 <= response.status_code < 500 or response.status_code == 503 else 502
+    return HTTPException(status_code=status, detail=f"{service}: {detail}")
+
+
+# TerraScope covers Tamil Nadu only. The viewbox bounds the search; the state filter
+# drops Puducherry/Karaikal and neighbouring-state results that fall inside the box.
+TAMIL_NADU_VIEWBOX = "76.2,13.6,80.4,8.0"
+COVERED_STATE = "Tamil Nadu"
+
+
 @router.get("/api/v1/search/geocode")
 async def geocode_search(q: str) -> list[dict[str, Any]]:
-    """India-focused Nominatim suggestions with caching and a one-request/second guard."""
+    """Tamil Nadu-only Nominatim suggestions with caching and a one-request/second guard."""
     global _last_geocode_request_at
     query = q.strip()
     if len(query) < 2:
@@ -125,7 +143,10 @@ async def geocode_search(q: str) -> list[dict[str, Any]]:
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     "https://nominatim.openstreetmap.org/search",
-                    params={"q": query, "format": "jsonv2", "addressdetails": 1, "countrycodes": "in", "limit": 5},
+                    params={
+                        "q": query, "format": "jsonv2", "addressdetails": 1, "countrycodes": "in",
+                        "viewbox": TAMIL_NADU_VIEWBOX, "bounded": 1, "limit": 10,
+                    },
                     headers={"Accept": "application/json", "User-Agent": user_agent},
                     timeout=httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=3.0),
                 )
@@ -136,7 +157,11 @@ async def geocode_search(q: str) -> list[dict[str, Any]]:
             raise HTTPException(status_code=504, detail="Address search timed out. Try a more specific place.") from error
         except httpx.HTTPError as error:
             raise HTTPException(status_code=502, detail=f"Address search failed: {error}") from error
-    suggestions = [{"lat": float(item["lat"]), "lon": float(item["lon"]), "display_name": item["display_name"]} for item in results]
+    suggestions = [
+        {"lat": float(item["lat"]), "lon": float(item["lon"]), "display_name": item["display_name"]}
+        for item in results
+        if (item.get("address") or {}).get("state") == COVERED_STATE
+    ][:5]
     _geocode_cache[cache_key] = suggestions
     return suggestions
 
@@ -164,6 +189,9 @@ async def analyze_parcel(request: AnalyzeRequest) -> dict[str, Any]:
             if not evidence_response.is_success:
                 raise _downstream_error(evidence_response, "data-pipeline")
             evidence_snapshot = evidence_response.json()
+            if evidence_snapshot.get("status") == "outside_coverage":
+                # Nothing was collected, so there is nothing to enrich, score or save.
+                return {"status": "outside_coverage", "coverage": evidence_snapshot.get("coverage")}
             enrich_response = await client.post(
                 f"{ml_models_url()}/internal/ml/enrich",
                 json={"snapshot": evidence_snapshot},
