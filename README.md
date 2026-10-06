@@ -34,6 +34,27 @@ terrascope/
 
 ## Local Development
 
+### Native Windows (no Docker)
+
+Needs Python 3.11 (`py -3.11`) and Node.js. From the repository root:
+
+```bat
+copy .env.example .env      :: then blank DATABASE_URL and any placeholder keys
+terrascope.cmd setup        :: .venv + pip requirements + npm ci (first run only)
+terrascope.cmd start        :: starts all four services, waits for health, opens http://localhost:5173
+terrascope.cmd status
+terrascope.cmd stop
+terrascope.cmd seed-demo    :: optional: one FIXTURE report for UI checks
+```
+
+`start` reuses a port only when it already serves the healthy TerraScope service.
+It refuses ports held by anything else, and `stop` only stops processes started from
+this folder. Saved reports persist in `.local-ui-check\backend.sqlite3`, and logs go to
+`.local-ui-check\logs`. PostGIS is not used natively: the data-pipeline's spatial archive
+is skipped, and the backend still stores every snapshot.
+
+### Docker Compose
+
 1. Copy `.env.example` to `.env` and adjust values for your local environment if needed.
 2. Start the local stack:
 

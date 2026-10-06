@@ -1,15 +1,55 @@
 # TerraScope local development status
 
-Last updated: 2026-09-28 · branch `feature/local-completion` (from `dev`) · no remote configured, nothing pushed.
+Last updated: 2026-10-06 · branch `sai/terrascope-progress` (pushed to origin).
 
 ## Run it
 
-```bash
-bash scripts/run_local.sh      # backend :8000, data-pipeline :8001, ml-models :8002, UI :5173
-bash scripts/stop_local.sh
+```bat
+terrascope.cmd setup     :: first run only: .venv + requirements + npm ci
+terrascope.cmd start     :: backend :8000, data-pipeline :8001, ml-models :8002, UI :5173
+terrascope.cmd stop
 ```
 
+The old `scripts/run_local.sh` force-killed whatever held those ports and seeded a demo report on every start. It has been replaced (see README → Native Windows).
+
 Open http://localhost:5173. Docker is not required for this path. The PostGIS snapshot archive is skipped, and the backend still stores every snapshot in `.local-ui-check/backend.sqlite3`.
+
+## Native Windows setup check (2026-10-06)
+
+Setup: `.venv` (Python 3.11.5) with all three services' requirements, including CPU PyTorch and chromadb. Frontend dependencies come from `npm ci` against the lockfile. `.env` was recreated from the template with no credentials: `DATABASE_URL`, `GROQ_API_KEY` and the NASA fields are blank, and `SATELLITE_DEMO_FALLBACK=false`.
+
+Verified in a real browser (headless Edge via Playwright): search "Vellore" → pick suggestion → workspace → draw boundary → Analyze This Parcel (26 s) → open report → back → reopen a saved report. No backend request failed. The report correctly showed:
+- Sentinel-2 satellite evidence (Planetary Computer, no credentials needed)
+- Accessibility 76.94, marked "indicative only"
+- Legal, flood and growth marked "not assessed"
+- Verdict `INSUFFICIENT_EVIDENCE`
+- Valuation "unavailable"
+
+All three saved reports reopen. Health: `:8000/api/v1/health`, `:8001/health`, `:8002/health` return their service names, `:5173` returns 200, and CORS allows `http://localhost:5173`.
+
+Launcher checks:
+- Restart reuses healthy services.
+- `stop` leaves no processes behind.
+- An unrelated process on 5173 or 8002 is refused with its pid and left running, and nothing is started.
+- Services survive closing the console that launched them.
+
+Tests: backend-api 2 passed, data-pipeline 6 passed, ml-models 6 passed. Valuation: 15 passed and 5 failed, all because no model is loaded. `valuation/artifacts/*.joblib` is git-ignored and must be regenerated with `python -m valuation.train`.
+
+### Unresolved: OpenStreetMap infrastructure often misses the 35 s deadline
+
+A focused check through the connector's own `_request_overpass` (Vellore, 1.5 km roads and 3 km schools, `out geom`) failed after 35.4 s:
+- `overpass-api.de` returned **HTTP 504** to the GET request.
+- `overpass.private.coffee` and `overpass.kumi.systems` each hit the 25 s read timeout.
+
+With a 5 s hedge delay the third mirror starts at about 10 s, so it can only finish around 35 s. The retry budget therefore does not fit inside `EVIDENCE_COLLECTION_DEADLINE_SECONDS=35`.
+
+It is not established that the 504s are purely upstream. A tiny query, and the same query sent as POST, have each succeeded at other moments, and one browser analysis did return road and school evidence. Next steps:
+1. Compare GET with POST for the same query, rate-limited.
+2. Size the hedge and timeouts so that every mirror gets a real attempt within the deadline.
+
+Keep `out geom`. Nearest-road distance must be measured to the road geometry, not to its midpoint.
+
+Also: `GROQ_API_KEY` is not set, so explanations and citations use the deterministic summary. There is no RERA seed CSV and no price model.
 
 ## Completed
 
