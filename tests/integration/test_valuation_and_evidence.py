@@ -193,7 +193,11 @@ def test_changing_suitability_weights_does_not_move_the_market_price(client: htt
 
     # The weights really did reach the suitability side, so this is a real comparison.
     assert conservative["evaluation"]["weights"] != aggressive["evaluation"]["weights"]
-    assert conservative["score_breakdown"]["composite_score"] != aggressive["score_breakdown"]["composite_score"]
+    # The composite is withheld when evidence is thin (067d541); the per-factor weighted
+    # contributions are always computed, so compare those, and the composites when both exist.
+    assert conservative["score_breakdown"]["weighted_contributions"] != aggressive["score_breakdown"]["weighted_contributions"]
+    if conservative["score_breakdown"]["composite_score"] is not None and aggressive["score_breakdown"]["composite_score"] is not None:
+        assert conservative["score_breakdown"]["composite_score"] != aggressive["score_breakdown"]["composite_score"]
 
     # Re-scoring must not have re-collected or mutated the evidence.
     stored = client.get(f"/api/v1/analysis/{snapshot_id}", timeout=10.0)

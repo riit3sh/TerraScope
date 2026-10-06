@@ -20,20 +20,26 @@ SCHEMA_PATH = ROOT / "docs" / "schema" / "parcel_schema.json"
 BACKEND_URL = "http://localhost:8000"
 SAMPLE_RAG_PARCEL_IDS = {"parcel-pune-001", "parcel-pune-002"}
 
+# TerraScope covers Tamil Nadu only: Vellore city, Chennai (Velachery) and Madurai.
 POLYGONS = [
     {
         "type": "Polygon",
-        "coordinates": [[[73.7950, 18.5900], [73.7980, 18.5900], [73.7980, 18.5925], [73.7950, 18.5925], [73.7950, 18.5900]]],
+        "coordinates": [[[79.1320, 12.9200], [79.1329, 12.9200], [79.1329, 12.9209], [79.1320, 12.9209], [79.1320, 12.9200]]],
     },
     {
         "type": "Polygon",
-        "coordinates": [[[73.7750, 18.4750], [73.7790, 18.4750], [73.7790, 18.4780], [73.7750, 18.4780], [73.7750, 18.4750]]],
+        "coordinates": [[[80.2120, 12.9856], [80.2128, 12.9856], [80.2128, 12.9863], [80.2120, 12.9863], [80.2120, 12.9856]]],
     },
     {
         "type": "Polygon",
-        "coordinates": [[[73.6900, 18.5250], [73.6940, 18.5250], [73.6940, 18.5280], [73.6900, 18.5280], [73.6900, 18.5250]]],
+        "coordinates": [[[78.1190, 9.9240], [78.1200, 9.9240], [78.1200, 9.9250], [78.1190, 9.9250], [78.1190, 9.9240]]],
     },
 ]
+# Pune, Maharashtra: outside coverage, so nothing may be collected or saved.
+OUTSIDE_POLYGON = {
+    "type": "Polygon",
+    "coordinates": [[[73.7950, 18.5900], [73.7980, 18.5900], [73.7980, 18.5925], [73.7950, 18.5925], [73.7950, 18.5900]]],
+}
 
 EVALUATIONS = [
     {"profile": "homebuyer", "property_type": "residential", "investment_horizon": "1_to_3y", "weights": {"growth_pct": 20, "legal_safety_pct": 35, "accessibility_pct": 25, "flood_safety_pct": 20}, "preferences": {"road_importance": "medium", "school_importance": "high", "max_road_distance_m": 3000, "max_school_distance_m": 5000, "rera_requirement": "important"}},
@@ -72,7 +78,7 @@ def assert_polygon(geometry: dict[str, Any]) -> None:
 
 
 def analyse(client: httpx.Client, polygon: dict[str, Any]) -> dict[str, Any]:
-    response = client.post("/api/v1/parcels/analyze", json={"polygon": polygon, "address": "Pune, Maharashtra", "analysis_date_from": "2023-01-01", "analysis_date_to": "2025-01-01"}, timeout=120.0)
+    response = client.post("/api/v1/parcels/analyze", json={"polygon": polygon, "address": "Tamil Nadu", "analysis_date_from": "2023-01-01", "analysis_date_to": "2025-01-01"}, timeout=120.0)
     assert response.status_code == 200, response.text
     body = response.json()
     snapshot = body["evidence_snapshot"]
@@ -89,11 +95,12 @@ def evaluate(client: httpx.Client, snapshot: dict[str, Any], settings: dict[str,
     response = client.post(f"/api/v1/parcels/{snapshot['parcel_id']}/evaluate", json={"analysis_snapshot_id": snapshot["metadata"]["analysis_snapshot_id"], **settings}, timeout=20.0)
     assert response.status_code == 200, response.text
     result = response.json()
-    assert result["verdict"]["recommendation"] in {"BUY", "WAIT", "AVOID"}
+    # INSUFFICIENT_EVIDENCE is a valid answer since verdicts are withheld when evidence is thin (067d541).
+    assert result["verdict"]["recommendation"] in {"BUY", "WAIT", "AVOID", "INSUFFICIENT_EVIDENCE"}
     return result
 
 
-def test_full_pipeline_for_three_real_pune_polygons(client: httpx.Client) -> None:
+def test_full_pipeline_for_three_tamil_nadu_polygons(client: httpx.Client) -> None:
     snapshots = [analyse(client, polygon) for polygon in POLYGONS]
     for snapshot, settings in zip(snapshots, EVALUATIONS):
         result = evaluate(client, snapshot, settings)
@@ -116,7 +123,7 @@ def test_re_evaluation_reuses_immutable_evidence(client: httpx.Client) -> None:
 
 def test_changed_polygon_invalidates_previous_snapshot(client: httpx.Client) -> None:
     original = analyse(client, POLYGONS[1])
-    changed_polygon = {"type": "Polygon", "coordinates": [[[73.7750, 18.4750], [73.7800, 18.4750], [73.7800, 18.4790], [73.7750, 18.4790], [73.7750, 18.4750]]]}
+    changed_polygon = {"type": "Polygon", "coordinates": [[[80.2120, 12.9856], [80.2131, 12.9856], [80.2131, 12.9863], [80.2120, 12.9863], [80.2120, 12.9856]]]}
     changed = analyse(client, changed_polygon)
     assert changed["metadata"]["analysis_snapshot_id"] != original["metadata"]["analysis_snapshot_id"]
     assert changed["geometry"] != original["geometry"]
@@ -138,3 +145,17 @@ def test_uploaded_text_becomes_retrievable_parcel_evidence(client: httpx.Client)
     ledger = [item for item in evaluated["evidence"] if item["source_type"] == "user_upload"]
     assert [item["source_reference"] for item in ledger] == [fixture.name]
     assert all(item["freshness"] == "user_upload" for item in ledger)
+
+
+def test_parcel_outside_tamil_nadu_is_refused_without_a_report(client: httpx.Client) -> None:
+    before = len(client.get("/api/v1/parcels").json()["reports"])
+    response = client.post("/api/v1/parcels/analyze", json={
+        "polygon": OUTSIDE_POLYGON, "address": "Pune, Maharashtra",
+        "analysis_date_from": "2023-01-01", "analysis_date_to": "2025-01-01",
+    }, timeout=60.0)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "outside_coverage"
+    assert body["coverage"]["status"] == "outside"
+    assert "evidence_snapshot" not in body
+    assert len(client.get("/api/v1/parcels").json()["reports"]) == before
