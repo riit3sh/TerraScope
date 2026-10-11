@@ -14,7 +14,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from valuation.predict import ValuationUnavailable, estimate_value, model_status
+from valuation.predict import ValuationUnavailable, data_status, estimate_value
 
 
 LOGGER = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ router = APIRouter()
 
 # A refusal is a real answer, not a server fault, so these return 200 with an
 # explicit status rather than an error the UI has to guess at.
-_BAD_REQUEST_REASONS = {"invalid_input", "unsupported_land_use"}
+_BAD_REQUEST_REASONS = {"invalid_input"}
 
 
 class ValuationRequest(BaseModel):
@@ -30,14 +30,15 @@ class ValuationRequest(BaseModel):
     longitude: float = Field(ge=-180, le=180)
     area_sqft: float = Field(gt=0)
     land_use: str = "residential"
-    price_basis: str = "transaction"
+    # asking (listings), transaction (registered sales) or guideline (government rates)
+    price_basis: str = "asking"
     valuation_date: date | None = None
 
 
-@router.get("/api/v1/valuation/model")
-def get_valuation_model() -> dict[str, Any]:
-    """Report the served model, its measured accuracy and its data coverage."""
-    return model_status()
+@router.get("/api/v1/valuation/data")
+def get_valuation_data() -> dict[str, Any]:
+    """Which price observations are loaded, from which sources, and their validation status."""
+    return data_status()
 
 
 @router.post("/api/v1/valuation/estimate")
@@ -60,5 +61,5 @@ def post_valuation_estimate(request: ValuationRequest) -> dict[str, Any]:
         return {
             "status": "unavailable",
             "reason": "valuation_error",
-            "detail": f"The valuation model could not be evaluated: {error}",
+            "detail": f"The valuation could not be computed: {error}",
         }

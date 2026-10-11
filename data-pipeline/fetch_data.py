@@ -1,6 +1,6 @@
 """Install TerraScope's local data: the India coverage boundary and regional caches.
 
-    python fetch_data.py                      India boundary only (~46 MB), lists regions
+    python fetch_data.py                      India boundary (~46 MB) and place-search index (~20 MB download)
     python fetch_data.py tamil-nadu           build one region (any state/UT slug works)
     python fetch_data.py --list               show regions and what is installed
 
@@ -15,6 +15,7 @@ the rasters be read from disk instead of remotely.
 
 Layout, under data-cache/ (git-ignored):
   india/          india_states.geojson, india_boundary.wkb, manifest.json
+  places/         places.sqlite (GeoNames place/PIN-code search index), manifest.json
   regions/<slug>/ osm.sqlite, boundary.geojson, manifest.json
   rasters/        gsw/ and dem/ tiles, shared by every region
   downloads/      Geofabrik extracts and zone .poly files
@@ -170,6 +171,132 @@ def install_india(root: Path, session: requests.Session) -> dict:
     }
     (directory / MANIFEST_NAME).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     log(f"India boundary installed: {manifest['units']} states/UTs")
+    return manifest
+
+
+# --- Place-search index (autocomplete) -------------------------------------------------
+# Public Nominatim forbids autocomplete, so suggestions come from this local index:
+# the GeoNames India gazetteer plus Indian PIN-code post offices, CC BY 4.0 (credit GeoNames).
+# Schema contract with backend-api/routers/places.py.
+
+GEONAMES = "https://download.geonames.org/export"
+PLACES_DIR = "places"
+PLACES_DB = "places.sqlite"
+PLACES_FORMAT = 3
+# Feature codes kept, with a base rank (lower = more prominent). Streams, hills,
+# hotels and abandoned settlements are left out: they swamp the suggestions.
+PLACE_RANK = {
+    "ADM1": 1, "PPLC": 0, "PPLA": 1, "ADM2": 2, "PPLA2": 2, "PPLA3": 3, "PPLA4": 3, "ADM3": 4, "ADMD": 4,
+    "AIRP": 3, "UNIV": 3, "SCHC": 4, "RSTN": 4, "MTRO": 5, "BUSTN": 5, "HSP": 5, "STDM": 5, "MKT": 6,
+    "TMPL": 6, "FT": 6, "PAL": 6, "MUS": 6, "DAM": 6, "PRT": 5, "LCTY": 5, "AREA": 6, "PRK": 6, "INDS": 5,
+    "LK": 6, "LKS": 6, "RSV": 6, "RSVT": 6, "LGN": 6, "BAY": 6, "ISL": 5, "ISLS": 5,
+    "PPL": 5, "PPLX": 5, "PPLL": 6, "PPLS": 6, "PPLF": 7, "PPLR": 7,
+}
+PLACE_KIND = {
+    "ADM1": "state / UT", "ADM2": "district", "ADM3": "sub-district", "ADMD": "administrative area",
+    "PPLC": "capital", "PPLA": "state capital", "PPLA2": "district HQ", "PPLX": "locality",
+    "LCTY": "locality", "AIRP": "airport", "UNIV": "university", "SCHC": "college", "RSTN": "railway station",
+    "MTRO": "metro station", "BUSTN": "bus station", "HSP": "hospital", "LK": "lake", "RSV": "reservoir",
+    "RSVT": "water tank", "ISL": "island", "ISLS": "islands", "INDS": "industrial area",
+}
+
+
+def _zip_rows(path: Path, member: str):
+    import zipfile
+
+    with zipfile.ZipFile(path) as archive, archive.open(member) as handle:
+        for line in handle:
+            yield line.decode("utf-8").rstrip("\r\n").split("\t")
+
+
+def _code_names(path: Path) -> dict[str, str]:
+    rows = (line.split("\t") for line in path.read_text(encoding="utf-8").splitlines())
+    return {row[0]: row[1] for row in rows if row[0].startswith("IN.")}
+
+
+def install_places(root: Path, session: requests.Session) -> dict:
+    """Build data-cache/places/places.sqlite: an FTS5 prefix index of Indian place names."""
+    import sqlite3
+
+    directory = root / PLACES_DIR
+    manifest_path = directory / MANIFEST_NAME
+    if (directory / PLACES_DB).exists() and manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if manifest.get("format") == PLACES_FORMAT:
+            log(f"Place-search index already installed ({manifest['rows']:,} names)")
+            return manifest
+    check_disk(root, 400_000_000)
+    downloads = root / "downloads" / "geonames"
+    gazetteer = download(f"{GEONAMES}/dump/IN.zip", downloads / "IN.zip", session)
+    postal = download(f"{GEONAMES}/zip/IN.zip", downloads / "IN-postal.zip", session)
+    admin1 = _code_names(download(f"{GEONAMES}/dump/admin1CodesASCII.txt", downloads / "admin1CodesASCII.txt", session))
+    admin2 = _code_names(download(f"{GEONAMES}/dump/admin2Codes.txt", downloads / "admin2Codes.txt", session))
+
+    log("Building the place-search index ...")
+    directory.mkdir(parents=True, exist_ok=True)
+    part = directory / (PLACES_DB + ".part")
+    part.unlink(missing_ok=True)
+    db = sqlite3.connect(part)
+    db.executescript(
+        """
+        CREATE TABLE places(id INTEGER PRIMARY KEY, name TEXT, kind TEXT, district TEXT, state TEXT,
+                            lat REAL, lon REAL, population INTEGER, rank INTEGER, precision TEXT, source TEXT);
+        CREATE VIRTUAL TABLE places_fts USING fts5(name, alt, context,
+                            tokenize='unicode61 remove_diacritics 2', prefix='1 2 3');
+        """
+    )
+    rows, texts = [], []
+    for r in _zip_rows(gazetteer, "IN.txt"):
+        code = r[7]
+        if code not in PLACE_RANK:
+            continue
+        state = "" if code == "ADM1" else admin1.get(f"IN.{r[10]}", "")
+        district = "" if code in ("ADM1", "ADM2") else admin2.get(f"IN.{r[10]}.{r[11]}", "")
+        kind = PLACE_KIND.get(code, "village / town" if code.startswith("PPL") else code.lower())
+        # ASCII names display as people type them ("Katpadi", not "Kātpādi").
+        name = admin1.get(f"IN.{r[10]}", r[2]) if code == "ADM1" else r[2] or r[1]  # "Tamil Nadu", not "State of ..."
+        rows.append((int(r[0]), name, kind, district, state, float(r[4]), float(r[5]), int(r[14] or 0),
+                     PLACE_RANK[code], "place point", "GeoNames"))
+        # Other spellings (Madras, Cuddapah, Pondicherry) help; one- and two-letter
+        # fragments of foreign-language names ("de", "mu") only add noise.
+        alt = [a for a in r[3].split(",") if a.isascii() and all(len(w) >= 3 for w in a.split())]
+        words = [w for w in r[2].split() if w.lower() not in ("of", "and", "the", "&")]
+        if r[6] in "SLH" and len(words) >= 3:
+            alt.append("".join(w[0] for w in words))  # "VIT" for Vellore Institute of Technology
+        texts.append((int(r[0]), f"{name} {r[1]} {r[2]}", " ".join(alt)[:2000], f"{district} {state}"))
+    gazetteer_rows = len(rows)
+    # Post offices make PIN codes searchable. GeoNames estimates their coordinates
+    # (accuracy 1-4), so they are labelled approximate.
+    for index, r in enumerate(_zip_rows(postal, "IN.txt")):
+        if len(r) < 11 or not r[9] or not r[10]:
+            continue
+        rowid = 100_000_000 + index
+        state = r[3].replace(" & ", " and ")
+        rows.append((rowid, f"{r[2]} (PIN {r[1]})", "post office", r[5], state, float(r[9]), float(r[10]), 0, 7,
+                     "approximate (post office estimate)", "GeoNames postal codes"))
+        texts.append((rowid, f"{r[2]} {r[1]}", "", f"{r[5]} {state}"))
+    db.executemany("INSERT INTO places VALUES (?,?,?,?,?,?,?,?,?,?,?)", rows)
+    db.executemany("INSERT INTO places_fts(rowid, name, alt, context) VALUES (?,?,?,?)", texts)
+    db.execute("INSERT INTO places_fts(places_fts) VALUES ('optimize')")
+    db.commit()
+    db.execute("VACUUM")
+    db.close()
+    part.replace(directory / PLACES_DB)
+    manifest = {
+        "format": PLACES_FORMAT,
+        "source": "GeoNames gazetteer (IN) and GeoNames postal codes (IN)",
+        "source_url": f"{GEONAMES}/dump/IN.zip ; {GEONAMES}/zip/IN.zip",
+        "licence": "Creative Commons Attribution 4.0 (credit: GeoNames, www.geonames.org)",
+        "data_as_of": datetime.fromtimestamp(gazetteer.stat().st_mtime, timezone.utc).date().isoformat(),
+        "rows": len(rows),
+        "gazetteer_rows": gazetteer_rows,
+        "limitations": "Point locations, not boundaries. District names follow GeoNames and can lag "
+                       "district reorganisations. Post-office coordinates are estimates.",
+        "installed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    size = (directory / PLACES_DB).stat().st_size / 1e6
+    log(f"Place-search index installed: {len(rows):,} names ({size:.0f} MB)")
     return manifest
 
 
@@ -480,6 +607,7 @@ def main() -> None:
     session = requests.Session()
     migrate_legacy(root)
     install_india(root, session)
+    install_places(root, session)
     if args.list or not args.region:
         list_regions(root)
         if not args.region:

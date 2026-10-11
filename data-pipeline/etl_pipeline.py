@@ -451,6 +451,15 @@ def build_evidence_snapshot(
     end = _date_only(date_to)
     if start > end:
         raise ValueError("date_from must be on or before date_to.")
+    area_m2 = InfrastructureClient().polygon_metrics(geojson_polygon)["area_m2"]
+    max_ha = float(os.getenv("MAX_PARCEL_AREA_HA", "1000"))
+    if area_m2 > max_ha * 10_000:
+        # A district-sized box is not a parcel: every layer would summarise
+        # thousands of hectares into one misleading figure.
+        raise ValueError(
+            f"The boundary covers {area_m2 / 10_000:,.0f} ha; TerraScope analyses parcels up to {max_ha:,.0f} ha. "
+            "Draw the parcel itself."
+        )
 
     # Coverage first: outside India nothing is collected at all. A missing
     # boundary raises LocalDataMissing rather than letting the parcel through.
@@ -556,14 +565,25 @@ def build_evidence_snapshot(
     # optional layers also get a deadline; past it the report ships without them
     # rather than making the user wait, and says which layer is missing.
     deadline = float(os.getenv("EVIDENCE_COLLECTION_DEADLINE_SECONDS", "35"))
+    timings: dict[str, float | None] = {}
+
+    def timed(label: str, function, *args):
+        def run():
+            began = time.monotonic()
+            try:
+                return function(*args)
+            finally:
+                timings[label] = round((time.monotonic() - began) * 1000)
+        return run
+
     pool = ThreadPoolExecutor(max_workers=6)
     try:
-        location_future = pool.submit(collect_location)
-        satellite_future = pool.submit(satellite_client.get_change_series, geojson_polygon, start, end)
-        amenities_future = pool.submit(collect_amenities)
-        terrain_future = pool.submit(collect_terrain)
-        flood_future = pool.submit(collect_flood)
-        river_future = pool.submit(collect_river_flood)
+        location_future = pool.submit(timed("geocoding", collect_location))
+        satellite_future = pool.submit(timed("satellite", satellite_client.get_change_series, geojson_polygon, start, end))
+        amenities_future = pool.submit(timed("accessibility", collect_amenities))
+        terrain_future = pool.submit(timed("terrain", collect_terrain))
+        flood_future = pool.submit(timed("flood_indicators", collect_flood))
+        river_future = pool.submit(timed("river_flood", collect_river_flood))
 
         started = time.monotonic()
 
@@ -791,6 +811,9 @@ def build_evidence_snapshot(
             "analysis_date_from": start,
             "analysis_date_to": end,
             "analysis_snapshot_id": snapshot_id,
+            # A collector still running at the deadline has no entry yet: null.
+            "collection_timings_ms": {label: timings.get(label) for label in (
+                "geocoding", "satellite", "accessibility", "terrain", "flood_indicators", "river_flood")},
         },
     }
     _validate_snapshot(snapshot)

@@ -163,7 +163,13 @@ def _with_document_evidence(
             "title": "Uploaded evidence document",
             "observed_at": now,
             "freshness": "user_upload",
-            "summary": f"{len(text.split())} words of user-supplied text indexed for grounded retrieval.",
+            # Retrieval only runs when AI explanations are configured; say which case applies.
+            "summary": (
+                f"{len(text.split())} words of user-supplied text extracted; used for grounded, cited answers."
+                if os.getenv("GROQ_API_KEY") else
+                f"{len(text.split())} words of user-supplied text extracted and stored. Not read or cited by any "
+                "analysis: grounded AI retrieval is not configured (no GROQ_API_KEY). The document is unverified."
+            ),
         })
     return rows
 

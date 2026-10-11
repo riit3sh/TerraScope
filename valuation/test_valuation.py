@@ -1,250 +1,277 @@
-"""Tests for the land valuation import contract, training split and serving."""
+"""Land valuation: import contract, cleaning, comparable estimates and honest evaluation.
+
+All rows here are SYNTHETIC test data written in this file. They exercise the
+arithmetic and the rules; they say nothing about real land prices.
+"""
 
 from __future__ import annotations
 
-import csv
-from datetime import date
-from pathlib import Path
+from datetime import date, timedelta
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from valuation.dataset import AREA_UNITS_IN_SQFT, DatasetError, load_price_csv, property_key
-from valuation.fixtures.make_synthetic import build
-from valuation.predict import ValuationUnavailable, estimate_value, model_status
-from valuation.train import TrainingError, choose_split, train_model
+from valuation import evaluate, predict
+from valuation.comparables import ValuationUnavailable, estimate
+from valuation.dataset import AREA_UNITS_IN_SQFT, DatasetError, normalize
+
+KATPADI = (12.9600, 79.1400)
+TODAY = date(2026, 10, 1)
 
 
-FIXTURE = Path(__file__).parent / "fixtures" / "synthetic_land_prices.csv"
-
-
-@pytest.fixture(autouse=True)
-def _allow_synthetic_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    """These tests exercise model mechanics on the synthetic fixture on purpose."""
-    monkeypatch.setenv("VALUATION_ALLOW_SYNTHETIC", "true")
-COLUMNS = [
-    "record_id", "latitude", "longitude", "district", "state", "area_value", "area_unit",
-    "land_use", "observation_date", "price_value", "price_unit", "price_basis", "source",
-]
-
-
-def _write(rows: list[dict[str, object]], path: Path) -> Path:
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=COLUMNS)
-        writer.writeheader()
-        writer.writerows(rows)
-    return path
-
-
-def _row(**overrides: object) -> dict[str, object]:
+def row(**overrides) -> dict[str, str]:
     base = {
-        "record_id": "R1", "latitude": 18.52, "longitude": 73.85, "district": "Pune",
-        "state": "Maharashtra", "area_value": 1000, "area_unit": "sqft", "land_use": "residential",
-        "observation_date": "2023-05-01", "price_value": 5_000_000, "price_unit": "total_inr",
-        "price_basis": "transaction", "source": "TEST",
+        "source": "TEST-SOURCE", "source_record_id": "r1", "source_url": "", "reuse_basis": "synthetic test row",
+        "price_type": "asking", "observed_date": "2026-09-01", "retrieved_date": "2026-09-02",
+        "price_value": "6000000", "price_unit": "total", "currency": "INR",
+        "area_value": "2400", "area_unit": "sqft", "property_category": "vacant_plot", "land_use": "residential",
+        "latitude": str(KATPADI[0]), "longitude": str(KATPADI[1]), "location_precision": "exact",
+        "district": "Vellore", "state": "Tamil Nadu", "locality": "Gandhi Nagar", "attributes": "",
     }
-    base.update(overrides)
-    return base
+    return {key: str(value) for key, value in {**base, **overrides}.items()}
 
 
-# --- import contract -------------------------------------------------------
-
-def test_missing_columns_are_refused_with_the_contract_named(tmp_path: Path) -> None:
-    path = tmp_path / "bad.csv"
-    path.write_text("latitude,longitude\n1,2\n", encoding="utf-8")
-    with pytest.raises(DatasetError, match="missing required columns"):
-        load_price_csv(path)
+def frame(*rows: dict[str, str]) -> pd.DataFrame:
+    return pd.DataFrame(list(rows))
 
 
-def test_units_are_normalized_to_price_per_sqft(tmp_path: Path) -> None:
-    """One plot priced five ways must normalize to the same INR/sqft."""
-    rows = [
-        _row(record_id="A", price_value=5000, price_unit="inr_per_sqft"),
-        _row(record_id="B", price_value=5_000_000, price_unit="total_inr"),
-        _row(record_id="C", price_value=5000 * AREA_UNITS_IN_SQFT["sqm"], price_unit="inr_per_sqm"),
-        _row(record_id="D", price_value=5000 * AREA_UNITS_IN_SQFT["acre"], price_unit="inr_per_acre"),
-        _row(record_id="E", price_value=5000 * AREA_UNITS_IN_SQFT["cent"], price_unit="inr_per_cent"),
-    ]
-    # Nudge coordinates so these count as five distinct properties, not re-listings.
-    for index, row in enumerate(rows):
-        row["latitude"] = 18.52 + index * 0.01
-    frame, _ = load_price_csv(_write(rows, tmp_path / "units.csv"))
-    assert len(frame) == 5
-    assert frame["price_inr_per_sqft"].round(4).nunique() == 1
-    assert frame["price_inr_per_sqft"].iloc[0] == pytest.approx(5000.0, rel=1e-6)
+def plots(n: int, *, price=2500.0, step_m=150.0, area=2400.0, days_ago=30, **extra) -> list[dict[str, str]]:
+    """n distinct plots spaced step_m apart east of Katpadi, at price + 10*i ₹/sq ft."""
+    out = []
+    for i in range(n):
+        observed = TODAY - timedelta(days=days_ago + i)
+        out.append(row(source_record_id=f"p{i}", longitude=f"{KATPADI[1] + i * step_m / 108_500:.6f}",
+                       price_value=f"{(price + 10 * i) * area:.0f}", area_value=f"{area:.0f}",
+                       observed_date=observed.isoformat(), retrieved_date=observed.isoformat(), **extra))
+    return out
 
 
-def test_area_units_convert(tmp_path: Path) -> None:
-    rows = [
-        _row(record_id="A", area_value=1, area_unit="acre", price_value=100, price_unit="inr_per_sqft"),
-        _row(record_id="B", area_value=1, area_unit="hectare", price_value=100, price_unit="inr_per_sqft", latitude=18.6),
-    ]
-    frame, _ = load_price_csv(_write(rows, tmp_path / "areas.csv"))
-    by_id = frame.set_index("record_id")["area_sqft"]
-    assert by_id["A"] == pytest.approx(43560.0)
-    assert by_id["B"] == pytest.approx(107639.104, rel=1e-6)
+# --- import and cleaning ----------------------------------------------------
+
+@pytest.mark.parametrize("unit, value", [
+    ("per_sqft", 2500),
+    ("per_sqyd", 22500),           # 9 sq ft per sq yd
+    ("per_sqm", 26909.776),        # 10.7639 sq ft per sq m
+    ("per_cent", 1_089_000),       # 435.6 sq ft per cent (Tamil Nadu, Kerala)
+    ("per_ground", 6_000_000),     # 2,400 sq ft per ground (Chennai)
+    ("per_acre", 108_900_000),
+])
+def test_price_units_convert_to_inr_per_sqft(unit, value):
+    cleaned, _ = normalize(frame(row(price_unit=unit, price_value=str(value))))
+    assert cleaned["price_inr_per_sqft"].iloc[0] == pytest.approx(2500.0, rel=1e-6)
 
 
-def test_invalid_rows_are_dropped_and_counted(tmp_path: Path) -> None:
-    rows = [
-        _row(record_id="good", latitude=18.52),
-        _row(record_id="bad_area", area_value=0, latitude=18.53),
-        _row(record_id="bad_unit", area_unit="bigha", latitude=18.54),
-        _row(record_id="bad_use", land_use="spaceport", latitude=18.55),
-        _row(record_id="bad_date", observation_date="not-a-date", latitude=18.56),
-        _row(record_id="bad_basis", price_basis="rumour", latitude=18.57),
-    ]
-    frame, report = load_price_csv(_write(rows, tmp_path / "mixed.csv"))
-    assert frame["record_id"].tolist() == ["good"]
-    assert report.rows_read == 6 and report.rows_kept == 1
-    assert set(report.dropped) == {
-        "non_positive_area", "unsupported_area_unit", "unsupported_land_use",
-        "unparseable_observation_date", "unsupported_price_basis",
-    }
+def test_total_price_uses_the_area_in_its_own_unit():
+    cleaned, _ = normalize(frame(row(price_value="5445000", area_value="5", area_unit="cent")))
+    assert cleaned["area_sqft"].iloc[0] == pytest.approx(5 * 435.6)
+    assert cleaned["price_inr_per_sqft"].iloc[0] == pytest.approx(5445000 / (5 * 435.6))
+    assert AREA_UNITS_IN_SQFT["ground"] == 2400.0 and AREA_UNITS_IN_SQFT["guntha"] == 1089.0
 
 
-def test_bigha_is_refused_rather_than_guessed(tmp_path: Path) -> None:
-    """Bigha has no national size; silently converting it would corrupt areas."""
-    assert "bigha" not in AREA_UNITS_IN_SQFT
-    rows = [_row(record_id=str(i), area_unit="bigha", latitude=18.5 + i / 100) for i in range(3)]
-    with pytest.raises(DatasetError, match="import contract"):
-        load_price_csv(_write(rows, tmp_path / "bigha.csv"))
+@pytest.mark.parametrize("overrides, reason", [
+    ({"currency": "USD"}, "currency_not_inr"),
+    ({"reuse_basis": ""}, "missing_reuse_basis"),
+    ({"price_type": "estimate"}, "unknown_price_type"),
+    ({"area_unit": "bigha"}, "invalid_area"),               # varies by state: never converted
+    ({"property_category": "apartment"}, "not_vacant_land"),
+    ({"property_category": "independent_house"}, "not_vacant_land"),
+    ({"property_category": "agricultural_land"}, "category_land_use_mismatch"),
+    ({"latitude": "51.5"}, "coordinates_outside_india"),
+    ({"price_value": "600"}, "implausible_price_per_sqft"),  # ₹0.25/sq ft: a lakh/crore slip
+    ({"area_value": "50", "price_value": "125000"}, "implausible_area"),
+    ({"area_value": "", "area_unit": ""}, "total_price_without_area"),
+    ({"retrieved_date": "2026-08-01"}, "retrieved_before_observed"),
+])
+def test_bad_rows_are_dropped_with_a_reason(overrides, reason):
+    with pytest.raises(DatasetError, match=reason):
+        normalize(frame(row(**overrides)))
 
 
-def test_relisted_property_collapses_to_one_row(tmp_path: Path) -> None:
-    """The same plot advertised three times must not become three samples."""
-    rows = [
-        _row(record_id="listing1", observation_date="2023-01-01", price_value=5_000_000),
-        _row(record_id="listing2", observation_date="2023-06-01", price_value=5_400_000),
-        _row(record_id="listing3", observation_date="2024-01-01", price_value=5_900_000),
-    ]
-    frame, report = load_price_csv(_write(rows, tmp_path / "relist.csv"))
-    assert len(frame) == 1, "re-listings of one plot must collapse"
-    assert report.duplicate_properties_collapsed == 2
-    assert frame["record_id"].iloc[0] == "listing3", "the most recent observation should win"
+def test_missing_columns_are_a_contract_error():
+    with pytest.raises(DatasetError, match="Missing required columns"):
+        normalize(pd.DataFrame([{"latitude": 1}]))
 
 
-def test_property_key_is_stable_under_tiny_coordinate_noise() -> None:
-    a = pd.Series({"latitude": 18.520001, "longitude": 73.850001, "area_sqft": 1000.0, "land_use": "residential"})
-    b = pd.Series({"latitude": 18.520002, "longitude": 73.850002, "area_sqft": 1002.0, "land_use": "residential"})
-    far = pd.Series({"latitude": 18.9, "longitude": 73.850001, "area_sqft": 1000.0, "land_use": "residential"})
-    assert property_key(a) == property_key(b)
-    assert property_key(a) != property_key(far)
+def test_relistings_of_one_plot_collapse_to_the_latest():
+    cleaned, report = normalize(frame(
+        row(source="Broker A", source_record_id="a1", price_value="6000000", observed_date="2026-06-01", retrieved_date="2026-06-01"),
+        # same plot, another broker, 20 m away, 2% larger area, three months later
+        row(source="Broker B", source_record_id="b7", price_value="6300000", area_value="2448",
+            latitude=f"{KATPADI[0] + 0.00018:.5f}", observed_date="2026-09-01"),
+        # the same record delivered twice
+        row(source="Broker B", source_record_id="b7", price_value="6300000", area_value="2448",
+            latitude=f"{KATPADI[0] + 0.00018:.5f}", observed_date="2026-09-01", retrieved_date="2026-09-05"),
+        # a different plot nearby: twice the size
+        row(source="Broker A", source_record_id="a2", area_value="4800", price_value="11000000"),
+    ))
+    assert report.same_record_repeated == 1
+    assert report.duplicate_listings_collapsed == 1
+    assert len(cleaned) == 2
+    merged = cleaned[cleaned["group_size"] == 2].iloc[0]
+    assert merged["source_record_id"] == "b7" and merged["group_sources"] == "Broker A; Broker B"
 
 
-# --- training and validation ----------------------------------------------
+def test_locality_precision_rows_need_matching_price_to_be_duplicates():
+    # Two plots geocoded only to a locality centroid share coordinates; same size is not enough.
+    cleaned, report = normalize(frame(
+        row(source_record_id="x1", location_precision="locality", price_value="6000000"),
+        row(source_record_id="x2", location_precision="locality", price_value="7200000"),
+    ))
+    assert report.duplicate_listings_collapsed == 0 and len(cleaned) == 2
 
-def test_a_thin_dataset_is_refused_rather_than_scored(tmp_path: Path) -> None:
-    """Too little data must raise, never yield an unvalidated accuracy claim."""
-    rows = [_row(record_id=str(i), latitude=18.5 + i / 100) for i in range(12)]
-    with pytest.raises(TrainingError):
-        train_model(_write(rows, tmp_path / "thin.csv"), tmp_path / "model.joblib")
+
+# --- comparable estimates ---------------------------------------------------
+
+def observations(*rows):
+    cleaned, _ = normalize(frame(*rows))
+    return cleaned
 
 
-def test_single_month_dataset_falls_back_to_geographic_holdout() -> None:
-    """Without a time span, districts are held out instead."""
+def ask(data, **overrides):
+    args = dict(latitude=KATPADI[0], longitude=KATPADI[1], area_sqft=2400.0, land_use="residential",
+                price_type="asking", valuation_date=TODAY)
+    return estimate(data, **{**args, **overrides})
+
+
+def test_estimate_is_the_median_of_nearby_similar_plots():
+    result = ask(observations(*plots(7)))
+    assert result["estimate_inr_per_sqft"] == pytest.approx(2530.0)        # median of 2500..2560
+    assert result["comparable_count"] == 7 and result["radius_km"] == 1.0
+    assert result["spread_inr_per_sqft"]["p25"] == pytest.approx(2515.0)
+    assert result["total_inr"]["estimate"] == pytest.approx(2530.0 * 2400)
+    assert "not a statistically validated prediction interval" in result["spread_basis"]
+    assert any("Asking prices" in reason for reason in result["uncertainty"])
+    assert result["comparables"][0]["source_record_id"] == "p0"           # nearest first, with provenance
+
+
+def test_asking_and_transaction_prices_are_never_pooled():
+    with pytest.raises(ValuationUnavailable) as refusal:
+        ask(observations(*plots(7)), price_type="transaction")
+    assert refusal.value.reason == "price_type_not_covered"
+
+
+def test_agricultural_land_is_not_valued_from_residential_plots():
+    with pytest.raises(ValuationUnavailable) as refusal:
+        ask(observations(*plots(7)), land_use="agricultural", area_sqft=43560.0)
+    assert refusal.value.reason == "land_use_not_covered"
+
+
+def test_a_campus_is_not_valued_from_house_plots():
+    with pytest.raises(ValuationUnavailable) as refusal:
+        ask(observations(*plots(7)), area_sqft=150 * 43560.0)  # ~150 acres
+    assert refusal.value.reason == "area_outside_support"
+    assert "2,400-2,400 sq ft" in refusal.value.detail
+
+
+def test_too_few_comparables_is_a_refusal_not_a_guess():
+    with pytest.raises(ValuationUnavailable) as refusal:
+        ask(observations(*plots(4)))
+    assert refusal.value.reason == "insufficient_comparables"
+
+
+def test_far_away_data_is_not_used():
+    with pytest.raises(ValuationUnavailable) as refusal:
+        ask(observations(*plots(7)), latitude=14.47, longitude=78.82)  # Kadapa, ~190 km away
+    assert refusal.value.reason == "no_comparables_nearby"
+
+
+def test_stale_listings_are_excluded():
+    with pytest.raises(ValuationUnavailable) as refusal:
+        ask(observations(*plots(7, days_ago=700)))
+    assert refusal.value.reason == "stale_data_only"
+
+
+def test_the_radius_grows_only_as_far_as_needed():
+    result = ask(observations(*plots(6, step_m=600)))  # 0, 0.6, ... 3.0 km
+    assert result["radius_km"] == 5.0 and result["comparable_count"] == 6
+    assert any("up to 5 km" in reason for reason in result["uncertainty"])
+
+
+def test_future_observations_are_ignored():
+    with pytest.raises(ValuationUnavailable):
+        ask(observations(*plots(7)), valuation_date=TODAY - timedelta(days=90))
+
+
+def test_locality_level_and_coarser_locations():
+    coarse = [dict(r, location_precision="pincode") for r in plots(7)]
+    with pytest.raises(ValuationUnavailable) as refusal:
+        ask(observations(*coarse))
+    assert refusal.value.reason == "no_comparables_nearby"
+    locality = [dict(r, location_precision="locality") for r in plots(7)]
+    assert any("only to a locality" in reason for reason in ask(observations(*locality))["uncertainty"])
+
+
+# --- serving ----------------------------------------------------------------
+
+def test_no_data_file_means_an_explicit_refusal(tmp_path, monkeypatch):
+    monkeypatch.setenv("VALUATION_OBSERVATIONS_PATH", str(tmp_path / "missing.csv"))
+    with pytest.raises(ValuationUnavailable) as refusal:
+        predict.estimate_value(KATPADI[0], KATPADI[1], 2400.0)
+    assert refusal.value.reason == "no_price_data"
+    assert predict.data_status()["available"] is False
+
+
+def test_served_estimate_carries_data_version_and_validation_status(tmp_path, monkeypatch):
+    path = tmp_path / "observations.csv"
+    frame(*plots(7)).to_csv(path, index=False)
+    monkeypatch.setenv("VALUATION_OBSERVATIONS_PATH", str(path))
+    result = predict.estimate_value(KATPADI[0], KATPADI[1], 2400.0, valuation_date=TODAY)
+    assert result["status"] == "available" and result["data_version"]
+    assert result["validation"]["status"] == "not_yet_validated"
+
+
+# --- evaluation ---------------------------------------------------------------
+
+def market(n_plots: int, seed: int = 3) -> pd.DataFrame:
+    """Synthetic market: 4 towns, prices rising 1%/month, ±10% noise, some re-listings."""
+    rng = np.random.default_rng(seed)
+    towns = [(12.96, 79.14, "Vellore"), (13.08, 80.27, "Chennai"), (14.47, 78.82, "Kadapa"), (11.93, 79.83, "Puducherry")]
     rows = []
-    for district_index, district in enumerate(["Pune", "Nashik", "Thane", "Nagpur", "Vellore"]):
-        for row_index in range(20):
-            rows.append({
-                "latitude": 18.0 + district_index, "longitude": 73.0 + district_index,
-                "district": district, "area_sqft": 1000.0 + row_index,
-                "observation_date": pd.Timestamp("2024-03-05"),
-                "price_inr_per_sqft": 1000.0 + district_index * 500,
-                "property_key": f"{district}-{row_index}",
-            })
-    frame = pd.DataFrame(rows)
-    _, _, strategy, label = choose_split(frame)
-    assert strategy == "geographic" and "held out entirely" in label
+    for i in range(n_plots):
+        lat, lon, district = towns[i % 4]
+        lat, lon = lat + rng.uniform(-0.02, 0.02), lon + rng.uniform(-0.02, 0.02)
+        months = int(rng.integers(0, 24))
+        observed = date(2024, 10, 1) + timedelta(days=30 * months)
+        price = 3000 * (1.01 ** months) * rng.uniform(0.9, 1.1)
+        area = float(rng.uniform(1200, 4800))
+        base = row(source_record_id=f"m{i}", latitude=f"{lat:.5f}", longitude=f"{lon:.5f}", district=district,
+                   area_value=f"{area:.0f}", price_value=f"{price * area:.0f}",
+                   observed_date=observed.isoformat(), retrieved_date=observed.isoformat())
+        rows.append(base)
+        if i % 10 == 0:  # the same plot re-listed by another broker
+            rows.append(dict(base, source="TEST-BROKER-2", price_value=f"{price * area * 1.02:.0f}"))
+    cleaned, _ = normalize(frame(*rows))
+    return cleaned
 
 
-def test_training_reports_measured_holdout_metrics_and_a_baseline(tmp_path: Path) -> None:
-    metadata = train_model(FIXTURE, tmp_path / "model.joblib", is_synthetic=True)
-    validation = metadata["validation"]
-    assert validation["strategy"] in {"temporal", "geographic"}
-    assert validation["holdout_rows"] >= 10
-    for block in ("model", "baseline"):
-        assert validation[block]["mae_inr_per_sqft"] > 0
-        assert validation[block]["rmse_inr_per_sqft"] >= validation[block]["mae_inr_per_sqft"]
-    assert metadata["is_synthetic"] is True
-    assert (tmp_path / "model.metadata.json").exists()
+def test_metric_arithmetic():
+    result = evaluate.metrics(np.array([100.0, 200.0, 400.0]), np.array([110.0, 150.0, 400.0]))
+    assert result["mae_inr_per_sqft"] == pytest.approx(20.0)
+    assert result["rmse_inr_per_sqft"] == pytest.approx(np.sqrt((100 + 2500) / 3), abs=0.01)
+    assert result["median_ape_pct"] == pytest.approx(10.0)
+    assert (result["within_10_pct"], result["within_20_pct"], result["within_30_pct"]) == (66.7, 66.7, 100.0)
 
 
-def test_a_range_is_only_offered_when_it_holds_up_out_of_sample(tmp_path: Path) -> None:
-    metadata = train_model(FIXTURE, tmp_path / "model.joblib", is_synthetic=True)
-    interval = metadata["validation"]["interval"]
-    measured, nominal = interval["measured_holdout_coverage_pct"], interval["nominal_coverage_pct"]
-    assert interval["reportable"] is (measured >= 0.75 * nominal)
-    result = estimate_value(18.52, 73.85, 2000, model_path=tmp_path / "model.joblib")
-    if interval["reportable"]:
-        assert result["range"]["low_inr_per_sqft"] <= result["estimated_inr_per_sqft"] <= result["range"]["high_inr_per_sqft"]
-    else:
-        assert result["range"] is None and "only" in result["range_unavailable_reason"]
+def test_evaluation_splits_never_share_a_property_and_report_both_holdouts():
+    data = market(600)
+    assert data["group_id"].is_unique  # re-listings collapsed before any split
+    report = evaluate.evaluate(data, "asking")
+    assert set(report["holdouts"]) == {"temporal", "geographic"}
+    temporal = report["holdouts"]["temporal"]
+    assert temporal["train_dates"][1] <= temporal["test_dates"][0]
+    assert temporal["status"] == "validated" and temporal["baseline"]["mae_inr_per_sqft"] > 0
+    assert temporal["estimates"] + sum(temporal["refusals"].values()) == temporal["test_observations"]
+    assert "not a calibrated interval" in temporal["baseline_spread"]["note"]
+    assert "beats_baseline_on_mae" in temporal["model"]  # 600 rows: the model is compared
+    # Whole towns held out: no comparables within 10 km, so the baseline refuses instead of guessing.
+    geographic = report["holdouts"]["geographic"]
+    assert geographic["estimates"] == 0 and geographic["refusals"] == {"no_comparables_nearby": geographic["test_observations"]}
+    assert report["status"] == "not_yet_validated"
 
 
-# --- serving ---------------------------------------------------------------
-
-def test_covered_location_returns_a_priced_estimate() -> None:
-    result = estimate_value(18.52, 73.85, 2400, "residential", valuation_date=date(2026, 1, 15))
-    assert result["status"] == "available"
-    assert result["estimated_inr_per_sqft"] > 0
-    assert result["estimated_total_inr"] == pytest.approx(result["estimated_inr_per_sqft"] * 2400, rel=1e-6)
-    assert result["valuation_date"] == "2026-01-15"
-    assert result["model_version"] and result["data_version"]
-    assert result["evidence_coverage"]["observations_within_radius"] >= 5
-
-
-def test_uncovered_location_is_refused_explicitly() -> None:
-    """A parcel far from any observation must get a refusal, not a guess."""
-    with pytest.raises(ValuationUnavailable) as caught:
-        # Mid-Indian-Ocean: nowhere near any row in any fixture.
-        estimate_value(-15.0, 75.0, 2000)
-    assert caught.value.reason == "location_not_covered"
-    assert "km of this parcel" in caught.value.detail
-
-
-def test_unknown_land_use_is_refused() -> None:
-    with pytest.raises(ValuationUnavailable) as caught:
-        estimate_value(18.52, 73.85, 2000, land_use="spaceport")
-    assert caught.value.reason == "unsupported_land_use"
-
-
-def test_bad_area_is_refused() -> None:
-    with pytest.raises(ValuationUnavailable) as caught:
-        estimate_value(18.52, 73.85, 0)
-    assert caught.value.reason == "invalid_input"
-
-
-def test_missing_model_reports_unavailable_rather_than_crashing(tmp_path: Path) -> None:
-    status = model_status(tmp_path / "absent.joblib")
-    assert status["available"] is False and status["reason"] == "model_not_trained"
-
-
-def test_synthetic_artifacts_stay_flagged_as_synthetic() -> None:
-    """Demo data must never be presentable as real market evidence."""
-    assert model_status()["is_synthetic"] is True
-    assert estimate_value(18.52, 73.85, 2000)["is_synthetic"] is True
-
-
-def test_total_scales_linearly_with_area() -> None:
-    small = estimate_value(18.52, 73.85, 1000)
-    large = estimate_value(18.52, 73.85, 1000)
-    assert small["estimated_inr_per_sqft"] == large["estimated_inr_per_sqft"]
-
-
-def test_fixture_rows_are_labelled_synthetic() -> None:
-    assert all(row["source"] == "SYNTHETIC_FIXTURE" for row in build(rows_per_district=2))
-
-
-def test_synthetic_model_prices_nothing_unless_demo_mode_is_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A price learned from invented rows is an invented price; refuse it by default."""
-    monkeypatch.delenv("VALUATION_ALLOW_SYNTHETIC")
-    with pytest.raises(ValuationUnavailable) as refused:
-        estimate_value(18.52, 73.85, 2000)
-    assert refused.value.reason == "synthetic_model_only"
-    # The refusal text is shown in the report, so it must stay free of operator
-    # instructions; those belong in docs/SETUP_VALUATION.md.
-    detail = refused.value.detail
-    for leak in ("VALUATION_ALLOW_SYNTHETIC", "python -m valuation.train", "README.md", "--synthetic"):
-        assert leak not in detail, f"operator instruction {leak!r} leaked into the user-facing report"
-    assert "no price is quoted" in detail
+def test_small_datasets_are_not_yet_validated_and_quote_no_errors():
+    report = evaluate.evaluate(market(60), "asking")
+    for holdout in report["holdouts"].values():
+        assert holdout["status"] == "not_yet_validated" and holdout["baseline"] is None
+    assert report["status"] == "not_yet_validated"

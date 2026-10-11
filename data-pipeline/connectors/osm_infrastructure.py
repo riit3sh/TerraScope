@@ -119,6 +119,25 @@ class InfrastructureClient:
                     or not all(isinstance(value, (int, float)) for value in position[:2])
                 ):
                     raise ValueError("Polygon positions must be numeric [longitude, latitude] pairs.")
+                lon, lat = position[0], position[1]
+                if not (math.isfinite(lon) and math.isfinite(lat) and -180 <= lon <= 180 and -90 <= lat <= 90):
+                    raise ValueError(
+                        f"Coordinate [{lon}, {lat}] is out of range: positions are [longitude, latitude] in degrees."
+                    )
+        from shapely.geometry import shape
+        from shapely.validation import explain_validity
+
+        geometry = shape(geojson_polygon)
+        # The hull, not the polygon: a symmetric bowtie's signed area also cancels to 0.
+        if geometry.convex_hull.area == 0:
+            raise ValueError("The boundary encloses no area. Draw at least three distinct corners.")
+        if not geometry.is_valid:
+            # A crossing outline has no single interior, so area, overlap and every
+            # per-parcel measurement would be wrong.
+            raise ValueError(
+                f"The boundary is not a valid polygon ({explain_validity(geometry)}). "
+                "Redraw it so that its edges do not cross."
+            )
 
     @staticmethod
     def _representative_point(geojson_polygon: dict[str, Any]) -> tuple[float, float]:

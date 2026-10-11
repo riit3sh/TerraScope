@@ -101,7 +101,6 @@ function Initialize-Env {
     Set-DefaultEnv 'BACKEND_STORE_PATH' (Join-Path $RunDir 'backend.sqlite3')
     Set-DefaultEnv 'TERRASCOPE_SATELLITE_CACHE_PATH' (Join-Path $RunDir 'satellite_cache.json')
     Set-DefaultEnv 'RERA_SEED_PATH' (Join-Path $Root 'data-pipeline\data\raw\maharera_seed.csv')
-    Set-DefaultEnv 'VALUATION_MODEL_PATH' (Join-Path $Root 'valuation\artifacts\land_price_model.joblib')
     Set-DefaultEnv 'NOMINATIM_USER_AGENT' 'terrascope-local-dev/0.1.0'
     Set-DefaultEnv 'TERRASCOPE_DATA_DIR' (Join-Path $Root 'data-cache')
     # Compose service names do not resolve outside Docker.

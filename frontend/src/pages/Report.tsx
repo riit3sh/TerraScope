@@ -9,13 +9,51 @@ const MECHANISM_LABEL: Record<string, string> = { river_flooding: 'River floodin
 const STATUS_LABEL: Record<string, string> = { assessed: 'assessed', partial: 'partly assessed', not_modelled: 'not modelled here', unavailable: 'unavailable', not_integrated: 'not integrated', not_assessed: 'not assessed' }
 const pct = (value: number | null | undefined) => value == null ? '—' : `${Math.round(value * 100)}%`
 
+const m = (value: number | null | undefined) => value == null ? '—' : `${Math.round(value).toLocaleString('en-IN')} m`
+
+/** One line per flood mechanism, with the measurement behind it. Missing evidence reads as unknown, never as safe. */
+function floodGlance(ind: FloodIndicators): { mechanism: string; status: string; text: string }[] {
+  const byMechanism = Object.fromEntries((ind.components || []).map(c => [c.mechanism, c]))
+  const river = ind.river_flood
+  const lines: { mechanism: string; status: string; text: string }[] = []
+  const riverComponent = byMechanism.river_flooding
+  if (river?.scenarios?.length && riverComponent?.status !== 'unavailable') {
+    const first = river.scenarios.find(s => (s.flooded_share_of_parcel || 0) > 0)
+    const hundred = river.scenarios.find(s => s.return_period_years === 100)
+    const parcel = first
+      ? `Parcel first reached in the 1-in-${first.return_period_years}-year scenario (${(first.annual_exceedance_probability * 100).toFixed(first.annual_exceedance_probability < 0.01 ? 1 : 0)}% chance a year): ${pct(first.flooded_share_of_parcel)} of the parcel${first.max_depth_m == null ? '' : `, up to ${first.max_depth_m} m deep`}.`
+      : 'No modelled river inundation on the parcel in any scenario up to 1-in-500 years.'
+    const around = hundred?.surroundings_flooded_share == null ? '' : ` ${pct(hundred.surroundings_flooded_share)} of land within 500 m is flooded at 1-in-100.`
+    const partial = river.assessed_share_of_parcel < 1 ? ` Only ${pct(river.assessed_share_of_parcel)} of the parcel is inside the modelled area.` : ''
+    lines.push({ mechanism: 'river_flooding', status: riverComponent?.status || 'assessed', text: parcel + around + partial })
+  } else if (riverComponent) lines.push({ mechanism: 'river_flooding', status: riverComponent.status, text: riverComponent.summary || '' })
+  if (byMechanism.historical_inundation) lines.push({ mechanism: 'historical_inundation', status: byMechanism.historical_inundation.status, text: 'Not integrated: the NRSC flood atlas (1998-2022) has no machine-readable release. Unknown, not "never flooded".' })
+  const sw = ind.surface_water
+  if (sw?.parcel && sw.within_buffer) lines.push({ mechanism: 'observed_surface_water', status: 'assessed', text: `Water seen on ${pct(sw.parcel.water_ever_fraction)} of the parcel's 30 m pixels (highest occurrence ${sw.parcel.occurrence_max_pct}% of observations); ${pct(sw.within_buffer.water_ever_fraction)} of pixels within ${sw.buffer_m} m.` })
+  else if (byMechanism.observed_surface_water) lines.push({ mechanism: 'observed_surface_water', status: byMechanism.observed_surface_water.status, text: byMechanism.observed_surface_water.summary || '' })
+  const t = ind.terrain, w = ind.water_distances
+  const terrainParts = [
+    t?.parcel_elevation_m == null ? null : `Parcel ${t.parcel_elevation_m} m above sea level`,
+    t?.elevation_above_nearest_water_m == null ? (t?.water_features_available === false ? null : 'no mapped water within 2 km to compare against')
+      : `${t.elevation_above_nearest_water_m >= 0 ? '+' : ''}${t.elevation_above_nearest_water_m} m relative to the nearest mapped water (${t.nearest_water_feature_class || t.nearest_water_feature_kind}${t.nearest_water_feature_name ? ` ${t.nearest_water_feature_name}` : ''}, ${m(t.nearest_water_feature_distance_m)} away)`,
+    w ? `nearest river/canal ${m(w.nearest_river_canal_distance_m)}, tank/lake ${m(w.nearest_tank_lake_distance_m)}` : null,
+  ].filter(Boolean)
+  if (terrainParts.length) lines.push({ mechanism: 'terrain_and_nearby_water', status: 'assessed', text: `${terrainParts.join('; ')}. A terrain indicator, not a flood probability.` })
+  else if (byMechanism.terrain_and_nearby_water) lines.push({ mechanism: 'terrain_and_nearby_water', status: byMechanism.terrain_and_nearby_water.status, text: byMechanism.terrain_and_nearby_water.summary || '' })
+  for (const mechanism of ['rainfall_waterlogging', 'coastal_flooding']) if (byMechanism[mechanism]) lines.push({ mechanism, status: byMechanism[mechanism].status, text: byMechanism[mechanism].status === 'not_assessed' ? 'Not assessed: no dataset integrated. Unknown, not safe.' : byMechanism[mechanism].summary || '' })
+  return lines
+}
+
 function FloodPanel({ indicators }: { indicators?: FloodIndicators | null }) {
   if (!indicators?.components?.length) return null
   const river = indicators.river_flood
   const partial = indicators.assessment_status === 'partial'
-  return <section className="flood-section"><div className="section-head"><div><div className="section-label">FLOOD EVIDENCE</div><h2>{partial ? 'Partial flood assessment available' : 'No usable flood evidence'}</h2></div><span className="completeness">No overall Flood Safety score: each mechanism is shown separately</span></div>
+  return <section className="flood-section"><div className="section-head"><div><div className="section-label">FLOOD EVIDENCE · NOT USED IN ANY SCORE OR PRICE</div><h2>{partial ? 'Partial flood assessment' : 'No usable flood evidence'}</h2></div><span className="completeness">Each mechanism separately, with its measurement. No overall flood score or safety percentage.</span></div>
+    <table className="flood-glance"><tbody>{floodGlance(indicators).map(line => <tr key={line.mechanism}><th>{MECHANISM_LABEL[line.mechanism] || line.mechanism}</th><td><span className={`factor-badge ${line.status}`}>{STATUS_LABEL[line.status] || line.status}</span></td><td>{line.text}</td></tr>)}</tbody></table>
+    <details className="flood-details"><summary>Scenario table, sources and method</summary>
     {river && river.scenarios?.length > 0 && <div className="flood-table-wrap"><table className="flood-table"><caption>Modelled river flooding by return period · {river.dataset} · {river.resolution} · {pct(river.assessed_share_of_parcel)} of the parcel assessed{river.permanent_water_area_m2 > 0 ? ` · ${Math.round(river.permanent_water_area_m2)} m² permanent water excluded` : ''}{river.quality_flagged_area_m2 > 0 ? ` · ${Math.round(river.quality_flagged_area_m2)} m² in a provider-flagged area (depths withheld)` : ''}</caption><thead><tr><th>Scenario</th><th>Chance in any year</th><th>Parcel area flooded</th><th>Max depth</th><th>Mean depth</th><th>Land within 500 m flooded</th></tr></thead><tbody>{river.scenarios.map(s => <tr key={s.return_period_years}><td>1-in-{s.return_period_years} years</td><td>{(s.annual_exceedance_probability * 100).toFixed(s.annual_exceedance_probability < 0.01 ? 1 : 0)}%</td><td>{pct(s.flooded_share_of_parcel)}{s.flooded_area_m2 > 0 ? ` (${Math.round(s.flooded_area_m2).toLocaleString()} m²)` : ''}</td><td>{s.max_depth_m == null ? '—' : `${s.max_depth_m} m`}</td><td>{s.mean_depth_m == null ? '—' : `${s.mean_depth_m} m`}</td><td>{pct(s.surroundings_flooded_share)}</td></tr>)}</tbody></table><small className="flood-note">Modelled scenarios, not observed floods. “0%” means no modelled river inundation at ~90 m for rivers with basins over ~500 km²; it does not cover small streams, rainfall waterlogging or coastal surge, and is not building-level safety.</small></div>}
     <div className="flood-components">{indicators.components.map(c => <div className={`flood-component ${c.status}`} key={c.mechanism}><div className="flood-component-head"><strong>{MECHANISM_LABEL[c.mechanism] || c.mechanism}</strong><span className={`factor-badge ${c.status}`}>{STATUS_LABEL[c.status] || c.status}</span></div><p>{c.summary}</p>{(c.source || c.period || c.resolution) && <small>{[c.source, c.period, c.resolution, c.coverage_share == null ? null : `${pct(c.coverage_share)} of parcel covered`].filter(Boolean).join(' · ')}</small>}</div>)}</div>
+    </details>
   </section>
 }
 
@@ -43,39 +81,49 @@ function compactInr(value: number) {
 }
 
 const unavailableCopy: Record<string, string> = {
-  model_not_trained: 'No valuation model is loaded, so no price is shown.',
-  location_not_covered: 'This parcel sits outside the area the price dataset covers.',
-  land_use_not_covered: 'The price dataset holds no comparable sales for this land use.',
-  synthetic_model_only: 'No real market price data is loaded. Prices are withheld rather than quoted from demo figures.',
+  no_price_data: 'No licensed listing feed or permitted price data is loaded, so TerraScope does not quote a price.',
+  price_data_invalid: 'The loaded price data could not be used.',
+  price_type_not_covered: 'No prices of the selected type are loaded.',
+  land_use_not_covered: 'No comparable prices exist for this land use.',
+  no_comparables_nearby: 'No comparable land prices exist near this parcel.',
+  stale_data_only: 'The only nearby prices are too old to use.',
+  area_outside_support: 'This parcel is far larger or smaller than every comparable, so their prices do not transfer.',
+  insufficient_comparables: 'Too few comparable prices exist near this parcel.',
   request_failed: 'The valuation service could not be reached.',
-  valuation_error: 'The valuation model could not be evaluated.',
+  valuation_error: 'The valuation could not be computed.',
 }
+const PRICE_TITLE: Record<string, string> = { asking: 'Listing-based estimated price range', transaction: 'Sale-based estimated price range', guideline: 'Government guideline value (reference)' }
 
 function ValuationSection({ valuation, property }: { valuation: Valuation | null; property: PropertyDetails | null }) {
+  const label = <div className="section-label"><IndianRupee size={13} /> LAND PRICE · KEPT SEPARATE FROM LEGAL, FLOOD AND SUITABILITY</div>
   if (!valuation) {
-    return <section className="valuation-section unavailable"><div className="section-label"><IndianRupee size={13} /> MARKET VALUATION</div><h2>Not requested</h2><p className="muted">No valuation was run for this parcel. It needs a location and a plot area.</p></section>
+    return <section className="valuation-section unavailable">{label}<h2>Not requested</h2><p className="muted">No price estimate was run for this parcel. It needs a location and a plot area.</p></section>
   }
   if (valuation.status === 'unavailable') {
-    return <section className="valuation-section unavailable"><div className="section-label"><IndianRupee size={13} /> MARKET VALUATION</div><h2>Unavailable for this parcel</h2><p className="valuation-reason">{unavailableCopy[valuation.reason] || 'A valuation could not be produced.'}</p><p className="muted valuation-detail">{valuation.detail}</p><p className="muted">No estimate is shown rather than a guess.</p></section>
+    return <section className="valuation-section unavailable">{label}<h2>No price estimate</h2><p className="valuation-reason">{unavailableCopy[valuation.reason] || 'A price estimate could not be produced.'}</p><p className="muted valuation-detail">{valuation.detail}</p><p className="muted">TerraScope refuses rather than guesses. Asking prices, sale prices and government guideline values are kept separate and are never invented.</p></section>
   }
-  const coverage = valuation.evidence_coverage
-  return <section className={`valuation-section${valuation.is_synthetic ? ' synthetic' : ''}`}>
-    {valuation.is_synthetic && <div className="demo-banner"><TriangleAlert size={15} /> <strong>DEMO DATA.</strong> This model is trained on a synthetic fixture, not real market prices. Do not use these figures for a real decision.</div>}
-    <div className="section-head"><div><div className="section-label"><IndianRupee size={13} /> MARKET VALUATION</div><h2>What the land is worth</h2></div><span className="valuation-stamp">{valuation.model_version} · valued {valuation.valuation_date}</span></div>
+  const spread = valuation.spread_inr_per_sqft
+  const validated = valuation.validation.status === 'validated'
+  return <section className="valuation-section">
+    <div className="section-head"><div>{label}<h2>{PRICE_TITLE[valuation.price_type] || 'Estimated price range'}</h2></div><span className={`valuation-stamp${validated ? '' : ' unvalidated'}`}>{validated ? 'held-out accuracy measured' : 'NOT YET VALIDATED'} · data {valuation.data_version} · {valuation.valuation_date}</span></div>
+    <p className="valuation-basis">Based on <strong>{valuation.price_type_label}</strong>.{valuation.price_type === 'asking' ? ' These are not completed sale prices.' : ''}</p>
     <div className="valuation-grid">
-      <div className="valuation-primary"><span>ESTIMATED PRICE</span><strong>₹{inr(valuation.estimated_inr_per_sqft)}</strong><small>per sq ft</small></div>
-      <div className="valuation-primary total"><span>TOTAL LAND VALUE</span><strong>{compactInr(valuation.estimated_total_inr)}</strong><small>{inr(valuation.area_sqft)} sq ft · {valuation.land_use.replace('_', ' ')}{property?.area_sqft_override ? ' · area you entered' : ' · area from your boundary'}</small></div>
-      <div className="valuation-range">{valuation.range
-        ? <><span>LIKELY RANGE</span><strong>{compactInr(valuation.range.low_total_inr)} – {compactInr(valuation.range.high_total_inr)}</strong><small>{valuation.range.basis}</small></>
-        : <><span>LIKELY RANGE</span><strong className="muted-strong">Not shown</strong><small>{valuation.range_unavailable_reason}</small></>}</div>
+      <div className="valuation-primary"><span>TYPICAL ({valuation.comparable_count} COMPARABLES)</span><strong>₹{inr(valuation.estimate_inr_per_sqft)}</strong><small>per sq ft · median</small></div>
+      <div className="valuation-primary"><span>MIDDLE HALF OF COMPARABLES</span><strong>₹{inr(spread.p25)} – ₹{inr(spread.p75)}</strong><small>per sq ft · full spread ₹{inr(spread.min)} – ₹{inr(spread.max)}</small></div>
+      <div className="valuation-range">{valuation.total_inr
+        ? <><span>TOTAL FOR {inr(valuation.area_sqft)} SQ FT</span><strong>{compactInr(valuation.total_inr.p25)} – {compactInr(valuation.total_inr.p75)}</strong><small>{property?.area_sqft_override ? 'area you entered' : 'area from your boundary'} × the middle-half rates</small></>
+        : <><span>TOTAL</span><strong className="muted-strong">Not shown</strong><small>The parcel is outside the size range of the comparables.</small></>}</div>
     </div>
+    <p className="muted valuation-detail">{valuation.spread_basis}</p>
     <div className="valuation-facts">
-      <div><span>HELD-OUT ERROR</span><strong>±₹{inr(valuation.accuracy.model_mae_inr_per_sqft)}/sq ft</strong><small>MAE · RMSE ₹{inr(valuation.accuracy.model_rmse_inr_per_sqft)} · {valuation.accuracy.holdout_strategy} holdout</small></div>
-      <div><span>VS SIMPLE BASELINE</span><strong>{valuation.accuracy.model_beats_baseline ? 'Model wins' : 'Baseline wins'}</strong><small>district median MAE ₹{inr(valuation.accuracy.baseline_mae_inr_per_sqft)}/sq ft</small></div>
-      <div><span>DATA BEHIND IT</span><strong>{coverage.observations_within_radius} sales within {coverage.radius_km} km</strong><small>{coverage.dataset_rows} rows total · {coverage.dataset_date_from} to {coverage.dataset_date_to}</small></div>
-      <div><span>NEAREST OBSERVATION</span><strong>{coverage.nearest_observation_km == null ? '—' : `${coverage.nearest_observation_km} km`}</strong><small>{coverage.districts_nearby.length ? coverage.districts_nearby.join(', ') : 'no districts nearby'}</small></div>
+      <div><span>COMPARABLES</span><strong>{valuation.comparable_count} within {valuation.radius_km} km</strong><small>{valuation.land_use.replace('_', ' ')} {valuation.property_category.replace('_', ' ')} only</small></div>
+      <div><span>DATES</span><strong>{valuation.observed_from} – {valuation.observed_to}</strong><small>not adjusted for price changes over time</small></div>
+      <div><span>SOURCES</span><strong>{valuation.sources.length}</strong><small>{valuation.sources.join(', ')}</small></div>
+      <div><span>PREDICTION QUALITY</span><strong>{validated ? 'Measured' : 'Not yet validated'}</strong><small>{validated ? Object.entries(valuation.validation.holdouts || {}).map(([name, h]) => h.baseline ? `${name}: median error ${h.baseline.median_ape_pct}% on ${h.estimates} held-out ${valuation.price_type} prices` : `${name}: not validated`).join(' · ') : valuation.validation.note || 'Too few held-out observations to measure accuracy.'}</small></div>
     </div>
-    <p className="valuation-foot">Market value is computed from comparable land prices and the property details you entered. It does not use your suitability weights, so changing a priority slider cannot move it.</p>
+    <div className="valuation-uncertainty"><strong>Why this is uncertain</strong><ul>{valuation.uncertainty.map(reason => <li key={reason}>{reason}</li>)}</ul></div>
+    <details className="valuation-comparables"><summary>Comparable observations ({valuation.comparables.length} shown)</summary><table className="flood-table"><thead><tr><th>Source / record</th><th>Type</th><th>Observed</th><th>₹ / sq ft</th><th>Area (sq ft)</th><th>Distance</th><th>Location</th></tr></thead><tbody>{valuation.comparables.map(c => <tr key={`${c.source}-${c.source_record_id}`}><td>{c.source_url ? <a href={c.source_url} target="_blank" rel="noreferrer">{c.source} · {c.source_record_id}</a> : `${c.source} · ${c.source_record_id}`}{c.listed_by_sources > 1 ? ` (listed ${c.listed_by_sources}×, counted once)` : ''}<small className="comparable-basis">reuse: {c.reuse_basis} · retrieved {c.retrieved_date}</small></td><td>{c.price_type}</td><td>{c.observed_date}</td><td>₹{inr(c.price_inr_per_sqft)}</td><td>{c.area_sqft == null ? '—' : inr(c.area_sqft)}</td><td>{c.distance_km} km</td><td>{c.location_precision}{c.locality ? ` · ${c.locality}` : ''}</td></tr>)}</tbody></table></details>
+    <p className="valuation-foot">The price comes only from comparable prices and the property details you entered. It never uses your suitability weights, flood evidence or legal status, and none of those use it.</p>
   </section>
 }
 

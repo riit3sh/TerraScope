@@ -9,13 +9,6 @@ from typing import Any
 
 import requests
 
-# Only fall back to sibling imports when run as a script; inside the package a
-# failed import (e.g. chromadb missing) must surface as itself.
-if __package__:
-    from .retrieve import retrieve_context
-else:  # pragma: no cover - direct script execution.
-    from retrieve import retrieve_context
-
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
@@ -66,6 +59,13 @@ def generate_grounded_answer(question: str, parcel_id: str) -> dict[str, Any]:
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise RuntimeError("GROQ_API_KEY must be set to generate a grounded answer.")
+    # Imported here, not at module load: retrieval pulls in chromadb and torch
+    # (~10-35 s cold), which the evaluation explanation never needs. A failed
+    # import (e.g. chromadb missing) still surfaces as itself.
+    if __package__:
+        from .retrieve import retrieve_context
+    else:  # pragma: no cover - direct script execution.
+        from retrieve import retrieve_context
     context = retrieve_context(question, parcel_id)
     response = requests.post(
         GROQ_API_URL,

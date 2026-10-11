@@ -14,6 +14,7 @@ import httpx
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
+from . import places
 from .store import (
     get_document_texts,
     get_latest_evaluation,
@@ -116,13 +117,30 @@ def _downstream_error(response: httpx.Response, service: str) -> HTTPException:
     return HTTPException(status_code=status, detail=f"{service}: {detail}")
 
 
+@router.get("/api/v1/search/suggest")
+def suggest_places(q: str, limit: int = 8) -> list[dict[str, Any]]:
+    """Autocomplete from the local GeoNames index. Never calls a web service."""
+    try:
+        return places.suggest(q, max(1, min(limit, 20)))
+    except places.PlaceIndexMissing as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+
 @router.get("/api/v1/search/geocode")
 async def geocode_search(q: str) -> list[dict[str, Any]]:
-    """India-wide Nominatim suggestions (states and union territories), cached and rate-limited to one request/second."""
+    """Explicit search (the user pressed Search): the local index first, then one
+    Nominatim lookup for full addresses. Never used for autocomplete, which the
+    Nominatim usage policy forbids; rate-limited to one request per second and cached."""
     global _last_geocode_request_at
     query = q.strip()
     if len(query) < 2:
         return []
+    try:
+        local = places.suggest(query, 5)
+    except places.PlaceIndexMissing:
+        local = []
+    if local:
+        return local
     cache_key = query.casefold()
     if cache_key in _geocode_cache:
         return _geocode_cache[cache_key]
@@ -149,7 +167,8 @@ async def geocode_search(q: str) -> list[dict[str, Any]]:
         except httpx.HTTPError as error:
             raise HTTPException(status_code=502, detail=f"Address search failed: {error}") from error
     suggestions = [
-        {"lat": float(item["lat"]), "lon": float(item["lon"]), "display_name": item["display_name"]}
+        {"lat": float(item["lat"]), "lon": float(item["lon"]), "display_name": item["display_name"],
+         "kind": item.get("type"), "precision": "address match", "source": "OpenStreetMap Nominatim"}
         for item in results
     ]
     _geocode_cache[cache_key] = suggestions
@@ -272,9 +291,9 @@ async def upload_parcel_document(parcel_id: str, file: UploadFile = File(...)) -
 
 
 @router.get("/api/v1/parcels")
-def list_parcels(limit: int = 50) -> dict[str, Any]:
+def list_parcels(limit: int = 1000) -> dict[str, Any]:
     """Saved reports, newest first, so a user can reopen earlier work."""
-    return {"reports": list_saved_reports(max(1, min(limit, 200)))}
+    return {"reports": list_saved_reports(max(1, min(limit, 5000)))}
 
 
 @router.get("/api/v1/parcels/{parcel_id}")

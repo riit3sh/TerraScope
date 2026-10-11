@@ -104,3 +104,20 @@ def test_parcel_outside_india_runs_no_collector(monkeypatch) -> None:
     with pytest.raises(etl_pipeline.OutsideCoverage) as caught:
         etl_pipeline.build_evidence_snapshot(PUNE, "2025-01-01", "2026-01-01")  # outside the test "India"
     assert caught.value.result["status"] == "outside_india"
+
+
+def _ring(*points):
+    return {"type": "Polygon", "coordinates": [[list(p) for p in points]]}
+
+
+@pytest.mark.parametrize("polygon, message", [
+    # 2026-10-11: these were analysed (bowtie, 2-degree box) or called "outside India".
+    (_ring((79.13, 12.97), (79.14, 12.98), (79.14, 12.97), (79.13, 12.98), (79.13, 12.97)), "edges do not cross"),
+    (_ring((0, 0), (2, 2), (2, 0), (0, 1), (0, 0)), "edges do not cross"),
+    (_ring((79.13, 12.97), (79.14, 12.97), (79.15, 12.97), (79.13, 12.97)), "encloses no area"),
+    (_ring((279.13, 12.97), (279.14, 12.97), (279.14, 12.98), (279.13, 12.97)), "out of range"),
+    (_ring((78, 12), (80, 12), (80, 14), (78, 14), (78, 12)), "up to 1,000 ha"),
+])
+def test_invalid_boundaries_are_refused_before_collection(offline, polygon, message):
+    with pytest.raises(ValueError, match=message):
+        etl_pipeline.build_evidence_snapshot(polygon, "2025-01-01", "2026-01-01")

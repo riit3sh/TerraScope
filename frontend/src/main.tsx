@@ -2,7 +2,7 @@ import { StrictMode, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles.css'
 import { Search } from './pages/Search'
-import { ParcelWorkspace, SQFT_PER_SQM } from './pages/ParcelWorkspace'
+import { ParcelWorkspace, Point, SQFT_PER_SQM } from './pages/ParcelWorkspace'
 import { Report } from './pages/Report'
 import { estimateValuation, EvaluationSettings, getSavedParcel, ParcelRecord, PropertyDetails, Valuation } from './lib/api'
 
@@ -29,6 +29,7 @@ async function revalue(snapshot: ParcelRecord, property: PropertyDetails): Promi
 
 function App() {
   const [place, setPlace] = useState<{ lat: number; lon: number; label: string } | null>(null)
+  const [boundary, setBoundary] = useState<Point[]>([])
   const [report, setReport] = useState<OpenReport | null>(null)
   const [opening, setOpening] = useState('')
 
@@ -39,7 +40,7 @@ function App() {
       const snapshot = saved.latest_evaluation || saved.evidence_snapshot
       const property: PropertyDetails = {
         land_use: (snapshot.evaluation?.property_type === 'mixed_use' ? 'mixed_use' : snapshot.evaluation?.property_type) as PropertyDetails['land_use'] || 'residential',
-        price_basis: 'transaction',
+        price_basis: 'asking',
         area_sqft_override: null,
       }
       setReport({ snapshot, settings: snapshot.evaluation || fallbackSettings, property, valuation: await revalue(snapshot, property) })
@@ -51,8 +52,8 @@ function App() {
   }
 
   if (report) return <Report initialSnapshot={report.snapshot} initialSettings={report.settings} valuation={report.valuation} property={report.property} onBack={() => setReport(null)} />
-  if (!place) return <Search onSubmit={setPlace} onOpenSaved={openSaved} openingParcelId={opening} />
-  return <ParcelWorkspace search={place} onBack={() => setPlace(null)} onReport={(snapshot, settings, property, valuation) => setReport({ snapshot, settings, property, valuation })} />
+  if (!place) return <Search onSubmit={next => { setPlace(next); setBoundary([]) }} onOpenSaved={openSaved} openingParcelId={opening} />
+  return <ParcelWorkspace search={place} points={boundary} onPointsChange={setBoundary} onBack={() => setPlace(null)} onReport={(snapshot, settings, property, valuation) => setReport({ snapshot, settings, property, valuation })} />
 }
 
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>)
