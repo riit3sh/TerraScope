@@ -1,134 +1,137 @@
 # TerraScope land valuation
 
-Estimates market price per square foot and total value for a drawn parcel.
+A transparent, comparable-property price range for a drawn parcel, or an explicit refusal. It is independent of
+everything else: suitability weights, flood evidence and legal status never move a price, and a price never
+moves them.
 
-This module is **independent of the suitability scoring engine**. Suitability
-weights say what a particular buyer wants; they must never change an estimate of
-what the market pays. Changing a preference slider re-scores a parcel and leaves
-its valuation untouched.
+**No real price data ships with TerraScope.** Today every parcel is refused with `no_price_data`. Where the data
+would have to come from, and what blocks it, is in [../docs/SETUP_VALUATION.md](../docs/SETUP_VALUATION.md).
 
-## Status: no real dataset is shipped
+## Price types are never pooled
 
-The repository contains **no real land-price data and no model trained on real
-data.** The import, training, serving and UI path is complete and tested, but it
-currently runs on a clearly-labelled synthetic fixture
-(`fixtures/synthetic_land_prices.csv`, every row stamped `SYNTHETIC_FIXTURE`).
-
-Any prediction made from that fixture carries `is_synthetic: true` all the way
-to the UI, where it is labelled demo data. **Do not present it as a valuation.**
-To get real numbers, supply a real CSV and retrain (below).
-
-## What you need to supply
-
-One CSV, one row per observed land price. Minimum useful dataset:
-
-| Requirement | Minimum | Why |
+| `price_type` | Meaning | Report title |
 |---|---|---|
-| Usable rows after import | 50 | below this, training is refused |
-| Rows for the holdout | 10 | below this, no error figure is quoted |
-| Distinct months **or** distinct districts | 6 months, or 4 districts | needed for a temporal or geographic holdout |
-| Coverage near your parcels | ≥5 observations within 25 km | otherwise the location is refused |
+| `asking` | a seller's asking price from a listing; not a sale | "Listing-based estimated price range" |
+| `transaction` | a completed, registered sale price | "Sale-based estimated price range" |
+| `guideline` | a government guideline / circle rate: an administrative floor | "Government guideline value (reference)" |
 
-Good dataset properties, in rough order of value:
+## Observation contract (CSV, one row per observation)
 
-1. **Completed transactions** (registry/sub-registrar data) rather than asking
-   prices. Portal listings are asking prices; record them as such.
-2. **A real time span** — 3+ years lets the model see price drift, and enables
-   the temporal holdout, which is the honest test for a forecasting task.
-3. **Several districts**, so geography is a signal rather than a constant.
-4. **Plot-level coordinates.** District centroids for every row make the spatial
-   features meaningless.
+Headers are normalised (case, punctuation). Required columns:
 
-Candidate sources: state sub-registrar / IGR transaction exports (Maharashtra
-IGR, TN Registration Dept), municipal circle-rate / ready-reckoner tables (these
-are floors, not market prices — label them clearly), or a licensed listings feed.
+| Column | Notes |
+|---|---|
+| `source`, `source_record_id` | provider name and its record id |
+| `reuse_basis` | the licence or permission under which the row may be used; rows without it are dropped |
+| `price_type` | `asking`, `transaction` or `guideline` |
+| `observed_date`, `retrieved_date` | when listed / registered / effective, and when retrieved |
+| `price_value`, `price_unit`, `currency` | `price_unit` is `total` or `per_<unit>`; only `INR` is accepted, never converted |
+| `property_category` | `vacant_plot`, `agricultural_land`; built property (`apartment`, `independent_house`, `villa`, `commercial_building`, `other`) is dropped |
+| `land_use` | `residential`, `commercial`, `industrial`, `agricultural`, `mixed_use` |
+| `latitude`, `longitude`, `location_precision` | precision `exact`, `street`, `locality`, `pincode`, `district`; only the first three are used as comparables |
 
-## CSV contract
+Optional columns:
 
-Headers are normalized (lowercased, non-alphanumerics to `_`), so
-`Price Value` and `price_value` both work. All 13 columns are required.
+- `source_url`
+- `area_value` and `area_unit` (required for `total` prices)
+- `district`, `state`, `locality`
+- `attributes`: kept verbatim, never inferred
+- `property_ref`: a survey or plot number that identifies the plot
 
-| Column | Type | Notes |
-|---|---|---|
-| `record_id` | string | your identifier for the observation |
-| `latitude` | float | −90..90, plot-level if possible |
-| `longitude` | float | −180..180 |
-| `district` | string | used for the baseline and the coverage report |
-| `state` | string | |
-| `area_value` | float > 0 | in `area_unit` |
-| `area_unit` | enum | `sqft`, `sqyd`, `sqm`, `acre`, `hectare`, `cent`, `guntha`, `ground`, `kanal`, `marla` |
-| `land_use` | enum | `residential`, `commercial`, `industrial`, `agricultural`, `mixed_use` |
-| `observation_date` | date | when the price was observed |
-| `price_value` | float > 0 | in `price_unit` |
-| `price_unit` | enum | `total_inr`, `inr_per_sqft`, `inr_per_sqm`, `inr_per_acre`, `inr_per_cent` |
-| `price_basis` | enum | `asking` or `transaction` — do not guess |
-| `source` | string | provenance, carried into the coverage report |
+Area units: `sqft`, `sqm`, `sqyd`, `acre`, `hectare`, `cent`, `guntha`, `ground`, `kanal`, `marla`. Bigha, katha
+and similar units vary by state, so they are rejected rather than converted with a guessed factor.
 
-**`bigha` and `katha` are deliberately rejected.** Their size varies by state and
-district, so converting them centrally would silently corrupt areas. Convert
-those rows to `sqft` yourself, using the right local factor, before importing.
+### Cleaning
 
-Rows failing any rule are dropped and counted by reason in the import report;
-they never silently become training data.
+Every dropped row is counted by reason (`python -m valuation.dataset file.csv`). Rows are dropped for:
 
-### Duplicate handling
+- missing provenance;
+- a non-INR currency;
+- an unknown category, use or precision;
+- coordinates outside India;
+- unparseable dates, or retrieval before observation;
+- a price or area outside the plausibility bounds (these catch lakh/crore and unit slips);
+- a total price without an area;
+- built property.
 
-Re-listings of one plot would otherwise put the same property in both the
-training and holdout halves and flatter the error. Rows are collapsed onto a
-`property_key` (coordinates rounded to ~11 m, area to the nearest 10 sqft, plus
-land use) and only the most recent observation per property is kept. Training
-aborts if any property still appears on both sides of the split.
+De-duplication:
 
-## Training
+- The same record delivered twice keeps its latest retrieval.
+- Re-listings of one plot, from any source and at any date, collapse to the most recent observation. They
+  are recognised when:
+  - exact points lie within 25 m with the area within 3%; or
+  - street- or locality-level points lie within 75 m, with the area within 1% and the price within 3%, inside
+    a year; or
+  - rows share a `property_ref` within a district. Different `property_ref` values are never merged.
+- Without identifiers, adjacent same-size layout plots within 25 m may be merged. This is deliberate: it costs
+  comparables but keeps one property from sitting on both sides of a validation split.
 
-```bash
-python -m valuation.train path/to/land_prices.csv --out valuation/artifacts/land_price_model.joblib
-```
+## Estimate (comparable baseline)
 
-Add `--synthetic` only for invented data; it flags every downstream prediction
-as demo-only.
+Comparables share:
 
-The run prints the measured holdout report and writes the artifact plus a
-`.metadata.json` beside it. It compares two models:
+- the price type, land use and land category;
+- comparable location precision;
+- a date no later than the valuation date, and not older than 18 months (asking) or 3 years (transaction,
+  guideline);
+- a similar size: from one third to three times the parcel's area.
 
-- **Baseline** — district median INR/sqft (global median for unseen districts).
-- **Model** — `HistGradientBoostingRegressor` over latitude, longitude, area,
-  land use, price basis and observation year/month.
+They are taken from the smallest radius (1, 2, 5, 10 km) holding at least 5 of them.
 
-Both are scored on the same held-out rows, and MAE / RMSE / median APE are
-reported for each. A model that fails to beat the baseline is still written, with
-`model_beats_baseline: false` — that is a real result about your dataset.
+The result is:
 
-### Prediction range
+- the median ₹/sq ft;
+- the interquartile and full spread. This is the comparables' own spread, **not a statistically validated
+  prediction interval**;
+- a total only when the parcel lies within the comparables' size range;
+- every comparable with its provenance;
+- reasons for uncertainty.
 
-Two extra quantile models (0.1 / 0.9) give an 80% interval. Its **measured**
-coverage on the holdout is recorded, and the range is only served when it
-achieves at least 75% of its nominal coverage. On the synthetic fixture it does
-not (80% nominal, ~31% measured, because prices drift upward and the quantile
-models are fit on older data), so no range is shown and the API says why.
+Prices are not adjusted for time. Plot facts that are not in the data (road frontage, shape, approvals, title)
+are not invented.
+
+Refusals: `no_price_data`, `price_type_not_covered`, `land_use_not_covered`, `no_comparables_nearby`,
+`stale_data_only`, `area_outside_support` (e.g. a campus valued from house plots), `insufficient_comparables`.
+`invalid_input` returns HTTP 400.
+
+## Measuring prediction quality
+
+`python -m valuation.evaluate observations.csv --price-type asking`:
+
+- **Leakage:** re-listings are collapsed before splitting, and the harness asserts that no property sits on
+  both sides of a split.
+- **Holdouts:**
+  - temporal: train on observations up to the 80th-percentile date, test on later ones (needs 6+ months);
+  - geographic: whole districts, or 10 km cells, held out (needs 4+ areas).
+- **Baseline:** draws comparables from the training half only, as of each test observation's date.
+- **Model:** a gradient-boosting model (lat, lon, log area, land use, date) is compared only when there are
+  300+ training rows. Its encoder is fitted on training rows; the hyperparameters are fixed, not tuned.
+- **Reported:**
+  - train and test counts and dates, regions, land uses;
+  - MAE, RMSE (₹/sq ft), median absolute percentage error (no exclusions: cleaned targets are all positive);
+  - the share of predictions within ±10/20/30%;
+  - prediction coverage (estimates vs refusals by reason);
+  - how often the interquartile spread contained the held-out price;
+  - the model compared with the baseline.
+- **Labelling:** every figure names its target (`asking` or `transaction`). Accuracy against listings is not
+  accuracy against sale prices.
+- **Threshold:** below 30 held-out estimates the result is `not_yet_validated`, and no error figure is quoted.
+
+Current status: **not yet validated**, because there are zero real observations.
+
+Synthetic self-check (test data only, not accuracy):
+
+- A 600-plot synthetic market confirms that the harness separates properties across splits.
+- Held-out towns are refused rather than guessed.
+- The interquartile spread contained only about 21% of held-out synthetic prices. That is why it is never
+  called an interval.
 
 ## Serving
 
-`POST /api/v1/valuation/estimate` and `GET /api/v1/valuation/model`.
-
-A prediction is refused, with an explicit status, when:
-
-| Reason | Meaning |
-|---|---|
-| `model_not_trained` | no artifact — train one |
-| `location_not_covered` | fewer than 5 observations within 25 km |
-| `land_use_not_covered` | dataset has no rows of that land use |
-| `unsupported_land_use` / `invalid_input` | bad request |
-
-Tune with `VALUATION_MAX_SUPPORT_DISTANCE_KM`, `VALUATION_MIN_SUPPORTING_OBSERVATIONS`
-and `VALUATION_MODEL_PATH`.
-
-Every successful response carries `model_version`, `data_version`,
-`valuation_date`, the measured `accuracy` block and an `evidence_coverage` block
-naming how much data actually stood behind it.
+- `GET /api/v1/valuation/data`: what is loaded, from which sources, and the validation status.
+- `POST /api/v1/valuation/estimate` with `{latitude, longitude, area_sqft, land_use, price_basis}`.
+  `price_basis` is `asking` by default.
 
 ## Tests
 
-```bash
-python -m pytest valuation/test_valuation.py -v
-```
+`python -m pytest valuation -q`. These use synthetic rows written in the test file.

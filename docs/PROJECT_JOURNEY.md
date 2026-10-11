@@ -45,6 +45,7 @@ the reason the approach changed.
 | 2026-09-28 | Local Git checkpoint. getaddrinfo fixed in code. Synthetic prices refused (local-only commits) |
 | 2026-09-29 | Collaborator access granted. Work pushed to `sai/terrascope-progress`, draft PR [riit3sh/TerraScope#1](https://github.com/riit3sh/TerraScope/pull/1). Evidence audit. Accessibility geometry. Real Sentinel-2 |
 | 2026-10-06 | Setup recovered on a fresh clone. Safe Windows launcher. Tamil Nadu coverage and local data (`80eadd5`), then the scope corrected to all of India, with JRC river flood hazard |
+| 2026-10-11 | Browser audit and fixes: local place search, boundary drawing, invalid polygons, saved-report limit, 36 s first evaluation. Listing-based valuation pipeline (blocked on permitted data). Satellite result cache. Checklist added |
 
 ## Status summary
 
@@ -85,6 +86,16 @@ the reason the approach changed.
 | J-33 | Launcher bound `stop` to `$Region` and ran `start` | fixed and verified |
 | J-34 | `partial` factor status rejected by the shared schema | fixed and verified |
 | J-35 | Integration tests wrote fixtures into the user's saved reports | fixed and verified |
+| J-36 | Autocomplete sent typing to public Nominatim | fixed and verified |
+| J-37 | Workspace boundary defects (default box, re-fly, unsaveable edits, lost boundary) | fixed and verified |
+| J-38 | Invalid polygons analysed or misreported | fixed and verified |
+| J-39 | Saved-reports list capped at 50 | fixed and verified |
+| J-40 | First evaluation after start took 36 s | fixed and verified |
+| J-41 | Satellite collection repeated on every analysis | fixed and verified (repeat analyses); cold path open |
+| J-42 | Listing-based valuation pipeline | in progress (blocked on permitted data) |
+| J-43 | Flood panel prose-heavy | fixed and verified |
+| J-44 | Upload ledger claimed retrieval that was not running | fixed |
+| J-45 | Browser verification limits in the app's pane | unresolved (tooling) |
 
 ---
 
@@ -498,6 +509,12 @@ the reason the approach changed.
 - **Remaining limitations:** for Tamil Nadu the candidate is TN Registration Department (TNREGINET) guideline
   values. Those are administrative floors, not market prices, and must not be mixed in unlabelled. No
   authorised integration exists.
+- **Update 2026-10-11:**
+  - Licensed and open sources were researched; no permitted dataset was found (`docs/SETUP_VALUATION.md`).
+  - The valuation path was rebuilt around a provenance contract and comparables, so real rows can be loaded
+    without code changes (J-42).
+  - The exact blocker is a licensed listing or registration feed (a paid decision), owner or broker
+    permission, or an authorised bulk export from a registration department.
 - **Status:** unresolved.
 
 ## J-20 NASA AppEEARS satellite integration
@@ -821,3 +838,192 @@ the reason the approach changed.
   tree on teardown: the venv `python.exe` is a launcher whose child kept the temporary database open.
 - **Verification:** a full run on 2026-10-06 gave 17 passed and 3 skipped. The user's snapshot count was 90 before and 90 after, and no test backend process was left running.
 - **Status:** fixed and verified.
+
+## J-36 Autocomplete sent typing to public Nominatim
+
+- **Date / problem:** 2026-10-11. Every pause while typing in the search box sent a request through
+  `/api/v1/search/geocode` to `nominatim.openstreetmap.org`. The Nominatim usage policy forbids autocomplete.
+- **Root cause (confirmed in the browser):** the suggestions effect called the same endpoint as explicit search,
+  and that endpoint proxied Nominatim.
+- **Changes:**
+  - `fetch-data` builds `data-cache/places/places.sqlite`: an FTS5 prefix index of 733,958 names. Sources are
+    the GeoNames IN gazetteer and Indian postal codes, CC BY 4.0. Indexed: states, UTs, districts, towns,
+    villages, localities, colleges, stations, lakes and PIN codes. ASCII display names, filtered alternate
+    names (Madras, Bombay, Cuddapah) and acronyms (VIT, IIT).
+  - The new `/api/v1/search/suggest` reads only this index and returns 503 when it is missing.
+    `/api/v1/search/geocode` (explicit Search) tries the index first, then one rate-limited Nominatim query.
+  - Frontend: a 120 ms debounce; a newer keystroke aborts the older request; GeoNames attribution;
+    approximate PIN locations are labelled.
+- **Verification (2026-10-11):**
+  - Browser: typing "katpadi vel" and "velach" sent only `/search/suggest`.
+  - The UTs (Leh, Kavaratti, Port Blair, Silvassa, Daman, Chandigarh, Puducherry) were found.
+  - Over HTTP: p50 2.9 ms, p95 24.6 ms (n=100).
+  - 4 backend tests build a small index with the real builder; any network call fails the suggest endpoint.
+- **Remaining limitations:** the data is points, not boundaries. District names follow GeoNames and lag
+  recent splits. "vit" alone ranks a village named Vit first.
+- **Commits:** `6ba3e51`, `8f9119a`.
+- **Status:** fixed and verified.
+
+## J-37 Workspace boundary defects found in the browser
+
+- **Date / problem:** 2026-10-11, all reproduced in the browser:
+  1. The workspace pre-filled an invented ~96.6 ha box, which could be analysed and was labelled
+     "USER-DEFINED".
+  2. After each vertex or edit the map flew back to zoom 14.
+  3. The Edit mode's Save/Cancel lived in the hidden Leaflet-draw toolbar, so an edit could never be
+     committed.
+  4. The Draw/Edit/Reset bar covered the zoom buttons.
+  5. Going to the report and back replaced the drawn boundary with the default box.
+  6. After a mouse pick, Enter did nothing, because focus had left the input.
+  7. The suggestion list opened underneath the saved-reports cards.
+- **Root causes:**
+  - (2) `Focus` depended on a centre array rebuilt every render.
+  - (3) CSS `.leaflet-draw{display:none}`.
+  - (5) the boundary state lived in a component that unmounts.
+  - (7) both sections had `z-index:1`.
+- **Changes:**
+  - The boundary is lifted to `App` and starts empty; Clear replaces Reset; Analyze stays disabled until a
+    boundary exists.
+  - `Focus` depends on the coordinates.
+  - Only the Leaflet-draw buttons are hidden, so its Finish/Cancel/Save actions show.
+  - The control bar moved; the input is refocused after a pick; the search section is raised above the
+    saved reports.
+- **Verification (2026-10-11, browser):** drew a 0.33 ha Katpadi plot (map stayed at the user's zoom); edited it
+  to 0.54 ha and saved; cleared; redrew; went to the report and back with the boundary kept. The list opens
+  above the cards (screenshot).
+- **Remaining limitations:** Leaflet-draw needs a mouse move before each click (automation only). From a
+  reopened saved report, "Workspace" returns to search.
+- **Status:** fixed and verified.
+
+## J-38 Invalid polygons were analysed or misreported
+
+- **Date / problem:** 2026-10-11 API probes found:
+  - a self-intersecting bowtie was analysed;
+  - a 2°×2° box (4.8 million ha) was analysed as a "parcel";
+  - a zero-area polygon and a longitude of 279° were reported as "outside India".
+- **Changes:**
+  - The shared validator `InfrastructureClient._validate_polygon`, used by every analysis, rejects
+    non-finite or out-of-range coordinates, zero area (checked on the convex hull, because a symmetric
+    bowtie's signed area cancels to 0) and invalid (crossing) outlines.
+  - `build_evidence_snapshot` refuses boundaries over `MAX_PARCEL_AREA_HA` (default 1,000).
+- **Verification:** each probe now gets HTTP 400 with a sentence in under 0.6 s. There are 5 regression tests.
+- **Status:** fixed and verified.
+
+## J-39 Saved-reports list capped at 50
+
+- **Date / problem:** 2026-10-11. The list offered "Show all 50 reports" while the store held 91 parcels. 41
+  reports could not be opened from the UI.
+- **Root cause:** `GET /api/v1/parcels` defaulted to 50, and the frontend did not pass a limit.
+- **Changes:** the default is 1,000 (cap 5,000), and the frontend asks for 1,000.
+- **Verification:** the audit store listed 95, and the normal store serves 91.
+- **Status:** fixed and verified.
+
+## J-40 First evaluation after start took 36 s
+
+- **Date / problem:** 2026-10-11. In the browser, the first analysis spent 36.0 s in `/evaluate`. Later
+  evaluations took 0.45 s.
+- **Root cause (measured):** `pipeline.evaluate_snapshot` imports `rag_pipeline.reason`, which imported
+  `retrieve`, which imports chromadb and sentence-transformers/torch. That import took 9.7 s warm, more when
+  cold, even with no Groq key, when the function returns at once.
+- **Changes:** the retrieval import moved into `generate_grounded_answer`, the only function that uses it.
+- **Verification:** the import now takes 0.45 s. The first evaluation after a restart took 557 ms in the browser.
+- **Status:** fixed and verified.
+
+## J-41 Satellite collection repeated on every analysis
+
+- **Date / problem:** 2026-10-11. The new per-collector timings (`metadata.collection_timings_ms`) showed
+  Sentinel-2 collection taking 9.4-15.8 s on every run, cold or warm. It was the slowest collector.
+- **Findings:**
+  - The default Planetary Computer client cached only its SAS token. The AppEEARS and Sentinel Hub caches are
+    not on the default path.
+  - GDAL cloud-read options (no directory listing on open, `.tif` only, VSI cache) cut a standalone series
+    from 17-23 s to 11.5-12.4 s, with identical observations. The service already had them, but only as a
+    side effect of `flood_indicators` being imported first.
+  - Read workers: 12 took 10.5-12.2 s and 8 took 11.5-13.8 s (n=3 each), with identical output.
+  - Remaining: remote DEM reads for parcels without a regional cache take 3.7 s alone, and 7-18 s while
+    competing with satellite reads.
+- **Changes:**
+  - Per-scene measurements are cached by scene id, polygon fingerprint, masking parameters and algorithm
+    version. Scenes are immutable: reprocessing publishes a new id.
+  - Catalogue searches are cached and refreshed after 6 h for windows ending within 60 days, and after
+    30 days otherwise.
+  - Failed reads are never stored, and are now reported as making the series partial.
+  - Storage: SQLite in WAL mode with a busy timeout, LRU row caps, and `SENTINEL_CACHE=off`.
+  - Observations are ordered by (date, scene id), so ties no longer depend on read order.
+  - The GDAL import is explicit, and there are 12 workers.
+  - The evidence row says "cached" with the catalogue age when it was reused.
+- **Verification (2026-10-11):**
+  - Same 6 parcels and session; before = cache off, 2 runs; after = cache on, 3 runs.
+  - Warm analysis median: 10.9 s → 0.66 s. Satellite collector warm: 9.4-14.3 s → 0.08-0.11 s.
+  - Cold median: 13.9 → 12.4 s, essentially unchanged.
+  - Satellite and flood fingerprints were identical across every run.
+  - 7 new unit tests: reuse, failed reads not stored, unusable scenes stored, refresh of recent catalogues,
+    key sensitivity, opt-out, eviction under concurrent writers.
+  - The integration suite now takes 82 s (6 min on 2026-10-06).
+- **Remaining limitations:** cold analyses are still bound by network reads. DEM/GSW remote results are not
+  cached. Caching reduces network time; it does not change algorithmic complexity.
+- **Commits:** `8f9119a`.
+- **Status:** fixed and verified for repeat analyses; cold-path latency is still open.
+
+## J-42 Listing-based valuation pipeline (replaces the synthetic model)
+
+- **Date / problem:** 2026-10-11. Valuation served a gradient-boosting model that had only ever been trained on
+  synthetic rows (J-18, J-19). It had no provenance fields and no way to keep asking prices, sales and
+  guideline values apart.
+- **Changes:**
+  - `valuation/dataset.py`: an observation contract with source and record id/URL, reuse basis, price type,
+    observed and retrieved dates, original price and unit, area and unit, category, land use, and location
+    precision.
+  - Cleaning: currency, unit, plausibility, built-property and location rules, each drop counted by reason.
+  - De-duplication: re-listings by any source, at any date, become one property, with an optional
+    `property_ref`.
+  - `valuation/comparables.py`: the median of nearby, recent, similar-size comparables of the same use and
+    price type. Its spread is labelled as the comparables' own, not an interval. Refusals are explicit; for
+    example, a campus is never valued from house plots.
+  - `valuation/evaluate.py`: grouped temporal and geographic holdouts. Metrics: MAE, RMSE, median APE,
+    ±10/20/30%, coverage and spread containment. A gradient-boosting comparison from 300 training rows. Below
+    30 test estimates the result is "not yet validated".
+  - UI: "Listing-based estimated price range", comparables with provenance, and uncertainty reasons.
+    Refusals are explained without operator instructions.
+  - The synthetic fixture, model artifact and `train.py` were removed.
+- **Data access research (2026-10-11):** no permitted dataset was found; see `docs/SETUP_VALUATION.md`.
+  - The portals' terms pages refused automated access; they have no API or licence.
+  - Registration and guideline portals offer lookups behind captchas.
+  - OpenCity has Bengaluru 2023 guidance-value PDFs, marked public domain. They are reference values only and
+    were not imported.
+- **Verification:**
+  - 48 unit tests on synthetic rows, including regression tests restored from the previous contract.
+  - Integration: refusal contract, and a 400 for bad input with no data.
+  - Browser: the refusal card on the Katpadi and Velachery reports.
+- **Remaining limitations:** there is no real data, so no live price exists and quality is "not yet
+  validated". There is no time adjustment, and the GBM's hyperparameters are fixed.
+- **Status:** in progress (blocked on permitted data).
+
+## J-43 Flood panel was prose-heavy
+
+- **Date / problem:** 2026-10-11. The panel repeated long summaries. The structured measurements already in the
+  snapshot (surface water, terrain, water distances) were not shown as numbers.
+- **Changes:** a table with one line per mechanism and its measurement: first flooded return period, share
+  and depth, surroundings, ever-wet share, elevation relative to water, and distances. Scenario table, sources
+  and method are behind "details". Unknown mechanisms read "Unknown, not safe". The table stacks on narrow
+  screens.
+- **Verification:** browser, Katpadi (no river inundation; +0.3 m above a stream 532 m away) and Velachery
+  marsh edge (100% of the parcel at 1-in-10, up to 4.96 m; lake 178 m).
+- **Status:** fixed and verified.
+
+## J-44 Upload ledger claimed retrieval that was not running
+
+- **Date / problem:** 2026-10-11. An uploaded TXT was listed as "indexed for grounded retrieval", but retrieval
+  needs `GROQ_API_KEY`, which is not set.
+- **Changes:** without the key, the ledger says the text was extracted and stored, is not read or cited by any
+  analysis, and is unverified.
+- **Status:** fixed (verified by unit tests and code path; the wording was not rechecked in the browser).
+
+## J-45 Browser verification limits in the app's pane
+
+- **Date / problem:** 2026-10-11. In the app's built-in browser pane, screenshots often timed out, or came back
+  black, tiled or stale, at an emulated 1440×900 viewport. A network outage also interrupted one session.
+- **Handling:** checks used DOM and text reads, and network and console logs from a fresh tab (no errors, every
+  request 200). Screenshots were taken at the pane's own width when it rendered. This is a tooling limitation,
+  not a product defect.
+- **Status:** unresolved (tooling).

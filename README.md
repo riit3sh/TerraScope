@@ -41,7 +41,7 @@ Needs Python 3.11 (`py -3.11`) and Node.js. From the repository root:
 ```bat
 copy .env.example .env      :: then blank DATABASE_URL and any placeholder keys
 terrascope.cmd setup        :: .venv + pip requirements + npm ci (first run only)
-terrascope.cmd fetch-data   :: India coverage boundary, ~46 MB into data-cache\ (first run only)
+terrascope.cmd fetch-data   :: India boundary (~46 MB) + place-search index (~20 MB download, ~200 MB built), first run only
 terrascope.cmd fetch-data tamil-nadu   :: optional regional cache (any state/UT slug; --list shows them)
 terrascope.cmd start        :: starts all four services, waits for health, opens http://localhost:5173
 terrascope.cmd status
@@ -63,7 +63,8 @@ crossing a state border lists every state it touches, with its share.
 - JRC Global Surface Water.
 - Copernicus DEM elevation.
 
-These rasters are read remotely, window by window, and cached results are reused.
+These rasters are read remotely, window by window. River-flood results and Sentinel-2 scene
+measurements are cached per parcel; other remote reads are not yet cached.
 
 **What needs a regional cache** (`fetch-data <region>`):
 
@@ -82,6 +83,9 @@ disk space and reuses any extract and tiles already on disk.
 | `rasters\gsw\` | JRC Global Surface Water v1.4 (1984-2021), Copernicus, "Source: EC JRC/Google" | surface water seen inside the parcel and within 500 m |
 | `rasters\dem\` | Copernicus DEM GLO-30 via Planetary Computer, Copernicus DEM licence | elevation; height above the nearest mapped water |
 | `flood-hazard\` | JRC global river flood hazard maps v2.1.2, CC BY 4.0 (doi:10.2905/JRC.VD32YWG) | tile index and cached per-parcel results |
+| `places\places.sqlite` | GeoNames gazetteer and postal codes for India, CC BY 4.0 (credit GeoNames) | search suggestions while typing (no web geocoder is called while typing) |
+| `satellite\sentinel2-cache.sqlite` | derived from Sentinel-2 L2A (Planetary Computer) | reused scene measurements (immutable) and catalogue searches (refreshed after 6 h for recent windows) |
+| `valuation\observations.csv` | yours: licensed or permitted price observations (none today) | comparable-based price ranges |
 
 **Flood evidence is reported per mechanism, with no overall score.** The mechanisms are:
 
@@ -131,8 +135,8 @@ expect it to take several minutes on a slow connection.
 The stack runs without any keys, but two evidence layers stay empty until you
 supply them in `.env`:
 
-- **Satellite (NDVI/NDBI charts):** `NASA_APPEEARS_USERNAME` / `NASA_APPEEARS_PASSWORD`.
-  Without them the report honestly reports `insufficient_evidence` and plots nothing.
+- **Satellite:** none needed. Sentinel-2 comes from Planetary Computer without an account;
+  AppEEARS is used only if `NASA_APPEEARS_*` credentials are set.
 - **Grounded explanations and citations:** `GROQ_API_KEY`. Without it the verdict
   falls back to the deterministic rule-based summary.
 
@@ -144,22 +148,17 @@ The Compose stack is for local demo use only. Service-to-service URLs use Compos
 
 ## Land valuation
 
-The report shows an estimated price per sq ft and total land value alongside the
-suitability verdict. The two are computed independently on purpose: **changing a
-priority slider re-scores suitability and cannot move the market price.**
+The report shows a **listing-based estimated price range** (or a sale-based one, or a government
+guideline value) computed only from comparable prices: nearby, recent, similar-size vacant land of the same
+use. Asking prices, sale prices and guideline values are never pooled, and the spread shown is the
+comparables' own spread, not a validated prediction interval. The price is independent of suitability
+weights, flood and legal evidence.
 
-**The repository ships no real price data.** The import, training, serving and UI
-path is complete and tested, but out of the box it runs on a clearly labelled
-synthetic fixture, and every prediction from it is stamped `is_synthetic` and
-banner-labelled DEMO DATA in the UI. To get real numbers:
-
-```bash
-python -m valuation.train path/to/land_prices.csv --out valuation/artifacts/land_price_model.joblib
-```
-
-The CSV contract, the minimum dataset requirements and the refusal reasons are in
-[valuation/README.md](valuation/README.md). A parcel outside the data's coverage
-gets an explicit "unavailable" with the reason, never a guessed number.
+**No real price data is loaded today, so every parcel gets "No price estimate".** No openly licensed listing or
+transaction feed exists for these parcels; what was checked and what is needed is in
+[docs/SETUP_VALUATION.md](docs/SETUP_VALUATION.md). The data contract, cleaning, estimator and the
+prediction-quality harness (`python -m valuation.evaluate`) are in [valuation/README.md](valuation/README.md).
+Prediction quality: **not yet validated**.
 
 ## What the evidence does and does not claim
 

@@ -1,12 +1,47 @@
 # TerraScope local development status
 
-Last updated: 2026-10-06 · branch `sai/terrascope-progress` (pushed to origin).
+Last updated: 2026-10-11 · branch `sai/terrascope-progress` (pushed to origin).
+
+The current checked/unchecked state of every feature is in [PROJECT_CHECKLIST.md](PROJECT_CHECKLIST.md); this file
+keeps the dated milestone notes.
+
+## Search, boundaries, valuation pipeline and satellite caching (2026-10-11)
+
+- **Search:** suggestions come from a local GeoNames index built by `fetch-data`. Public Nominatim no longer
+  receives autocomplete requests; it is used only for an explicit Search with no local match.
+- **Workspace:**
+  - starts with no boundary;
+  - Draw / Edit (with Save) / Clear work;
+  - the map keeps its zoom;
+  - the boundary survives a trip to the report.
+- **Invalid polygons:** self-intersecting, zero-area, out-of-range and over-1,000-ha boundaries are refused
+  before collection.
+- **Saved reports:** the list shows all reports (previously capped at 50).
+- **Speed:**
+  - The first evaluation after a start took 36 s (eager chromadb/torch import); it now takes 0.56 s.
+  - Repeat analyses of a parcel reuse immutable Sentinel-2 measurements: median 10.9 s → 0.66 s, with
+    identical evidence.
+  - A first analysis of a new parcel is unchanged (~12 s, bound by satellite and remote DEM reads).
+- **Valuation:**
+  - The model trained on synthetic rows was removed. In its place: a listing / transaction / guideline
+    observation contract with provenance, cleaning and de-duplication, and a comparable-property estimator
+    with refusals.
+  - The holdout evaluation harness is in `valuation/evaluate.py`.
+  - No permitted price data exists, so every parcel is refused, and prediction quality is "not yet
+    validated". See [SETUP_VALUATION.md](SETUP_VALUATION.md).
+- **Flood:** one measured line per mechanism, with the scenario table and sources expandable.
+- **Tests:**
+  - data-pipeline 62, ml-models 37, backend-api 9 and valuation 48 passed;
+  - integration 17 passed, 1 skipped;
+  - frontend build passes.
+- **Audit:** the services ran against a copy of the report store (`.local-ui-check/audit/`). Your store is
+  byte-identical to its pre-audit backup.
 
 ## Run it
 
 ```bat
 terrascope.cmd setup                  :: first run only: .venv + requirements + npm ci
-terrascope.cmd fetch-data             :: first run only: India boundary (~46 MB)
+terrascope.cmd fetch-data             :: first run only: India boundary (~46 MB) + place-search index
 terrascope.cmd fetch-data tamil-nadu  :: optional regional cache (any state/UT; --list)
 terrascope.cmd start                  :: backend :8000, data-pipeline :8001, ml-models :8002, UI :5173
 terrascope.cmd stop

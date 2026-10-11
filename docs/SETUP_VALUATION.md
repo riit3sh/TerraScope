@@ -1,66 +1,46 @@
-# Valuation setup (operators)
+# Price data for TerraScope (operators)
 
-Operator instructions live here, not in the report UI. A user looking at a parcel
-report should see *whether* a price is available and why — never a training command.
+Operator instructions live here, not in the report. A report says only whether a price is available and why.
 
-## Current state
+## Current state (2026-10-11)
 
-Valuation is **off for real reports**. The only model in the repository was fitted
-on `valuation/fixtures/synthetic_land_prices.csv`, whose rows are invented. Serving
-those numbers would be presenting fiction as a market price, so `estimate_value`
-refuses with `reason: synthetic_model_only`.
+**No real price data is loaded, so every parcel gets "No price estimate".** The pipeline is complete and tested on
+synthetic rows:
 
-`VALUATION_ALLOW_SYNTHETIC=true` re-enables them **for demo purposes only**. Every
-response is then flagged `is_synthetic: true` and banner-labelled DEMO DATA in the
-UI. Do not set this in anything a stakeholder will read.
+- import and cleaning;
+- comparable-property estimate;
+- refusals;
+- holdout evaluation;
+- UI.
 
-## What a real dataset must provide
+It is not validated on real data.
 
-Before any price is shown, a regional dataset is needed with documented provenance
-and a held-out evaluation. The import contract (13 columns) is in
-[../valuation/README.md](../valuation/README.md).
+## Where the data must come from
 
-| Requirement | Minimum | Why |
+| Route | Status (checked 2026-10-11) | What is needed |
 |---|---|---|
-| Usable rows after import | 50 | below this, training is refused |
-| Holdout rows | 10 | below this, no error figure is quoted |
-| Distinct months **or** districts | 6 months, or 4 districts | needed for a temporal or geographic holdout |
-| Observations within 25 km of the parcel | 5 | otherwise the location is refused |
+| Listing portals (99acres, MagicBricks, Housing.com) | No public API or data licence found. Their terms pages refused automated retrieval (HTTP 403 / blocked), and only third-party scraping services advertise this data. Scraping without permission is not done. | A written data licence or partnership from a portal. This is a paid or contractual decision for you. |
+| Licensed aggregators of registration data (e.g. Square Yards' IGR-based data) | Commercial products; licence terms not published. Not contacted. | Your approval to contact them and pay. Then use the `transaction` price type. |
+| State registration departments (IGR Maharashtra, TNREGINET, Kaveri/IGR Karnataka, IGRS AP/Telangana) | Public access is per-document or per-street lookup, often behind a captcha. No bulk open release found. | An authorised bulk export or a formal data request to the department. |
+| Government guideline values | TNREGINET and Kaveri offer street/survey lookups. OpenCity re-hosts Bengaluru guidance-value circulars (Sept 2023 PDFs from igr.karnataka.gov.in, licence field "Other (Public Domain)"). | Could be imported as `guideline` rows after PDF extraction and locality geocoding. Not done: Bengaluru only, 2023, and these are administrative floors, not market prices. |
+| data.gov.in | The search page refused automated access (HTTP 403). No guideline-value or circle-rate dataset appeared in web searches. | Manual check of the portal. |
+| Owner- or broker-supplied listings | Supported now. | Rows with `reuse_basis` naming the permission (for example "owner email 2026-10-01"). |
 
-### Provenance to record for each source
+Publicly visible listings are not a free database. TerraScope does not bypass logins, captchas, paywalls or
+terms of use.
 
-State the issuing authority, the extraction date, the licence, and whether each
-row is an **asking price** or a **completed transaction**. Portal listings are
-asking prices and must be labelled as such; circle-rate / ready-reckoner tables
-are administrative floors, not market prices, and must not be mixed in unlabelled.
+## Loading data
 
-Candidate sources for the parcels currently being tested:
-
-- **Andhra Pradesh** — Registration & Stamps Dept (IGRS AP) market-value and
-  registered-document data. Requires authorised access; there is no open public API.
-- **Maharashtra** — IGR Maharashtra registered-transaction exports.
-- **Tamil Nadu** — TN Registration Dept (TNREGINET) guideline values and documents.
-
-Where no integration is authorised, accept user-provided documents instead and
-record them as user-supplied and unverified. Do not imply a public API exists.
-
-## Training
-
-```bash
-python -m valuation.train path/to/real_land_prices.csv --out valuation/artifacts/land_price_model.joblib
-```
-
-Omit `--synthetic` for real data. The run prints the measured holdout report
-(baseline vs model MAE/RMSE, interval coverage) and writes a `.metadata.json`
-beside the artifact. A model that fails to beat the district-median baseline is
-still written, with `model_beats_baseline: false` — that is a real result about
-the dataset, not a reason to hide it.
+1. Put a CSV following [../valuation/README.md](../valuation/README.md) at `data-cache/valuation/observations.csv`
+   (git-ignored), or set `VALUATION_OBSERVATIONS_PATH`.
+2. Check it: `python -m valuation.dataset path/to/observations.csv` prints what was kept and why rows were dropped.
+3. Measure it: `python -m valuation.evaluate path/to/observations.csv --price-type asking`. This writes
+   `<csv>.quality-asking.json` next to the data. Every estimate then carries that validation status.
+4. Restart the backend, or just replace the file; it is reloaded when its modification time changes.
 
 ## Environment
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `VALUATION_MODEL_PATH` | `valuation/artifacts/land_price_model.joblib` | artifact to serve |
-| `VALUATION_ALLOW_SYNTHETIC` | unset (off) | demo-only; serves synthetic figures |
-| `VALUATION_MAX_SUPPORT_DISTANCE_KM` | 25 | radius for the coverage check |
-| `VALUATION_MIN_SUPPORTING_OBSERVATIONS` | 5 | minimum nearby observations |
+| `VALUATION_OBSERVATIONS_PATH` | `data-cache/valuation/observations.csv` | the observations served |
+| `TERRASCOPE_DATA_DIR` | `data-cache` | root for the default path |
