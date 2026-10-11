@@ -121,6 +121,54 @@ def test_locality_precision_rows_need_matching_price_to_be_duplicates():
     assert report.duplicate_listings_collapsed == 0 and len(cleaned) == 2
 
 
+def test_a_plot_listed_again_a_year_later_is_still_one_property():
+    # Regression from the previous contract: three listings of one plot over a year
+    # must not become three samples (or straddle a temporal split).
+    cleaned, report = normalize(frame(
+        row(source_record_id="l1", observed_date="2025-01-01", retrieved_date="2025-01-01", price_value="5000000"),
+        row(source_record_id="l2", observed_date="2025-06-01", retrieved_date="2025-06-01", price_value="5400000"),
+        row(source_record_id="l3", observed_date="2026-01-01", retrieved_date="2026-01-01", price_value="5900000"),
+    ))
+    assert len(cleaned) == 1 and report.duplicate_listings_collapsed == 2
+    assert cleaned["source_record_id"].iloc[0] == "l3"  # the most recent observation wins
+
+
+def test_plot_identifiers_merge_and_separate_listings():
+    near = f"{KATPADI[0] + 0.0001:.5f}"  # 11 m apart: adjacent layout plots
+    cleaned, _ = normalize(frame(
+        row(source_record_id="a", property_ref="S.No. 12/3A"),
+        row(source_record_id="b", property_ref="S.No. 12/3B", latitude=near),
+        # same identifier, coordinates 2 km off (a broker pinned the wrong spot): still one plot
+        row(source_record_id="c", property_ref="s.no. 12/3a", latitude=f"{KATPADI[0] + 0.018:.5f}",
+            observed_date="2026-09-20", retrieved_date="2026-09-20"),
+    ))
+    assert sorted(cleaned["source_record_id"]) == ["b", "c"]
+
+
+def test_area_units_convert_to_square_feet():
+    cleaned, _ = normalize(frame(
+        row(source_record_id="acre", area_value="1", area_unit="acre", price_unit="per_sqft", price_value="300",
+            property_category="agricultural_land", land_use="agricultural"),
+        row(source_record_id="ha", area_value="1", area_unit="hectare", price_unit="per_sqft", price_value="300",
+            property_category="agricultural_land", land_use="agricultural", latitude="13.5"),
+    ))
+    areas = cleaned.set_index("source_record_id")["area_sqft"]
+    assert areas["acre"] == pytest.approx(43560.0) and areas["ha"] == pytest.approx(107639.104, rel=1e-6)
+
+
+def test_good_rows_survive_beside_bad_ones_and_every_drop_is_counted():
+    cleaned, report = normalize(frame(
+        row(source_record_id="good"),
+        row(source_record_id="usd", currency="USD", latitude="13.1"),
+        row(source_record_id="flat", property_category="apartment", latitude="13.2"),
+        row(source_record_id="nodate", observed_date="soon", latitude="13.3"),
+        row(source_record_id="bigha", area_unit="bigha", latitude="13.4"),
+    ))
+    assert cleaned["source_record_id"].tolist() == ["good"]
+    assert report.rows_read == 5 and report.rows_kept == 1
+    assert report.dropped == {"currency_not_inr": 1, "invalid_area": 1, "not_vacant_land": 1, "unparseable_date": 1}
+
+
 # --- comparable estimates ---------------------------------------------------
 
 def observations(*rows):
@@ -174,6 +222,26 @@ def test_far_away_data_is_not_used():
     with pytest.raises(ValuationUnavailable) as refusal:
         ask(observations(*plots(7)), latitude=14.47, longitude=78.82)  # Kadapa, ~190 km away
     assert refusal.value.reason == "no_comparables_nearby"
+    assert "nearest:" in refusal.value.detail and "km" in refusal.value.detail
+
+
+@pytest.mark.parametrize("overrides", [{"land_use": "spaceport"}, {"price_type": "rumour"}])
+def test_unknown_categories_are_invalid_input(overrides):
+    with pytest.raises(ValuationUnavailable) as refusal:
+        ask(observations(*plots(7)), **overrides)
+    assert refusal.value.reason == "invalid_input"  # the route answers 400
+
+
+def test_total_scales_with_area_but_the_rate_does_not():
+    sizes = [2000, 2200, 2400, 2600, 2800, 3000, 3200]
+    rows = [dict(r, area_value=str(a), price_value=str(2500 * a)) for r, a in zip(plots(7), sizes)]
+    data = observations(*rows)
+    small, large = ask(data, area_sqft=2400.0), ask(data, area_sqft=3000.0)
+    assert small["estimate_inr_per_sqft"] == large["estimate_inr_per_sqft"] == 2500.0
+    assert large["total_inr"]["estimate"] == pytest.approx(small["total_inr"]["estimate"] * 3000 / 2400)
+    # Inside the 1/3x-3x similarity band but beyond the largest comparable: no total.
+    beyond = ask(data, area_sqft=5000.0)
+    assert beyond["total_inr"] is None and any("size range" in r for r in beyond["uncertainty"])
 
 
 def test_stale_listings_are_excluded():
@@ -210,6 +278,17 @@ def test_no_data_file_means_an_explicit_refusal(tmp_path, monkeypatch):
         predict.estimate_value(KATPADI[0], KATPADI[1], 2400.0)
     assert refusal.value.reason == "no_price_data"
     assert predict.data_status()["available"] is False
+    # Shown in the report: it explains, but carries no operator instructions.
+    for leak in ("VALUATION_", "python -m", "README", ".csv", "data-cache"):
+        assert leak not in refusal.value.detail
+
+
+@pytest.mark.parametrize("args", [(0, "residential", "asking"), (2400, "spaceport", "asking"), (2400, "residential", "rumour")])
+def test_bad_requests_are_invalid_input_even_with_no_data(tmp_path, monkeypatch, args):
+    monkeypatch.setenv("VALUATION_OBSERVATIONS_PATH", str(tmp_path / "missing.csv"))
+    with pytest.raises(ValuationUnavailable) as refusal:
+        predict.estimate_value(KATPADI[0], KATPADI[1], *args)
+    assert refusal.value.reason == "invalid_input"
 
 
 def test_served_estimate_carries_data_version_and_validation_status(tmp_path, monkeypatch):
@@ -268,6 +347,12 @@ def test_evaluation_splits_never_share_a_property_and_report_both_holdouts():
     geographic = report["holdouts"]["geographic"]
     assert geographic["estimates"] == 0 and geographic["refusals"] == {"no_comparables_nearby": geographic["test_observations"]}
     assert report["status"] == "not_yet_validated"
+
+
+def test_a_single_month_of_data_gets_only_a_geographic_holdout():
+    data = market(400)
+    data["observed_date"] = pd.Timestamp("2026-03-05")
+    assert [name for name, *_ in evaluate.splits(data)] == ["geographic"]
 
 
 def test_small_datasets_are_not_yet_validated_and_quote_no_errors():

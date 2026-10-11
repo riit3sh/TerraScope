@@ -106,6 +106,12 @@ def test_saved_reports_can_be_listed_and_reopened(client: httpx.Client) -> None:
 
 
 # --- valuation ------------------------------------------------------------
+# These run against whatever price data the stack serves. With none loaded (the
+# current state), every estimate must be an explicit refusal.
+
+REFUSALS = {"no_price_data", "price_data_invalid", "price_type_not_covered", "land_use_not_covered",
+            "no_comparables_nearby", "stale_data_only", "area_outside_support", "insufficient_comparables"}
+
 
 def request_valuation(client: httpx.Client, snapshot: dict[str, Any], **overrides: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
@@ -113,7 +119,7 @@ def request_valuation(client: httpx.Client, snapshot: dict[str, Any], **override
         "longitude": snapshot["location"]["longitude"],
         "area_sqft": snapshot["geometry_metadata"]["area_m2"] * SQFT_PER_SQM,
         "land_use": "residential",
-        "price_basis": "transaction",
+        "price_basis": "asking",
     }
     payload.update(overrides)
     response = client.post("/api/v1/valuation/estimate", json=payload, timeout=30.0)
@@ -121,59 +127,50 @@ def request_valuation(client: httpx.Client, snapshot: dict[str, Any], **override
     return response.json()
 
 
-def test_valuation_model_endpoint_reports_its_provenance(client: httpx.Client) -> None:
-    status = client.get("/api/v1/valuation/model", timeout=15.0).json()
+def test_valuation_data_endpoint_reports_what_is_loaded(client: httpx.Client) -> None:
+    status = client.get("/api/v1/valuation/data", timeout=15.0).json()
     if not status["available"]:
-        assert status["reason"] == "model_not_trained"
+        assert status["reason"] in {"no_price_data", "price_data_invalid"} and status["detail"]
         return
-    assert status["model_version"] and status["data_version"]
-    validation = status["validation"]
-    assert validation["strategy"] in {"temporal", "geographic"}
-    # Accuracy is measured against a baseline, never asserted.
-    assert validation["model"]["mae_inr_per_sqft"] > 0
-    assert validation["baseline"]["mae_inr_per_sqft"] > 0
-    assert validation["holdout_rows"] >= 10
+    assert status["data_version"] and status["data"]["sources"]
+    assert set(status["data"]["price_types"]) <= {"asking", "transaction", "guideline"}
 
 
-def test_valuation_returns_a_price_or_an_explicit_unavailable(client: httpx.Client) -> None:
+def test_valuation_returns_a_comparable_range_or_an_explicit_refusal(client: httpx.Client) -> None:
     snapshot = analyse(client, POLYGONS[0])
     result = request_valuation(client, snapshot)
     if result["status"] == "unavailable":
-        assert result["reason"] in {"model_not_trained", "location_not_covered", "land_use_not_covered", "synthetic_model_only"}
-        assert result["detail"]
+        assert result["reason"] in REFUSALS and result["detail"]
         return
-    assert result["estimated_inr_per_sqft"] > 0
-    assert result["estimated_total_inr"] > 0
-    assert result["model_version"] and result["data_version"] and result["valuation_date"]
-    assert result["evidence_coverage"]["observations_within_radius"] >= 1
-    # A range is only present when its measured holdout coverage justified it.
-    if result["range"] is None:
-        assert result["range_unavailable_reason"]
-    else:
-        assert result["range"]["low_inr_per_sqft"] <= result["estimated_inr_per_sqft"] <= result["range"]["high_inr_per_sqft"]
+    assert result["price_type"] == "asking" and "not completed sales" in result["price_type_label"]
+    assert result["comparable_count"] >= 5 and result["comparables"]
+    spread = result["spread_inr_per_sqft"]
+    assert spread["min"] <= spread["p25"] <= result["estimate_inr_per_sqft"] <= spread["p75"] <= spread["max"]
+    assert "not a statistically validated prediction interval" in result["spread_basis"]
+    assert result["data_version"] and result["validation"]["status"]
 
 
 def test_unsupported_location_is_refused_rather_than_guessed(client: httpx.Client) -> None:
-    """A sub-antarctic island is nowhere near any comparable sale."""
+    """A sub-antarctic island is nowhere near any comparable."""
     response = client.post(
         "/api/v1/valuation/estimate",
-        json={"latitude": -54.5, "longitude": 158.9, "area_sqft": 2000, "land_use": "residential", "price_basis": "transaction"},
+        json={"latitude": -54.5, "longitude": 158.9, "area_sqft": 2000, "land_use": "residential", "price_basis": "asking"},
         timeout=30.0,
     )
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["status"] == "unavailable"
-    assert body["reason"] in {"location_not_covered", "model_not_trained", "synthetic_model_only"}
-    assert body["detail"]
+    assert body["status"] == "unavailable" and body["reason"] in REFUSALS and body["detail"]
 
 
 def test_invalid_valuation_input_is_a_client_error(client: httpx.Client) -> None:
-    response = client.post(
-        "/api/v1/valuation/estimate",
-        json={"latitude": 18.52, "longitude": 73.85, "area_sqft": 2000, "land_use": "spaceport", "price_basis": "transaction"},
-        timeout=15.0,
-    )
-    assert response.status_code == 400
+    for payload in ({"land_use": "spaceport"}, {"price_basis": "rumour"}):
+        response = client.post(
+            "/api/v1/valuation/estimate",
+            json={"latitude": 12.95, "longitude": 79.14, "area_sqft": 2000, "land_use": "residential",
+                  "price_basis": "asking", **payload},
+            timeout=15.0,
+        )
+        assert response.status_code == 400, response.text  # even with no price data loaded
 
 
 def test_changing_suitability_weights_does_not_move_the_market_price(client: httpx.Client) -> None:
@@ -210,33 +207,9 @@ def test_changing_suitability_weights_does_not_move_the_market_price(client: htt
         assert result["rera"] == snapshot["rera"]
 
 
-def test_property_facts_may_move_the_price_even_though_preferences_may_not(client: httpx.Client) -> None:
-    snapshot = analyse(client, POLYGONS[0])
-    residential = request_valuation(client, snapshot, land_use="residential")
-    commercial = request_valuation(client, snapshot, land_use="commercial")
-    if residential["status"] != "available" or commercial["status"] != "available":
-        pytest.skip("valuation unavailable for this parcel")
-    assert residential["land_use"] == "residential"
-    assert commercial["land_use"] == "commercial"
-
-
-def test_total_value_is_price_times_area(client: httpx.Client) -> None:
+def test_total_is_rate_times_area_when_shown(client: httpx.Client) -> None:
     snapshot = analyse(client, POLYGONS[0])
     result = request_valuation(client, snapshot)
-    if result["status"] != "available":
-        pytest.skip("valuation unavailable for this parcel")
-    assert result["estimated_total_inr"] == pytest.approx(
-        result["estimated_inr_per_sqft"] * result["area_sqft"], rel=1e-6
-    )
-
-
-def test_synthetic_models_are_flagged_so_the_ui_can_label_them(client: httpx.Client) -> None:
-    """Demo data must never be presentable as a real valuation."""
-    status = client.get("/api/v1/valuation/model", timeout=15.0).json()
-    if not status["available"]:
-        pytest.skip("no model trained")
-    assert isinstance(status["is_synthetic"], bool)
-    snapshot = analyse(client, POLYGONS[0])
-    result = request_valuation(client, snapshot)
-    if result["status"] == "available":
-        assert result["is_synthetic"] == status["is_synthetic"]
+    if result["status"] != "available" or result["total_inr"] is None:
+        pytest.skip("no total for this parcel")
+    assert result["total_inr"]["estimate"] == pytest.approx(result["estimate_inr_per_sqft"] * result["area_sqft"], rel=1e-3)

@@ -12,12 +12,16 @@ investment, price movement or development approval.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import os
+import sqlite3
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -25,6 +29,12 @@ import rasterio
 import requests
 from rasterio.mask import mask as rio_mask
 from rasterio.warp import transform_geom
+
+# Imported for its side effect too: bounded GDAL HTTP options and cloud-read settings
+# (no directory listing on open, .tif only, block cache). Measured 2026-10-11 on the
+# Kadapa test parcel: 17-23 s without them, 11.5-12.4 s with, identical observations.
+from connectors import flood_indicators  # noqa: F401
+from connectors.regions import data_root
 
 
 LOGGER = logging.getLogger(__name__)
@@ -46,6 +56,66 @@ UNUSABLE_SCL = frozenset({SCL_NO_DATA, SCL_SATURATED, SCL_CLOUD_SHADOW, SCL_CLOU
 # pixels bleeding in from neighbouring land, so the observation is not reported.
 MIN_USABLE_PIXELS = 4
 NATIVE_RESOLUTION_M = 10.0
+
+# --- cache -----------------------------------------------------------------
+# A processed Sentinel-2 scene never changes (reprocessing publishes a new item id),
+# so its measurement over a given polygon is reusable indefinitely. The catalogue
+# search is not: newly published scenes appear in recent windows, so it is reused
+# only briefly. Bump ALGORITHM_VERSION whenever the observation maths or masking changes.
+ALGORITHM_VERSION = "s2l2a-ndvi-ndbi-1"
+RECENT_WINDOW_DAYS = 60
+CATALOGUE_TTL_RECENT_S = 6 * 3600
+CATALOGUE_TTL_HISTORICAL_S = 30 * 86400
+CACHE_MAX_ROWS = {"scenes": 200_000, "catalogue": 2_000}
+
+
+def polygon_fingerprint(polygon: dict[str, Any]) -> str:
+    """Coordinates to 1e-7 degree (~1 cm): float noise collapses, distinct parcels do not."""
+    rings = [[[round(float(x), 7), round(float(y), 7)] for x, y, *_ in ring] for ring in polygon["coordinates"]]
+    return hashlib.sha256(json.dumps(rings).encode()).hexdigest()[:24]
+
+
+class ResultCache:
+    """SQLite store shared by threads and processes: WAL, a busy timeout, row caps."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with self._connect() as db:
+            db.execute("PRAGMA journal_mode=WAL")
+            for table in CACHE_MAX_ROWS:
+                db.execute(f"CREATE TABLE IF NOT EXISTS {table} (key TEXT PRIMARY KEY, value TEXT NOT NULL, "
+                           "stored_at REAL NOT NULL, used_at REAL NOT NULL)")
+
+    def _connect(self) -> sqlite3.Connection:
+        return sqlite3.connect(self.path, timeout=30)
+
+    def get(self, table: str, key: str) -> tuple[Any, float] | None:
+        with self._connect() as db:
+            row = db.execute(f"SELECT value, stored_at FROM {table} WHERE key = ?", (key,)).fetchone()
+            if row:
+                db.execute(f"UPDATE {table} SET used_at = ? WHERE key = ?", (time.time(), key))
+        return (json.loads(row[0]), row[1]) if row else None
+
+    def put(self, table: str, key: str, value: Any) -> None:
+        now = time.time()
+        with self._connect() as db:
+            db.execute(f"INSERT OR REPLACE INTO {table} VALUES (?, ?, ?, ?)", (key, json.dumps(value), now, now))
+
+    def prune(self) -> None:
+        """Evict least-recently-used rows beyond each table's cap."""
+        with self._connect() as db:
+            for table, cap in CACHE_MAX_ROWS.items():
+                excess = db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] - cap
+                if excess > 0:
+                    db.execute(f"DELETE FROM {table} WHERE key IN (SELECT key FROM {table} ORDER BY used_at LIMIT ?)",
+                               (excess,))
+
+
+def _cache() -> ResultCache | None:
+    if os.getenv("SENTINEL_CACHE", "on").strip().lower() in {"off", "0", "false", "no"}:
+        return None
+    return ResultCache(data_root() / "satellite" / "sentinel2-cache.sqlite")
 
 
 class SatelliteError(RuntimeError):
@@ -104,6 +174,7 @@ class PlanetaryComputerClient:
         return str(value)[:10]
 
     def _search(self, polygon: dict[str, Any], start: str, end: str) -> list[dict[str, Any]]:
+        """Catalogue search, trimmed to what the reader needs, sorted by date."""
         body = {
             "collections": [COLLECTION],
             "bbox": self._bbox(polygon),
@@ -113,9 +184,32 @@ class PlanetaryComputerClient:
         }
         response = requests.post(STAC_URL, json=body, timeout=self.timeout)
         response.raise_for_status()
-        features = response.json().get("features", [])
+        features = [
+            {"id": item["id"],
+             "properties": {key: item["properties"].get(key) for key in ("datetime", "eo:cloud_cover")},
+             "assets": {band: {"href": item["assets"][band]["href"]} for band in ("B04", "B08", "B11", "SCL")}}
+            for item in response.json().get("features", [])
+        ]
         features.sort(key=lambda item: item["properties"]["datetime"])
         return features
+
+    def _catalogue(self, cache: ResultCache | None, polygon: dict[str, Any], start: str, end: str):
+        """(features, age in seconds, or None when queried now). Only a successful search is stored."""
+        key = hashlib.sha256(json.dumps(["planetary-computer", COLLECTION, self._bbox(polygon), start, end,
+                                         self.max_cloud_cover, 100]).encode()).hexdigest()
+        recent = date.fromisoformat(end) >= date.today() - timedelta(days=RECENT_WINDOW_DAYS)
+        ttl = CATALOGUE_TTL_RECENT_S if recent else CATALOGUE_TTL_HISTORICAL_S
+        hit = cache.get("catalogue", key) if cache else None
+        if hit and time.time() - hit[1] < ttl:
+            return hit[0], time.time() - hit[1]
+        features = self._search(polygon, start, end)
+        if cache:
+            cache.put("catalogue", key, features)
+        return features, None
+
+    def _scene_key(self, item: dict[str, Any], polygon: dict[str, Any]) -> str:
+        parameters = [ALGORITHM_VERSION, sorted(UNUSABLE_SCL), MIN_USABLE_PIXELS, "all_touched", "B04,B08,B11,SCL"]
+        return hashlib.sha256(json.dumps([item["id"], polygon_fingerprint(polygon), parameters]).encode()).hexdigest()
 
     def _read_band(self, item: dict[str, Any], band: str, geometry: dict[str, Any], token: str):
         href = f"{item['assets'][band]['href']}?{token}"
@@ -182,8 +276,10 @@ class PlanetaryComputerClient:
     ) -> list[dict[str, Any]]:
         """Return evenly spread, cloud-screened observations for the polygon."""
         start, end = self._date_string(date_from), self._date_string(date_to)
-        features = self._search(geojson_polygon, start, end)
+        cache = _cache()
+        features, catalogue_age = self._catalogue(cache, geojson_polygon, start, end)
         self.last_diagnostics = {
+            "catalogue_age_s": None if catalogue_age is None else round(catalogue_age),
             "scenes_matched": len(features),
             "max_cloud_cover_pct": self.max_cloud_cover,
             "collection": COLLECTION,
@@ -195,22 +291,38 @@ class PlanetaryComputerClient:
                 f"covers this parcel between {start} and {end}."
             )
 
-        token = self._sas_token()
         # Spread the attempts across the window so the series shows change over
         # time rather than a cluster from one season.
         step = max(1, len(features) // max(1, self.max_observations))
         candidates = features[::step][: self.max_observations + 4]
 
+        # Scenes already measured for this polygon are reused; {"unusable": true} records
+        # a scene that was read but had too few clear pixels. Failed reads are never stored.
+        observations: list[dict[str, Any]] = []
+        rejected = failed = from_cache = 0
+        to_read = []
+        for item in candidates:
+            hit = cache.get("scenes", self._scene_key(item, geojson_polygon)) if cache else None
+            if hit is None:
+                to_read.append(item)
+                continue
+            from_cache += 1
+            if hit[0].get("unusable"):
+                rejected += 1
+            else:
+                observations.append(hit[0])
+
         # Each scene is four HTTP range reads against blob storage. Done one after
         # another this overran the pipeline's collection deadline and the whole
         # series was dropped, so scenes are read concurrently.
-        observations: list[dict[str, Any]] = []
-        rejected = 0
-        workers = min(len(candidates), int(os.getenv("SENTINEL_READ_WORKERS", "8")))
+        token = self._sas_token() if to_read else ""
+        # 12 = max_observations + 4 candidates, so one wave. Measured 2026-10-11 (Kadapa, n=3
+        # each): 10.5-12.2 s with 12 workers, 11.5-13.8 s with 8, identical observations.
+        workers = min(len(to_read), int(os.getenv("SENTINEL_READ_WORKERS", "12")))
         with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
             futures = {
                 pool.submit(self._observation, item, geojson_polygon, token): item
-                for item in candidates
+                for item in to_read
             }
             for future in as_completed(futures):
                 item = futures[future]
@@ -218,27 +330,37 @@ class PlanetaryComputerClient:
                     observation = future.result()
                 except Exception as error:  # one bad scene must not lose the series
                     LOGGER.warning("Sentinel-2 scene %s unreadable: %s", item.get("id"), error)
-                    rejected += 1
+                    failed += 1
                     continue
+                if cache:
+                    cache.put("scenes", self._scene_key(item, geojson_polygon), observation or {"unusable": True})
                 if observation is None:
                     rejected += 1
                     continue
                 observations.append(observation)
-        observations.sort(key=lambda row: row["date"])
+        if cache:
+            cache.prune()
+        # Scene id breaks date ties (two tiles on one pass), so the kept subset never
+        # depends on which read finished first.
+        observations.sort(key=lambda row: (row["date"], row["scene_id"]))
+        usable = len(observations)
         if len(observations) > self.max_observations:
             step = len(observations) / self.max_observations
             observations = [observations[int(index * step)] for index in range(self.max_observations)]
 
         self.last_diagnostics.update({
-            "scenes_read": len(observations) + rejected,
+            "scenes_read": usable + rejected + failed,
             "observations_kept": len(observations),
             "observations_rejected": rejected,
+            "observations_failed": failed,
+            "scenes_from_cache": from_cache,
             "min_usable_pixels": MIN_USABLE_PIXELS,
         })
         if not observations:
             raise SatelliteError(
                 f"{len(features)} scene(s) matched but none yielded at least {MIN_USABLE_PIXELS} "
-                "cloud-free pixels inside the parcel."
+                "cloud-free pixels inside the parcel"
+                + (f" ({failed} could not be read)." if failed else ".")
             )
         return observations
 

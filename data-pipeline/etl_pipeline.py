@@ -416,7 +416,15 @@ def _satellite_summary(series: list[dict[str, Any]], client: Any, metrics: dict[
         parts.append(
             f"{diagnostics['scenes_matched']} scenes matched, "
             f"{diagnostics.get('observations_rejected', 0)} rejected for cloud or too few pixels"
+            + (f", {diagnostics['observations_failed']} could not be read (series is partial)"
+               if diagnostics.get("observations_failed") else "")
         )
+    if diagnostics.get("catalogue_age_s") is not None:
+        parts.append(f"catalogue search reused from {diagnostics['catalogue_age_s'] // 60} min ago; "
+                     "scenes published since then are not included")
+    if diagnostics.get("scenes_from_cache"):
+        parts.append(f"{diagnostics['scenes_from_cache']} scene measurement(s) reused from earlier reads "
+                     "of the same immutable scenes over this boundary")
     # A small plot is mostly edge pixels, which borrow reflectance from next door.
     if area and area < (resolution ** 2) * 20:
         parts.append(
@@ -645,7 +653,9 @@ def build_evidence_snapshot(
             ),
             "observed_at": now,
             # Invented data is seed_data, never "derived" from a real observation.
-            "freshness": "seed_data" if satellite_is_demo else "live",
+            "freshness": "seed_data" if satellite_is_demo else (
+                "cached" if (getattr(satellite_client, "last_diagnostics", {}) or {}).get("catalogue_age_s") is not None
+                else "live"),
             "summary": (
                 f"{len(change_series)} INVENTED observations generated for demo mode because no "
                 "imagery provider returned data. This is not imagery and must not be read as "

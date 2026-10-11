@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from .comparables import ValuationUnavailable, estimate
-from .dataset import DatasetError, dataset_version, load_observations, summary
+from .dataset import LAND_USES, PRICE_TYPES, DatasetError, dataset_version, load_observations, summary
 
 _CACHE: dict[str, Any] = {}
 _LOCK = threading.Lock()
@@ -79,11 +79,15 @@ def estimate_value(
         raise ValuationUnavailable("invalid_input", "Latitude/longitude are out of range.")
     if not area_sqft or area_sqft <= 0:
         raise ValuationUnavailable("invalid_input", "Area must be a positive number of square feet.")
+    land_use, price_type = str(land_use).strip().lower(), str(price_basis).strip().lower()
+    # A bad request is a bad request whether or not any price data is loaded.
+    if land_use not in LAND_USES or price_type not in PRICE_TYPES:
+        raise ValuationUnavailable("invalid_input", f"land_use must be one of {list(LAND_USES)} and "
+                                                    f"price_basis one of {list(PRICE_TYPES)}.")
     store = _store()
     when = valuation_date or datetime.now(timezone.utc).date()
     result = estimate(store["frame"], latitude=latitude, longitude=longitude, area_sqft=float(area_sqft),
-                      land_use=str(land_use).strip().lower(), price_type=str(price_basis).strip().lower(),
-                      valuation_date=when)
+                      land_use=land_use, price_type=price_type, valuation_date=when)
     quality = store["quality"].get(result["price_type"])
     result["data_version"] = store["version"]
     # The prediction-quality report travels with every estimate: "not yet validated"

@@ -29,7 +29,7 @@ function floodGlance(ind: FloodIndicators): { mechanism: string; status: string;
   } else if (riverComponent) lines.push({ mechanism: 'river_flooding', status: riverComponent.status, text: riverComponent.summary || '' })
   if (byMechanism.historical_inundation) lines.push({ mechanism: 'historical_inundation', status: byMechanism.historical_inundation.status, text: 'Not integrated: the NRSC flood atlas (1998-2022) has no machine-readable release. Unknown, not "never flooded".' })
   const sw = ind.surface_water
-  if (sw?.parcel && sw.within_buffer) lines.push({ mechanism: 'observed_surface_water', status: 'assessed', text: `Water seen on ${pct(sw.parcel.water_ever_fraction)} of the parcel's 30 m pixels (highest occurrence ${sw.parcel.occurrence_max_pct}% of observations); ${pct(sw.within_buffer.water_ever_fraction)} of pixels within ${sw.buffer_m} m.` })
+  if (sw?.parcel && sw.within_buffer) lines.push({ mechanism: 'observed_surface_water', status: 'assessed', text: `Water seen at least once on ${pct(sw.parcel.water_ever_fraction)} of the parcel's 30 m pixels${sw.parcel.water_ever_fraction > 0 ? ` (the wettest pixel was water in ${sw.parcel.occurrence_max_pct === 0 ? 'under 1' : sw.parcel.occurrence_max_pct}% of observations)` : ''}; at least once on ${pct(sw.within_buffer.water_ever_fraction)} of pixels within ${sw.buffer_m} m. Landsat 1984-2021: where water was seen, not a flood record.` })
   else if (byMechanism.observed_surface_water) lines.push({ mechanism: 'observed_surface_water', status: byMechanism.observed_surface_water.status, text: byMechanism.observed_surface_water.summary || '' })
   const t = ind.terrain, w = ind.water_distances
   const terrainParts = [

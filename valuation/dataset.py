@@ -30,7 +30,10 @@ REQUIRED_COLUMNS = (
     "price_value", "price_unit", "currency", "property_category", "land_use",
     "latitude", "longitude", "location_precision",
 )
-OPTIONAL_COLUMNS = ("source_url", "area_value", "area_unit", "district", "state", "locality", "attributes")
+# property_ref: a stable identifier of the plot when the source has one (survey or plot
+# number, layout reference). Rows sharing it within a district are one property.
+OPTIONAL_COLUMNS = ("source_url", "area_value", "area_unit", "district", "state", "locality", "attributes",
+                    "property_ref")
 
 PRICE_TYPES = ("asking", "transaction", "guideline")
 PRICE_TYPE_LABELS = {
@@ -61,14 +64,18 @@ PLAUSIBLE_INR_PER_SQFT = {"vacant_plot": (20.0, 300_000.0), "agricultural_land":
 PLAUSIBLE_AREA_SQFT = {"vacant_plot": (200.0, 50 * 43560.0), "agricultural_land": (0.05 * 43560.0, 1000 * 43560.0)}
 INDIA_BBOX = (6.0, 38.5, 67.5, 98.0)  # lat min, lat max, lon min, lon max
 
-# Same plot re-advertised (by another broker, or re-posted) must count once, or it
-# would be its own comparable and could sit on both sides of a validation split.
-DUPLICATE_DISTANCE_M = 75.0
+# Same plot re-advertised (by another broker, re-posted, or listed again a year later)
+# must count once, or it would be its own comparable and could sit on both sides of a
+# validation split. Exact points: within 25 m (layout plots are ~9-12 m apart, so a
+# wider radius would merge neighbours) and area within 3%, at any date.
+DUPLICATE_DISTANCE_M = 25.0
 DUPLICATE_AREA_TOLERANCE = 0.03
-DUPLICATE_WINDOW_DAYS = 180
-# Locality-precision rows share a centroid, so they need a tighter match.
+# Street- or locality-level points share coordinates with other plots, so they also
+# need a matching price, within a year.
+COARSE_DUPLICATE_DISTANCE_M = 75.0
 COARSE_DUPLICATE_AREA_TOLERANCE = 0.01
 COARSE_DUPLICATE_PRICE_TOLERANCE = 0.03
+COARSE_DUPLICATE_WINDOW_DAYS = 365
 
 
 class DatasetError(ValueError):
@@ -200,8 +207,18 @@ def _collapse_duplicate_listings(frame: pd.DataFrame, report: ImportReport) -> p
     lat, lon = frame["latitude"].to_numpy(), frame["longitude"].to_numpy()
     area, price = frame["area_sqft"].to_numpy(dtype=float), frame["price_inr_per_sqft"].to_numpy(dtype=float)
     days = frame["observed_date"].to_numpy().astype("datetime64[D]").astype(np.int64)
-    coarse = ~frame["location_precision"].isin(("exact", "street")).to_numpy()
+    coarse = (frame["location_precision"] != "exact").to_numpy()
+    refs = (frame["district"].str.casefold() + "|" + frame["property_ref"].str.casefold()).where(
+        frame["property_ref"] != "", "").to_numpy()
     kind = (frame["price_type"] + "|" + frame["property_category"] + "|" + frame["land_use"]).to_numpy()
+
+    # A source-supplied plot identifier is the strongest evidence of one property.
+    referenced = frame[frame["property_ref"] != ""]
+    for _, rows in referenced.groupby([kind[referenced.index], referenced["district"].str.casefold(),
+                                       referenced["property_ref"].str.casefold()]):
+        for j in rows.index[1:]:
+            parent[root(j)] = root(rows.index[0])
+
     # ponytail: ~110 m grid buckets with a pairwise check inside each 3x3 block;
     # fine for 10^5 rows, use a KD-tree if a feed ever reaches 10^6.
     buckets: dict[tuple, list[int]] = {}
@@ -211,13 +228,15 @@ def _collapse_duplicate_listings(frame: pd.DataFrame, report: ImportReport) -> p
         neighbours = [j for dy in (-1, 0, 1) for dx in (-1, 0, 1) for j in buckets.get((k, y + dy, x + dx), [])]
         for i in members:
             for j in neighbours:
-                if j <= i or abs(days[i] - days[j]) > DUPLICATE_WINDOW_DAYS:
-                    continue
-                if np.isnan(area[i]) or np.isnan(area[j]):
+                if j <= i or np.isnan(area[i]) or np.isnan(area[j]):
                     continue  # without areas two rows cannot be shown to be one plot
-                if haversine_m(lat[i], lon[i], lat[j], lon[j]) > DUPLICATE_DISTANCE_M:
-                    continue
+                if refs[i] and refs[j] and refs[i] != refs[j]:
+                    continue  # different plot identifiers: neighbours, not re-listings
                 tight = coarse[i] or coarse[j]
+                if tight and abs(days[i] - days[j]) > COARSE_DUPLICATE_WINDOW_DAYS:
+                    continue
+                if haversine_m(lat[i], lon[i], lat[j], lon[j]) > (COARSE_DUPLICATE_DISTANCE_M if tight else DUPLICATE_DISTANCE_M):
+                    continue
                 tolerance = COARSE_DUPLICATE_AREA_TOLERANCE if tight else DUPLICATE_AREA_TOLERANCE
                 if abs(area[i] - area[j]) > tolerance * max(area[i], area[j]):
                     continue

@@ -12,6 +12,7 @@ results, region tiles already on disk stay warm); later runs are "warm".
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import statistics
 import time
@@ -59,6 +60,15 @@ def run_once(client: httpx.Client, name: str, polygon: dict) -> dict:
         return out
     snapshot = body["evidence_snapshot"]
     out["collectors_ms"] = snapshot["metadata"].get("collection_timings_ms")
+    # Fingerprints of the evidence, to check that a faster run returned the same answer.
+    satellite = snapshot.get("satellite") or {}
+    out["satellite_sha"] = hashlib.sha1(json.dumps([satellite.get("ndvi_trend"), satellite.get("ndbi_trend")],
+                                                   sort_keys=True).encode()).hexdigest()[:10]
+    flood = {k: v for k, v in (snapshot.get("flood_indicators") or {}).items() if k != "river_flood"}
+    flood["scenarios"] = ((snapshot.get("flood_indicators") or {}).get("river_flood") or {}).get("scenarios")
+    out["flood_sha"] = hashlib.sha1(json.dumps(flood, sort_keys=True).encode()).hexdigest()[:10]
+    out["satellite_freshness"] = next((e.get("freshness") for e in snapshot.get("evidence") or []
+                                       if e.get("source_type") == "satellite"), None)
     began = time.perf_counter()
     evaluated = client.post(f"{API}/api/v1/parcels/{snapshot['parcel_id']}/evaluate",
                             json={"analysis_snapshot_id": body["analysis_snapshot_id"], **SETTINGS}, timeout=120)
