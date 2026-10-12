@@ -46,6 +46,7 @@ the reason the approach changed.
 | 2026-09-29 | Collaborator access granted. Work pushed to `sai/terrascope-progress`, draft PR [riit3sh/TerraScope#1](https://github.com/riit3sh/TerraScope/pull/1). Evidence audit. Accessibility geometry. Real Sentinel-2 |
 | 2026-10-06 | Setup recovered on a fresh clone. Safe Windows launcher. Tamil Nadu coverage and local data (`80eadd5`), then the scope corrected to all of India, with JRC river flood hazard |
 | 2026-10-11 | Browser audit and fixes: local place search, boundary drawing, invalid polygons, saved-report limit, 36 s first evaluation. Listing-based valuation pipeline (blocked on permitted data). Satellite result cache. Checklist added |
+| 2026-10-12 | VIT acceptance report fixes: accessibility limits and boundary distances, exact flood probabilities and coverage wording, untruncated evidence, rule-based summary with evidence citations, seasonal satellite change test over the whole catalogue, price import workflow and source-access table, RERA applicability and survey-details workflow, measured-vs-scored report |
 
 ## Status summary
 
@@ -96,6 +97,16 @@ the reason the approach changed.
 | J-43 | Flood panel prose-heavy | fixed and verified |
 | J-44 | Upload ledger claimed retrieval that was not running | fixed |
 | J-45 | Browser verification limits in the app's pane | unresolved (tooling) |
+| J-46 | Accessibility limits looked ignored; distances only from the centroid | fixed and verified |
+| J-47 | Flood probabilities (1-in-75 shown as 1%) and coverage claims | fixed and verified |
+| J-48 | Surface-water sentence truncated in saved reports | fixed and verified |
+| J-49 | "Grounded AI explanation — 0 citations" on a rule-based summary | fixed and verified (deterministic path) |
+| J-50 | Satellite: 100-scene search limit, uncalibrated "confidence", offset, mask grid, tile edge | fixed and verified |
+| J-51 | Background reads after deadline timeouts saturated the link | fixed and verified |
+| J-52 | Price importer completed; no permitted dataset for the acceptance parcels | importer fixed and verified; live prices blocked |
+| J-53 | Legal/RERA applicability, survey details and typed documents | fixed and verified (no external source integrated) |
+| J-54 | Report clarity: measured vs scored, heading, duplication, refresh | fixed and verified |
+| J-55 | Cold and warm analysis timings | measured |
 
 ---
 
@@ -1027,3 +1038,329 @@ the reason the approach changed.
   request 200). Screenshots were taken at the pane's own width when it rendered. This is a tooling limitation,
   not a product defect.
 - **Status:** unresolved (tooling).
+
+## J-46 Accessibility limits looked ignored, and distances came only from the centroid
+
+- **Date / problem:** 2026-10-12, VIT acceptance report (snapshot 568d1f42, 2.75 acres).
+  - The accessibility factor said `max_road_distance_m` and `max_school_distance_m` were "accepted but not
+    applied".
+  - The UI had no control for either limit.
+  - Every distance was measured from the parcel centroid.
+- **Root cause (confirmed by tracing UI → API → scoring):**
+  - The scoring code had applied both limits since `386be6f` (J-23); 90.25 = (95.83 × 1 + 87.59 × 2.1) / 3.1
+    with limits of 3,000 m and 5,000 m.
+  - The limitation text was stale copy from before that fix.
+  - The workspace drawer sent fixed defaults with no control. The API accepted any preference dict, so an
+    unknown key or a negative limit was silently dropped.
+- **Changes:**
+  - **Collection:** the local OSM store also measures from the drawn boundary
+    (`nearest_road_distance_from_boundary_m`; 0 m when a mapped way touches or crosses the parcel), alongside
+    the centroid.
+  - **Scoring (`accessibility_v2`):**
+    - The boundary distance is used when recorded; older snapshots use the centroid, and the factor says so.
+    - The factor carries `details`: each feature's distance, where it was measured from, the limit, the
+      sub-score and the weight.
+    - A feature not found inside the 5 km search scores 0 only when the search covered the user's limit;
+      otherwise it is left out.
+  - **API:** a `Preferences` model with `extra="forbid"`. Limits must be 100-20,000 m, and importances and
+    the RERA requirement are enums. Anything else gets a 422.
+  - **UI:**
+    - Limit sliders in the workspace drawer and in Scenario mode, which also has the importance selects.
+    - The factor shows a distance/limit/sub-score table.
+    - The legal-access caveat is kept.
+  - Files: `connectors/local_osm.py`, `etl_pipeline.py`, `scoring_engine/scoring.py`, `_assessment.py`,
+    `routers/parcels.py`, `Report.tsx`, `ParcelWorkspace.tsx`, schema.
+- **Verification (2026-10-12):**
+  - **API, fresh VIT analysis (exact polygon, audit store):**
+    - Road 77 m from the boundary (125 m from the centroid), school 556 m (621 m).
+    - With 3,000 m / 5,000 m limits: score 91.64, contribution 22.91.
+    - With 500 m / 1,000 m limits: score 57.39, contribution 14.35.
+    - The stored snapshot was byte-identical after the re-evaluations.
+    - The valuation response was identical before and after the preference change.
+    - A limit of -5 m, an unknown key or an unknown importance: 422, with nothing forwarded to ml-models.
+  - **Browser:** Scenario mode moved the limits from 500/1,000 m to 3,000/5,000 m, and accessibility went from
+    57.39 to 91.64 on the same snapshot.
+  - **Browser, new Katpadi plot:** road 0 m from the boundary (a mapped way crosses it), 40 m from the centroid.
+  - **Tests:** 4 ML regression tests on the acceptance snapshot, and 1 backend test (limits forwarded; bad
+    values rejected).
+- **Remaining limitations:** straight-line proximity, not routed travel; not evidence of legal or physical
+  access. The boundary is user-drawn, not cadastral.
+- **Commits:** `4bdf945` (evidence, scoring, API), `059808d` (report UI).
+- **Status:** fixed and verified.
+
+## J-47 Flood probabilities and coverage claims
+
+- **Date / problem:** 2026-10-12, VIT report.
+  - The 1-in-75 scenario showed "1%".
+  - The caption said "100% of the parcel assessed".
+  - The glance table said 1% observed water while the source text said 1.5%.
+  - "Within 500 m" was used for what is the parcel plus a 500 m ring.
+  - The NRSC atlas was described as having "no machine-readable release".
+- **Root causes (confirmed):**
+  - **AEP:** `toFixed(p < 0.01 ? 1 : 0)` rounded 1.33% to 1%.
+  - **Rounding:** `pct()` rounded 1.49% to 1%.
+  - **Coverage:** "assessed" meant only that hazard-map cells were read for the whole parcel.
+  - **NRSC:** the statement went further than the J-32 investigation supported.
+- **Audit of the river connector:**
+  - Tiles and parcel are both EPSG:4326 windows.
+  - Pixel weights are the exact polygon overlap, in local metres.
+  - Nodata (-9999) is "no modelled inundation" and is never written as 0 m depth.
+  - Permanent water is excluded; flagged cells count as flooded with depths withheld.
+  - The surroundings are `buffered(parcel, 500)`, i.e. the parcel plus the ring; permanent water is excluded
+    from the denominator.
+  - Parcel area: 11,106 m² in the connector, 11,114 m² geodesic (a 0.07% difference).
+- **Changes:**
+  - AEP is exact (`100 / return period`: 10, 5, 2, 1.33, 1, 0.5, 0.2%) and labelled "annual exceedance
+    probability of the modelled event, not the probability that this parcel floods".
+  - Percentages show one decimal below 10%.
+  - "None modelled" replaces "0%" for parcel cells with no modelled depth.
+  - River results record `model_cells_overlapping_parcel` and `model_cell_area_m2` (`RESULT_FORMAT` 3, so
+    only new results carry them). VIT: 6 cells of about 0.8 ha for a 1.1 ha parcel.
+  - **Method notes:** "Coverage", "Probabilities" and "Surroundings", in one expandable section.
+  - **Report layout:**
+    - one headline ("River flood exposure assessed; other mechanisms incomplete");
+    - the compact mechanism table;
+    - one "Scenarios, sources and method" section;
+    - the flood factor card now points to the panel instead of repeating it.
+  - The checklist lists only what is missing (rainfall/pluvial, coastal, historical), not the river map that
+    was used.
+  - NRSC wording: "No permitted machine-readable source integrated", with what was investigated and when.
+  - No flood score was added, and missing mechanisms still read "unknown, not safe".
+- **Verification:**
+  - **Browser, old VIT report:** 1-in-75 reads 1.33%, surface water 1.5% in both places, NRSC wording
+    corrected.
+  - **Fresh VIT run:** 6 cells, 8,330 m² each.
+  - The unit and integration suites pass.
+- **Commits:** `4bdf945` (evidence, scoring, API), `059808d` (report UI).
+- **Status:** fixed and verified.
+
+## J-48 Surface-water sentence truncated in saved reports
+
+- **Date / problem:** 2026-10-12. The surface-water evidence ended "...urban street flooding a".
+- **Root cause (confirmed in stored data):** `[:500]` slices in `etl_pipeline.py` cut composed summaries before
+  they were stored. The schema has no length limit, and the API and UI passed the text through unchanged.
+- **Changes:**
+  - All composed-summary slices removed; error strings are still bounded.
+  - Old snapshots are not rewritten. The UI marks any summary that ends mid-sentence as "cut off when this
+    report was saved", and the full figures are shown from the structured fields.
+- **Verification:**
+  - Regression test: the surface-water summary is longer than 500 characters and ends with its final sentence.
+  - New snapshots carry the full text.
+- **Commits:** `4bdf945` (evidence, scoring, API), `059808d` (report UI).
+- **Status:** fixed and verified.
+
+## J-49 "Grounded AI explanation — based on 0 citations"
+
+- **Date / problem:** 2026-10-12. The rule-based summary was labelled "grounded AI explanation" with 0
+  citations.
+- **Root cause (confirmed):** `GROQ_API_KEY` is empty, so the text was always `result["reasoning_summary"]`.
+  Citations came only from Groq.
+- **Changes:**
+  - **`explanation_source`** on the verdict: `deterministic` or `ai`. "AI explanation" is shown only when an
+    AI call returned text.
+  - **`ml-models/citations.py`:** deterministic evidence references, each claim tied to the evidence row that
+    holds its figure:
+    - accessibility;
+    - river model;
+    - surface water;
+    - terrain;
+    - the seasonal change test (v2 only).
+    Absences are not cited.
+  - **Uploaded PDFs** keep page breaks (form feed). The user's survey number (with subdivision, or after a
+    survey-number label) and village are searched per page and cited as "filename, page N".
+  - **Ledger wording:** a document is searched for those identifiers, and finding them does not verify title.
+- **Verification:**
+  - Fresh VIT evaluation: 5 references, every `evidence_id` present in the snapshot.
+  - **Browser, synthetic 3-page PDF:** survey 123/4A and village Brammapuram cited "page 2". Legal stayed
+    unscored ("user-provided, not verified").
+  - Unit tests cover this. The AI path is still untested, because no key is configured.
+- **Commits:** `4bdf945`, `059808d`.
+- **Status:** fixed and verified (deterministic path).
+
+## J-50 Satellite change: truncated search, uncalibrated "12% confidence", misread pixels
+
+- **Date / problem:** 2026-10-12. The VIT report said "no change — 12% confidence" from 8 observations starting
+  2025-04-07, in a window starting 2024-10-12.
+- **Root causes (confirmed):**
+  1. **Truncated search:** the STAC search returned only its first page (the newest 100 scenes). The window
+     held 136; the 36 older scenes were never considered (checked live).
+  2. **"Confidence":** 12% was half the mean R² of straight lines fitted through all dates. That is
+     uncalibrated, monsoon and dry season were mixed, and ambiguous movement was filed as "no change".
+  3. **Offset:** reflectance was used as raw DN. Processing baseline ≥ 04.00 adds 1,000, which biases NDVI and
+     NDBI towards 0.
+  4. **Grid:** SCL and B11 were read on their own 20 m crops. The cloud mask could be off by one 10 m pixel,
+     and NDBI averaged SWIR over cloudy pixels.
+  5. **Tile edge:** tile T44PLV ends inside the VIT parcel. Those scenes saw 36 of 134 pixels yet counted as
+     0% cloud.
+- **Changes:**
+  - **Catalogue:** every page is read (up to 1,000 scenes), with the STAC `fields` filter (117 KB instead of
+    ~550 KB per page). Truncation is recorded.
+  - **Selection:** one scene per quarterly season anchor, repeated each year, so every date has a same-season
+    partner 365 days later.
+    - Only scenes whose footprint contains the parcel are used.
+    - At least 50% of the parcel's full footprint must be clear (counted on the 10 m grid even beyond the
+      tile's edge).
+    - Alternates are read only for anchors that failed.
+  - **Measurement:** offset removed; SCL and B11 resampled onto the 10 m crop grid; bands read two at a time.
+    `ALGORITHM_VERSION` `s2l2a-ndvi-ndbi-3`, so old cache entries are not reused.
+  - **Change test `seasonal_pairs_v2`:** pairs a year apart in the same season.
+    - "No change" only when every pair stays within ±0.05.
+    - A change class needs every pair to move the same way, with a median of at least 0.10.
+    - Otherwise the result is "inconclusive".
+    - No confidence percentage. `change_method` records the pairs, the differences and the reason.
+  - **Provenance:** the snapshot stores per-observation scene id, anchor, clear and full pixel counts, cloud
+    fractions and offset, plus collection diagnostics.
+  - **Old reports** read "no clear trend (v1 method)". The stored figure is explained as a trend-fit number,
+    and the late first image is explained by the 100-scene limit.
+- **Verification (2026-10-12):**
+  - **Fresh exact-polygon VIT run:**
+    - 136 scenes matched, 67 skipped as not covering the parcel.
+    - 7 observations, each 134/134 pixels clear, from 2024-12-23 to 2026-08-10.
+    - No usable scene near the 2025-08-26 (monsoon) anchor.
+    - 3 same-season pairs, NDVI changes −0.043, −0.020, +0.005; NDBI +0.033, +0.032, +0.007.
+    - Result: no material change.
+  - **Cold benchmark (shifted polygons):** Katpadi plot, Kadapa and Patna came out "inconclusive";
+    Velachery, Puducherry and the VIT campus part "no change".
+  - **A/B on the VIT polygon, cache off, same network, interleaved:** old connector 52.1 s and 36.9 s (1-2
+    failed reads); new 22.6 s and 28.0 s (no failures).
+  - **Cache reuse:** the series repeated exactly, and the evidence row says "cached" with the catalogue age.
+  - **Tests:** 24 satellite unit tests (paging, bounded paging, anchors, offset, clear-pixel SWIR, tile edge,
+    footprint filter, alternates, cache) and 8 change-test tests.
+- **Remaining limitations:**
+  - The thresholds are rules, not calibrated against labelled change.
+  - Monsoon anchors often have no clear scene.
+  - 10 m pixels on a ~1 ha parcel include neighbouring land at the edges.
+- **Commits:** `4bdf945` (evidence, scoring, API), `059808d` (report UI).
+- **Status:** fixed and verified.
+
+## J-51 Self-inflicted network saturation after evidence-deadline timeouts
+
+- **Date / problem:** 2026-10-12, during the cold benchmark.
+  - Every new parcel's satellite collection hit the 35 s deadline.
+  - Geocoding took up to 96 s, and Planetary Computer returned SSL EOFs.
+  - With the services stopped, the link was normal again: Planetary Computer ~1 s, google 0.65 s.
+- **Root cause (measured):**
+  - A collection past the deadline kept reading in the background (`pool.shutdown(wait=False)`).
+  - Back-to-back analyses stacked those reads. With no request in flight, the data-pipeline held 26 open
+    connections and pulled 0.5-0.8 MB/s over Wi-Fi.
+- **Changes:**
+  - A process-wide cap of 8 concurrent scene reads (`SENTINEL_MAX_CONCURRENT_SCENES`).
+  - `give_up_at`: once the evidence deadline passes, no new scene read or alternate wave starts. In-flight
+    reads finish and are cached.
+  - A timed-out collection is now recorded as `collection.status = timed_out`. The report says so, instead of
+    "no usable satellite observations".
+  - Successful geocoding lookups are cached per address for the life of the process, as the Nominatim policy
+    asks. This was the slowest warm step (0.5-6.4 s).
+- **Verification (2026-10-12, 7 parcels in India, shifted so run 1 was cold):**
+  - Cold analysis median 13.6 s (4.9-21.8 s), with satellite completing for every parcel.
+  - Warm median 0.43 s.
+  - Kadapa and Patna warm runs took 8.5 and 9.5 s: those regions have no local tiles, and their remote DEM
+    and GSW reads are not cached yet (J-41).
+  - 2 regression tests (cap, no reads after the deadline).
+- **Commits:** `4bdf945` (evidence, scoring, API), `059808d` (report UI).
+- **Status:** fixed and verified.
+
+## J-52 Price data: importer completed; no permitted dataset for the acceptance parcels
+
+- **Date / problem:** 2026-10-12. The report repeated "no price estimate" three times. The importer had no
+  per-row explanation, no preview and no UI.
+- **Changes:**
+  - **Report:** one reason plus one next step, and a price-basis selector.
+  - **Preview (`valuation/importer.py`):**
+    - per-line rejection reasons and duplicate links (same record, or a re-listing);
+    - stale, future-dated and coarse-location flags;
+    - groups by price type × land use × category;
+    - sources and their permissions;
+    - normalised rows.
+  - **Commit:** needs a permission confirmation; appends only rows that passed; keeps a backup; re-validates
+    the combined file before replacing it.
+  - **API:** `/api/v1/valuation/import/preview|commit`. **UI:** the "Price data" page. **Command line:**
+    `python -m valuation.dataset` prints per-row reasons.
+  - The estimator, the refusals and the no-pooling rules are unchanged.
+- **Source research (browser, 2026-10-12):** see the table in `docs/SETUP_VALUATION.md`.
+  - **TNREGINET:** its copyright policy forbids reproduction without the Registration Department's permission.
+    The guideline-value lookup has no bulk download.
+  - **data.gov.in:** no guideline, circle-rate or land-price dataset.
+  - **99acres:** its terms require IEIL's prior written consent and forbid crawlers.
+  - **Housing.com:** its terms claim the data compilations.
+  - **MagicBricks:** not readable from here.
+  - **OpenCity:** Bengaluru 2023 only.
+- **Verification:**
+  - **Browser, synthetic CSV, audit-only price file:**
+    - 11 rows: 3 rejected (missing permission, built property, implausible ₹3/sq ft), 1 repeated record, 1 stale.
+    - Commit added 8 rows.
+    - The report's "registered sale prices" basis then showed a sale-based range from 6 comparables, listed with
+      source, record, date, ₹/sq ft, area, distance, precision and permission.
+    - The VIT campus was refused (`area_outside_support`).
+  - 4 new unit tests.
+  - The synthetic file was removed afterwards. The real `data-cache/valuation/observations.csv` was never
+    written.
+- **Remaining:** no real price data. No prediction metric exists; none is quoted.
+- **Commits:** `4bdf945`, `059808d`.
+- **Status:** importer fixed and verified; live prices blocked on permitted data.
+
+## J-53 Legal and growth status
+
+- **Date / problem:** 2026-10-12.
+  - The legal factor said "The only registration dataset present is a MahaRERA seed" for a Tamil Nadu parcel;
+    no seed is even configured.
+  - The ledger row was titled "MahaRERA static seed dataset".
+  - The state read "this parcel's state", although the boundary file gives Tamil Nadu.
+- **Changes:**
+  - **RERA:**
+    - The RERA row names the parcel's state authority as not integrated.
+    - The MahaRERA seed is used only for Maharashtra.
+    - A district match is never attempted against another state's seed.
+  - **State:** filled from the boundary polygon when geocoding gives none, ASCII-normalised ("Tamil Nadu").
+  - **Survey details:** the report takes state, district, taluk, village, survey and subdivision numbers. Missing
+    state, district or village is flagged as ambiguous.
+  - **Documents:** typed uploads (patta/chitta, EC, sale deed, approval, FMB, other).
+  - **Never verification:** these travel as `user_land_details`, "user_provided_unverified", and never populate
+    `land_records`. Legal Safety stays unscored.
+  - **Growth:**
+    - The wording keeps land cover separate from investment growth.
+    - The checklist names the data a growth score would need: registered sale counts by village or
+      sub-registrar office, master-plan zoning and approved layouts, committed infrastructure, and
+      population/employment change.
+- **Verification:** see J-49 for the browser check. The integration test now asserts the Tamil Nadu RERA
+  wording. Backend tests cover the claims, the 404/422/400 paths, and that claims never reach `land_records`.
+- **Commits:** `4bdf945`, `059808d`.
+- **Status:** fixed and verified. No land-records or RERA source is integrated (external).
+
+## J-54 Report clarity: measured vs scored, heading, duplication
+
+- **Date / problem:** 2026-10-12.
+  - "75% of evidence fields collected" sat beside "25% of weighting evidenced" with no explanation.
+  - The heading was the full Nominatim address.
+  - Price, flood and verdict text was repeated in several places.
+- **Changes:**
+  - **Figures:** "Scored: 25% of your weighting (Accessibility)" and "Measured: 9 of 12 evidence fields", with
+    both denominators in an expandable section. New snapshots list each counted field.
+  - **Heading:** the place name, with the full address beneath it.
+  - **Recommendation:** "INSUFFICIENT EVIDENCE · recommendation withheld"; scored factors are listed first.
+  - **Unscored factors** appear in the contributions list as "no score · weight".
+  - **Duplicate "FINAL" box** removed.
+  - **Older evaluations:** a banner offers "Re-evaluate with current methods", which appends a new evaluation
+    and keeps the old one.
+  - **Refresh:** the open report is in the URL hash (`#report/<parcel>`), so a browser refresh reopens it.
+  - **Bugs found and fixed in passing:**
+    - the new Price-data button sat under the decorative grid and could not be clicked;
+    - two drawer controls had no accessible name.
+- **Verification (browser):**
+  - The old and new VIT reports, a refresh, and a fresh tab: no console errors, every API call 200.
+  - The earlier `createRoot` warnings came from Vite hot reloads during editing.
+  - Screenshots were partial because of the pane size (J-45); the rest were DOM/text checks.
+- **Commits:** `4bdf945` (evidence, scoring, API), `059808d` (report UI).
+- **Status:** fixed and verified.
+
+## J-55 Cold and warm analysis timings, 2026-10-12
+
+- **Method:** `scripts/benchmark.py --runs 2 --offset-deg 0.0009` (every polygon shifted ~100 m, so run 1 is
+  cold for scenes, catalogue and river results). Seven parcels in India plus Colombo, on the audit store, on
+  the same Wi-Fi link. The exact VIT polygon was measured separately.
+- **Results:**
+  - Cold median 13.6 s (4.9-21.8 s); warm median 0.43 s; evaluation p50 0.26 s; reopen p50 9 ms.
+  - The warm exact VIT polygon took 0.49 s (1.22 s on the first run after a restart, before its geocode is cached).
+  - Earlier on the same day, before J-51, cold runs hit the 35 s deadline with satellite dropped.
+  - 2026-10-11 reference: cold 12.4 s, warm 0.66 s.
+- **Status:** measured.

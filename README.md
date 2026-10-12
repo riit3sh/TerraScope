@@ -137,8 +137,10 @@ supply them in `.env`:
 
 - **Satellite:** none needed. Sentinel-2 comes from Planetary Computer without an account;
   AppEEARS is used only if `NASA_APPEEARS_*` credentials are set.
-- **Grounded explanations and citations:** `GROQ_API_KEY`. Without it the verdict
-  falls back to the deterministic rule-based summary.
+- **AI explanations:** `GROQ_API_KEY`. Without it the report shows the rule-based
+  "Assessment summary", which still cites the evidence rows behind each figure, and uploaded
+  documents are still searched for the survey number and village you enter (cited by page).
+  The label says "AI explanation" only when an AI call actually succeeded.
 
 RERA evidence additionally needs a seed CSV — see
 [data-pipeline/data/raw/README.md](data-pipeline/data/raw/README.md).
@@ -154,8 +156,9 @@ use. Asking prices, sale prices and guideline values are never pooled, and the s
 comparables' own spread, not a validated prediction interval. The price is independent of suitability
 weights, flood and legal evidence.
 
-**No real price data is loaded today, so every parcel gets "No price estimate".** No openly licensed listing or
-transaction feed exists for these parcels; what was checked and what is needed is in
+**No permitted price data is loaded today, so every parcel gets "No price estimate".** Owner/broker-supplied or
+licensed rows can be imported from "Price data" on the start page (preview with per-row reasons, then commit).
+The sources checked, their verified reuse terms and the smallest input that would unlock a real estimate are in
 [docs/SETUP_VALUATION.md](docs/SETUP_VALUATION.md). The data contract, cleaning, estimator and the
 prediction-quality harness (`python -m valuation.evaluate`) are in [valuation/README.md](valuation/README.md).
 Prediction quality: **not yet validated**.
@@ -168,9 +171,21 @@ Prediction quality: **not yet validated**.
   (unknown) and the match is recorded as candidate evidence.
 - **Land records** — there is no land-records connector, so title and
   encumbrance are unknown, and the scoring treats unknown as unverified rather
-  than as safe.
-- **Data completeness** counts the evidence fields actually collected, so it
-  legitimately reads below 100%.
+  than as safe. You can record survey details (state, district, taluk, village,
+  survey and subdivision numbers) and typed documents (patta, EC, sale deed,
+  approvals) on the report; they stay "user-provided, not verified" and never
+  produce a legal score.
+- **Accessibility** — straight-line distances to OpenStreetMap geometry, from the
+  drawn boundary (and from the centroid, shown alongside). Your road and school
+  distance limits set where each sub-score reaches 0. Proximity is not legal access.
+- **Satellite change** — one Sentinel-2 scene per season anchor across the whole
+  window, compared same season against same season a year apart. The result is
+  "no material change", a change class, or "inconclusive", with no confidence
+  percentage (the rule thresholds are not calibrated).
+- **Measured vs scored** — "measured" counts the evidence fields collected for
+  the parcel; "scored" is the share of your weighting backed by a factor score.
+  They answer different questions, and the report shows both with their
+  denominators.
 
 ## Contributing
 

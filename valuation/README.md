@@ -41,6 +41,23 @@ Optional columns:
 Area units: `sqft`, `sqm`, `sqyd`, `acre`, `hectare`, `cent`, `guntha`, `ground`, `kanal`, `marla`. Bigha, katha
 and similar units vary by state, so they are rejected rather than converted with a guessed factor.
 
+### Importing
+
+- **Preview** with `Price data` on the start page, or `POST /api/v1/valuation/import/preview`. It writes nothing
+  and reports every CSV line's fate:
+  - rejected, with the reason;
+  - a repeat of another record, or a re-listing of the same plot, with the line that was kept;
+  - stale (asking older than 18 months; sale or guideline older than 3 years);
+  - dated in the future, or located only to a PIN code or district (kept, but not a comparable);
+  - groups by price type × land use × category, which are never pooled;
+  - sources with their stated permissions;
+  - the first 50 normalised rows (₹/sq ft, sq ft).
+- **Commit** with `POST /api/v1/valuation/import/commit` (`permission_confirmed=true`). It:
+  - appends the rows that passed to the served file;
+  - keeps `observations.csv.bak-<time>`;
+  - re-validates the combined file before replacing it.
+- **Command line:** `python -m valuation.dataset file.csv` prints the same per-row reasons.
+
 ### Cleaning
 
 Every dropped row is counted by reason (`python -m valuation.dataset file.csv`). Rows are dropped for:
