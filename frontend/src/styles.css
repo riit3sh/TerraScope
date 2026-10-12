@@ -204,3 +204,24 @@
 /* Sticky bars scroll over report text: keep them opaque. */
 .report-topbar,.topbar{background:#0c1113}
 @media(max-width:700px){.flood-glance th,.flood-glance td{display:block;width:auto;border-top:0;padding:4px 0}.flood-glance tr{display:block;border-top:1px solid #243033;padding:8px 0}.valuation-comparables{overflow-x:auto}}
+
+/* ---- Report usability pass (2026-10-12): measured vs scored, legal evidence, method notes ---- */
+.report-heading .full-address{margin:0 0 10px;color:#9aa8a3;font:13px Manrope;max-width:720px;line-height:1.5}
+.older-note{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:22px 0 0;padding:13px 16px;border:1px solid #6d5526;background:#1e1a12;color:#d9c79f;font-size:12px;line-height:1.6}.older-note span{flex:1 1 360px}
+.coverage-figures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:22px 0 6px}.coverage-figures div{display:flex;flex-direction:column;gap:6px;padding:16px 18px;border:1px solid #2b3839}.coverage-figures span{color:#75847e;font:10px 'DM Mono';letter-spacing:.12em}.coverage-figures strong{font:26px 'DM Mono';color:#e9f0ef}.coverage-figures small{color:#8f9c97;font-size:12px}
+.denominators{margin:8px 0 18px;font-size:12px;color:#aab8b4;line-height:1.7}.denominators summary{cursor:pointer;color:#b8f36a;font:11px 'DM Mono'}.denominators p{margin:8px 0;max-width:780px}
+.field-checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:4px 16px;padding:0;margin:8px 0 0;list-style:none;font:11px 'DM Mono'}.field-checks .ok{color:#b8f36a}.field-checks .missing{color:#7e8c87}
+.access-table{margin:10px 0 12px;font-size:12px}
+.land-evidence{margin-top:14px;padding-top:6px;border-top:1px solid #243033}.land-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.land-grid input,.land-upload select{width:100%;color:#d8e2dd;background:#182224;border:1px solid #334144;padding:8px;outline:0}
+.land-upload{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:12px 0 4px}.land-upload .upload-row{flex:1 1 220px}.land-upload select{flex:0 1 220px;width:auto}
+.doc-list{margin:12px 0 0;padding-left:18px;color:#aab8b4;font-size:12px;line-height:1.7}
+.method-notes{margin:14px 0;padding-left:18px;color:#aab8b4;font-size:12px;line-height:1.7;max-width:900px}.method-notes strong{color:#e9f0ef}
+.cut-note{color:#f8c15c;font-size:11px}
+.contribution-list .unscored-row strong{color:#7e8c87;font:12px 'DM Mono'}
+.final-verdict b{font:26px 'DM Mono';color:#b8f36a}
+.window-note{margin:12px 0 0;font-size:12px;line-height:1.6;max-width:900px}
+.drawer-scroll .flush{margin-left:0;margin-right:0}.drawer-scroll .scenario-range.flush{width:100%}.drawer-intro.flush{padding:0}.scenario-score.flush{margin:18px 0}
+@media(max-width:700px){.coverage-figures{grid-template-columns:1fr}.land-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.access-table{display:block;overflow-x:auto}}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}.two-col label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#879690}
+.import-page .permission-check{display:flex;gap:10px;align-items:center;margin:20px 0 14px;font-size:13px;color:#c0cdc7}.import-page code{font:11px 'DM Mono';color:#b8f36a}.price-data-link{display:flex;gap:8px;align-items:center;margin:18px auto 0;position:relative;z-index:2}
+.basis-picker{display:inline-flex;gap:8px;align-items:center;margin:6px 0 12px;color:#879690;font-size:12px}.basis-picker select{color:#d8e2dd;background:#182224;border:1px solid #334144;padding:6px}

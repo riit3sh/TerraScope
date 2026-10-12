@@ -1,9 +1,10 @@
-import { StrictMode, useState } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles.css'
 import { Search } from './pages/Search'
 import { ParcelWorkspace, Point, SQFT_PER_SQM } from './pages/ParcelWorkspace'
 import { Report } from './pages/Report'
+import { PriceImport } from './pages/PriceImport'
 import { estimateValuation, EvaluationSettings, getSavedParcel, ParcelRecord, PropertyDetails, Valuation } from './lib/api'
 
 type OpenReport = { snapshot: ParcelRecord; settings: EvaluationSettings; property: PropertyDetails | null; valuation: Valuation | null }
@@ -32,6 +33,17 @@ function App() {
   const [boundary, setBoundary] = useState<Point[]>([])
   const [report, setReport] = useState<OpenReport | null>(null)
   const [opening, setOpening] = useState('')
+  const [importing, setImporting] = useState(false)
+
+  // The open report is in the URL, so a browser refresh reopens it instead of dropping to search.
+  useEffect(() => {
+    const match = window.location.hash.match(/^#report\/([\w-]+)$/)
+    if (match) openSaved(match[1])
+  }, [])
+  useEffect(() => {
+    const next = report?.snapshot.parcel_id ? `#report/${report.snapshot.parcel_id}` : ''
+    if (window.location.hash !== next) window.history.replaceState(null, '', next || window.location.pathname)
+  }, [report])
 
   async function openSaved(parcelId: string) {
     setOpening(parcelId)
@@ -51,8 +63,9 @@ function App() {
     }
   }
 
+  if (importing) return <PriceImport onBack={() => setImporting(false)} />
   if (report) return <Report initialSnapshot={report.snapshot} initialSettings={report.settings} valuation={report.valuation} property={report.property} onBack={() => setReport(null)} />
-  if (!place) return <Search onSubmit={next => { setPlace(next); setBoundary([]) }} onOpenSaved={openSaved} openingParcelId={opening} />
+  if (!place) return <Search onSubmit={next => { setPlace(next); setBoundary([]) }} onOpenSaved={openSaved} openingParcelId={opening} onImportPrices={() => setImporting(true)} />
   return <ParcelWorkspace search={place} points={boundary} onPointsChange={setBoundary} onBack={() => setPlace(null)} onReport={(snapshot, settings, property, valuation) => setReport({ snapshot, settings, property, valuation })} />
 }
 
