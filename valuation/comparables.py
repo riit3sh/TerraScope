@@ -58,7 +58,8 @@ def estimate(
     label = PRICE_TYPE_LABELS[price_type]
     pool = observations[observations["price_type"] == price_type]
     if pool.empty:
-        raise ValuationUnavailable("price_type_not_covered", f"No {label} are loaded.")
+        short = {"asking": "asking prices", "transaction": "registered sale prices", "guideline": "guideline values"}
+        raise ValuationUnavailable("price_type_not_covered", f"No {short[price_type]} are loaded.")
     category = category_for(land_use)
     pool = pool[(pool["land_use"] == land_use) & (pool["property_category"] == category)]
     if pool.empty:

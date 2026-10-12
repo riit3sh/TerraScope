@@ -47,7 +47,7 @@ BASE_URL = "https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/CEMS-GLOFAS/flood_h
 RETURN_PERIODS = (10, 20, 50, 75, 100, 200, 500)
 # Surroundings: a parcel just outside the modelled floodplain is reported as such.
 SURROUNDINGS_M = 500.0
-RESULT_FORMAT = 2  # bump when the result fields change, so cached results are recomputed
+RESULT_FORMAT = 3  # bump when the result fields change, so cached results are recomputed (3: model cells)
 NODATA_DEPTH = -9999.0
 LICENCE = "CC BY 4.0 - (c) European Union, Copernicus Emergency Management Service (JRC)"
 CITATION = "Baugh et al., Global river flood hazard maps, European Commission JRC, doi:10.2905/JRC.VD32YWG"
@@ -198,6 +198,7 @@ def assess(geojson_polygon: dict[str, Any]) -> dict[str, Any]:
     totals = {rp: {"flooded_area_m2": 0.0, "flagged_flooded_area_m2": 0.0, "zero_depth_area_m2": 0.0,
                    "no_modelled_inundation_area_m2": 0.0, "depths": [], "near_flooded_m2": 0.0} for rp in RETURN_PERIODS}
     assessed_area = permanent_area = flagged_area = 0.0
+    cells, cell_area = 0, None  # model cells overlapping the parcel, and the area of one
     near_land_area = 0.0  # surroundings area that was read and is not permanent water
     errors: list[str] = []
 
@@ -221,6 +222,8 @@ def assess(geojson_polygon: dict[str, Any]) -> dict[str, Any]:
         permanent, spurious = arrays["permanent_water"][0], arrays["spurious"][0]
         near_land_area += float(near_weights[permanent != 1].sum())
         assessed_area += float(weights.sum())
+        cells += int((weights > 0).sum())
+        cell_area = abs(transform.a) * scale_lon * abs(transform.e) * 110_574.0
         permanent_area += float(weights[permanent == 1].sum())
         flagged_area += float(weights[spurious == 1].sum())
         for rp in RETURN_PERIODS:
@@ -267,7 +270,11 @@ def assess(geojson_polygon: dict[str, Any]) -> dict[str, Any]:
         "resolution": "3 arc-seconds (~90 m)",
         "model": "LISFLOOD hydrology (GloFAS v4 reanalysis) + LISFLOOD-FP inundation; modelled scenarios, not observed events",
         "parcel_area_m2": round(parcel_area, 1),
+        # Share of the parcel inside hazard-map cells that were read. A cell with no modelled inundation
+        # counts as read; it is not a statement that the model covers every flood mechanism there.
         "assessed_share_of_parcel": round(assessed_share, 4),
+        "model_cells_overlapping_parcel": cells,
+        "model_cell_area_m2": round(cell_area, 0) if cell_area else None,
         "permanent_water_area_m2": round(permanent_area, 1),
         "quality_flagged_area_m2": round(flagged_area, 1),
         "surroundings_m": SURROUNDINGS_M,

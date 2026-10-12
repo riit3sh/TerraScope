@@ -89,6 +89,9 @@ class ImportReport:
     dropped: dict[str, int] = field(default_factory=dict)
     same_record_repeated: int = 0
     duplicate_listings_collapsed: int = 0
+    # Per row (CSV line numbers, header = line 1): why it was rejected, or which row it duplicates.
+    rejected_rows: list[dict[str, Any]] = field(default_factory=list)
+    duplicate_rows: list[dict[str, Any]] = field(default_factory=list)
 
     def drop(self, reason: str, count: int) -> None:
         if count:
@@ -132,12 +135,17 @@ def normalize(frame: pd.DataFrame) -> tuple[pd.DataFrame, ImportReport]:
         if column not in frame.columns:
             frame[column] = ""
     frame = frame.loc[:, list(REQUIRED_COLUMNS + OPTIONAL_COLUMNS)].astype(str).apply(lambda c: c.str.strip())
+    frame["csv_row"] = np.arange(len(frame)) + 2  # line number in the file (header is line 1)
     for column in ("price_type", "price_unit", "currency", "property_category", "land_use", "location_precision", "area_unit"):
         frame[column] = frame[column].str.lower()
 
     def drop(mask: pd.Series, reason: str) -> None:
         nonlocal frame
         report.drop(reason, int(mask.sum()))
+        report.rejected_rows += [
+            {"row": int(row.csv_row), "reason": reason, "source": row.source, "source_record_id": row.source_record_id}
+            for row in frame.loc[mask, ["csv_row", "source", "source_record_id"]].itertuples()
+        ]
         frame = frame.loc[~mask]
 
     drop((frame[["source", "source_record_id"]] == "").any(axis=1), "missing_source_or_record_id")
@@ -185,9 +193,15 @@ def normalize(frame: pd.DataFrame) -> tuple[pd.DataFrame, ImportReport]:
         raise DatasetError(f"No rows survived cleaning: {report.as_dict()}")
 
     # The same record delivered twice (re-import, overlapping exports): keep the latest retrieval.
-    before = len(frame)
+    before = frame
     frame = frame.sort_values("retrieved_date").drop_duplicates(["source", "source_record_id"], keep="last")
-    report.same_record_repeated = before - len(frame)
+    report.same_record_repeated = len(before) - len(frame)
+    kept_row = frame.set_index(["source", "source_record_id"])["csv_row"]
+    report.duplicate_rows += [
+        {"row": int(row.csv_row), "kind": "same_record_repeated",
+         "kept_row": int(kept_row[(row.source, row.source_record_id)])}
+        for row in before.loc[~before.index.isin(frame.index)].itertuples()
+    ]
 
     frame = _collapse_duplicate_listings(frame.reset_index(drop=True), report)
     report.rows_kept = len(frame)
@@ -250,6 +264,11 @@ def _collapse_duplicate_listings(frame: pd.DataFrame, report: ImportReport) -> p
     frame["group_id"] = roots.map(lambda r: hashlib.sha1(keys.iat[r].encode()).hexdigest()[:12])
     kept = frame.sort_values(["observed_date", "retrieved_date"]).drop_duplicates("group_id", keep="last")
     report.duplicate_listings_collapsed = len(frame) - len(kept)
+    kept_row = kept.set_index("group_id")["csv_row"]
+    report.duplicate_rows += [
+        {"row": int(row.csv_row), "kind": "relisting_of_same_plot", "kept_row": int(kept_row[row.group_id])}
+        for row in frame.loc[~frame.index.isin(kept.index)].itertuples()
+    ]
     return kept.sort_values("observed_date").reset_index(drop=True)
 
 
@@ -294,4 +313,5 @@ if __name__ == "__main__":
     parser.add_argument("csv")
     args = parser.parse_args()
     cleaned, import_report = load_observations(args.csv)
-    print(json.dumps({"import": import_report.as_dict(), "kept": summary(cleaned)}, indent=2))
+    print(json.dumps({"import": import_report.as_dict(), "rejected_rows": import_report.rejected_rows,
+                      "duplicate_rows": import_report.duplicate_rows, "kept": summary(cleaned)}, indent=2))

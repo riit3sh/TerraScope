@@ -5,8 +5,8 @@ One store per installed region, built by ``terrascope.cmd fetch-data <region>``
 disk, so accessibility and water distances do not depend on a public Overpass
 server answering in time. Region selection lives in ``regions.py``.
 
-Distances are straight lines from the parcel centroid to the nearest point on the
-feature's full geometry (every vertex of a road, the whole outline of a lake),
+Distances are straight lines from the parcel centroid (or, when asked, the parcel edge)
+to the nearest point on the feature's full geometry (every vertex of a road, the whole outline of a lake),
 never to a midpoint or centre. They are proximity, not routed travel distance.
 """
 
@@ -113,18 +113,24 @@ class LocalOSM:
         layer: str,
         classes: Iterable[str] | None = None,
         max_distance_m: float = 5000.0,
+        around: Any = None,
     ) -> dict[str, Any] | None:
-        """Nearest feature of ``layer`` (optionally restricted to ``classes``)."""
+        """Nearest feature of ``layer`` (optionally restricted to ``classes``).
+
+        ``around`` is a lon/lat shapely geometry (the parcel) to measure from instead of the
+        point: the distance is then edge to feature, and 0 when the feature touches or crosses it.
+        """
         forward, backward, scale_lon, scale_lat = self._projector(lon, lat)
         wanted = set(classes) if classes is not None else None
-        origin = Point(0.0, 0.0)
+        origin = Point(0.0, 0.0) if around is None else shapely.transform(around, forward)
+        west, south, east, north = (lon, lat, lon, lat) if around is None else around.bounds
         for radius in [step for step in SEARCH_STEPS_M if step < max_distance_m] + [max_distance_m]:
             dlon, dlat = radius / scale_lon, radius / scale_lat
             rows = self.connection.execute(
                 "SELECT f.class, f.name, f.osm_id, f.tags, f.geom FROM features_rtree r "
                 "JOIN features f ON f.id = r.id "
                 "WHERE r.minx <= ? AND r.maxx >= ? AND r.miny <= ? AND r.maxy >= ? AND f.layer = ?",
-                (lon + dlon, lon - dlon, lat + dlat, lat - dlat, layer),
+                (east + dlon, west - dlon, north + dlat, south - dlat, layer),
             ).fetchall()
             if wanted is not None:
                 rows = [row for row in rows if row[0] in wanted]

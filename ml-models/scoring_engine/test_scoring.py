@@ -130,6 +130,6 @@ def test_missing_land_records_produce_no_legal_score_at_all() -> None:
     unverified = compute_verdict({"land_records": None}, evaluation)
     assert unverified["legal_safety_score"] is None
     assert unverified["recommendation"] == "INSUFFICIENT_EVIDENCE"
-    assert "Insufficient evidence" in unverified["reasoning_summary"]
+    assert "insufficient evidence" in unverified["reasoning_summary"] and "legal safety" in unverified["reasoning_summary"]
     verified = compute_verdict({"land_records": {"title_clear": True, "encumbrance_flag": False}}, evaluation)
     assert "land records not provided" not in verified["reasoning_summary"]

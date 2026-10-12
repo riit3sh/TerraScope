@@ -89,8 +89,35 @@ def _distance_score(distance: Any, max_useful_distance: float) -> float | None:
     return max(0.0, min(100.0, 100.0 * (1.0 - float(distance) / max_useful_distance)))
 
 
-def accessibility_score(record: dict[str, Any], preferences: dict[str, Any] | None) -> float:
-    """Score proximity, using property-aware defaults and explicit preferences."""
+ACCESSIBILITY_METHOD = "accessibility_v2"
+
+
+def _feature_component(infrastructure: dict[str, Any], feature: str, cap: float, importance: float) -> dict[str, Any]:
+    """One feature's distance, where it was measured from, and its 0-100 sub-score under ``cap``.
+
+    The parcel-edge distance is what "how far is the road" means for a drawn parcel; snapshots
+    made before it was recorded only have the centroid distance, which is used and labelled.
+    A feature not found inside the search radius scores 0 only when that radius reaches the cap.
+    """
+    edge = infrastructure.get(f"nearest_{feature}_distance_from_boundary_m")
+    centroid = infrastructure.get(f"nearest_{feature}_distance_m")
+    distance, measured_from = (edge, "parcel boundary") if isinstance(edge, (int, float)) else (centroid, "parcel centroid")
+    radius = infrastructure.get("search_radius_m")
+    sub_score = _distance_score(distance, cap)
+    if sub_score is None and isinstance(radius, (int, float)) and radius >= cap:
+        sub_score, measured_from = 0.0, f"none mapped within {radius:,.0f} m"
+    return {
+        "distance_m": distance if isinstance(distance, (int, float)) else None,
+        "centroid_distance_m": centroid if isinstance(centroid, (int, float)) else None,
+        "measured_from": measured_from,
+        "cap_m": cap,
+        "sub_score": None if sub_score is None else round(sub_score, 2),
+        "weight": round(importance, 3),
+    }
+
+
+def accessibility_components(record: dict[str, Any], preferences: dict[str, Any] | None) -> dict[str, Any]:
+    """Road and school sub-scores under the user's distance limits and importances, and their weighted score."""
     preferences = preferences or {}
     infrastructure = _section(record, "infrastructure")
     property_weights = PROPERTY_IMPORTANCE.get(_evaluation_property_type(record), {
@@ -99,18 +126,23 @@ def accessibility_score(record: dict[str, Any], preferences: dict[str, Any] | No
     })
     road_importance = property_weights["road"] * IMPORTANCE_MULTIPLIERS.get(preferences.get("road_importance"), 1.0)
     school_importance = property_weights["school"] * IMPORTANCE_MULTIPLIERS.get(preferences.get("school_importance"), 1.0)
-    # The UI has always sent these; they were accepted and then ignored, so moving
-    # the slider changed nothing. They now set the distance at which the score
-    # reaches zero, falling back to the module defaults when absent.
-    road_cap = _positive_number(preferences.get("max_road_distance_m"), MAX_USEFUL_ROAD_DISTANCE_M)
-    school_cap = _positive_number(preferences.get("max_school_distance_m"), MAX_USEFUL_SCHOOL_DISTANCE_M)
-    road_score = _distance_score(infrastructure.get("nearest_road_distance_m"), road_cap)
-    school_score = _distance_score(infrastructure.get("nearest_school_distance_m"), school_cap)
-    weighted = [(road_score, road_importance), (school_score, school_importance)]
-    available = [(score, weight) for score, weight in weighted if score is not None]
-    if not available:
-        return 50.0
-    return round(sum(score * weight for score, weight in available) / sum(weight for _, weight in available), 2)
+    # max_*_distance_m set the distance at which a sub-score reaches zero (module defaults when absent).
+    road = _feature_component(infrastructure, "road",
+                              _positive_number(preferences.get("max_road_distance_m"), MAX_USEFUL_ROAD_DISTANCE_M),
+                              road_importance)
+    school = _feature_component(infrastructure, "school",
+                                _positive_number(preferences.get("max_school_distance_m"), MAX_USEFUL_SCHOOL_DISTANCE_M),
+                                school_importance)
+    available = [part for part in (road, school) if part["sub_score"] is not None]
+    score = (round(sum(p["sub_score"] * p["weight"] for p in available) / sum(p["weight"] for p in available), 2)
+             if available else None)
+    return {"method": ACCESSIBILITY_METHOD, "score": score, "road": road, "school": school}
+
+
+def accessibility_score(record: dict[str, Any], preferences: dict[str, Any] | None) -> float:
+    """Score proximity, using property-aware defaults and explicit preferences."""
+    score = accessibility_components(record, preferences)["score"]
+    return 50.0 if score is None else score
 
 
 def flood_and_terrain_risk_score(record: dict[str, Any]) -> float | None:
@@ -182,7 +214,7 @@ def compute_verdict(record: dict[str, Any], evaluation: dict[str, Any]) -> dict[
         weights=_normalized_weights(evaluation),
         legal_risk_score=legal_risk_score,
         apply_rera_requirement=apply_rera_requirement,
-        accessibility_score=accessibility_score,
+        accessibility_components=accessibility_components,
         growth_opportunity_score=growth_opportunity_score,
         hard_legal_risk_threshold=HARD_LEGAL_RISK_THRESHOLD,
         buy_threshold=BUY_COMPOSITE_THRESHOLD,

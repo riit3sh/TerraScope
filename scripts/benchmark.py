@@ -27,8 +27,15 @@ def box(west: float, south: float, east: float, north: float) -> dict:
     return {"type": "Polygon", "coordinates": [[[west, south], [east, south], [east, north], [west, north], [west, south]]]}
 
 
+# The acceptance parcel: the exact polygon of the VIT report (snapshot 568d1f42, 2.75 acres).
+VIT_ACCEPTANCE = {"type": "Polygon", "coordinates": [[
+    [79.15536230217474, 12.969645765583497], [79.15654219912079, 12.969619636743653],
+    [79.15649929377727, 12.968846221841105], [79.15534084950296, 12.968835770271891],
+    [79.15536230217474, 12.969645765583497]]]}
+
 PARCELS = {
     # name: (polygon, area basis for the price request, land use)
+    "VIT acceptance parcel (568d1f42 polygon)": VIT_ACCEPTANCE,
     "VIT Vellore campus (part)": box(79.1540, 12.9680, 79.1610, 12.9735),
     "Katpadi residential plot": box(79.14270, 12.95370, 79.14284, 12.95384),
     "Kadapa": box(78.8441, 14.4507, 78.8450, 14.4516),
@@ -73,7 +80,12 @@ def run_once(client: httpx.Client, name: str, polygon: dict) -> dict:
     evaluated = client.post(f"{API}/api/v1/parcels/{snapshot['parcel_id']}/evaluate",
                             json={"analysis_snapshot_id": body["analysis_snapshot_id"], **SETTINGS}, timeout=120)
     out["evaluate_s"] = round(time.perf_counter() - began, 3)
-    out["verdict"] = evaluated.json().get("verdict", {}).get("recommendation")
+    result = evaluated.json()
+    out["verdict"] = result.get("verdict", {}).get("recommendation")
+    out["explanation_source"] = result.get("verdict", {}).get("explanation_source")
+    out["accessibility"] = (result.get("score_breakdown") or {}).get("accessibility_score")
+    out["change_type"] = (result.get("satellite") or {}).get("change_type")
+    out["observations"] = len((result.get("satellite") or {}).get("imagery_dates") or [])
     began = time.perf_counter()
     valuation = client.post(f"{API}/api/v1/valuation/estimate", json={
         "latitude": snapshot["location"]["latitude"], "longitude": snapshot["location"]["longitude"],
@@ -98,12 +110,15 @@ def main() -> None:
     parser.add_argument("--runs", type=int, default=2)
     parser.add_argument("--allow-saving-reports", action="store_true", required=True)
     parser.add_argument("--out")
+    parser.add_argument("--offset-deg", type=float, default=0.0,
+                        help="shift every polygon east by this many degrees, so run 1 is truly cold (new cache keys)")
     args = parser.parse_args()
+    shift = lambda polygon: {"type": "Polygon", "coordinates": [[[x + args.offset_deg, y] for x, y in polygon["coordinates"][0]]]}  # noqa: E731
     results = []
     with httpx.Client() as client:
         for run in range(1, args.runs + 1):
             for name, polygon in PARCELS.items():
-                result = {"run": run, **run_once(client, name, polygon)}
+                result = {"run": run, **run_once(client, name, shift(polygon))}
                 print(json.dumps(result), flush=True)
                 results.append(result)
     summary = {}

@@ -16,6 +16,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from pydantic import BaseModel
 
 from change_detection.statistical_change import detect_change_from_series
+from citations import PAGE_BREAK, evidence_citations, land_details
 from scoring_engine.scoring import compute_evaluation
 
 
@@ -69,19 +70,26 @@ def enrich_evidence(snapshot: dict[str, Any]) -> dict[str, Any]:
     evidence = enriched.setdefault("evidence", []) or []
     evidence = [
         item for item in evidence
-        if not (isinstance(item, dict) and item.get("source_reference") == "statistical_change_v1")
+        if not (isinstance(item, dict) and item.get("evidence_id", "").endswith(":statistical-change"))
     ]
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    method = change["change_method"]
+    medians = (
+        f" Median same-season change: NDVI {method['median_ndvi_change']:+.3f}, NDBI {method['median_ndbi_change']:+.3f}."
+        if method.get("median_ndvi_change") is not None else ""
+    )
     evidence.append({
         "evidence_id": f"{enriched.get('metadata', {}).get('analysis_snapshot_id', 'snapshot')}:statistical-change",
         "source_type": "derived",
-        "source_reference": "statistical_change_v1",
-        "title": "Statistical satellite change detection",
+        "source_reference": method["method"],
+        "title": "Land-cover change test (same season, a year apart)",
         "observed_at": now,
         "freshness": "derived",
         "summary": (
-            f"Linear NDVI/NDBI trend classification: {change['change_type']} "
-            f"(detected={change['change_detected']}, confidence={change['change_confidence']:.3f})."
+            f"Result: {change['change_type'].replace('_', ' ')}. {method['pairs']} same-season pair(s) from "
+            f"{method['observations']} observations.{medians} {method['reason']} Fixed rule thresholds "
+            f"(stable within ±{method['stable_limit']}, change from {method['change_limit']}), not calibrated "
+            "against labelled change, so no confidence percentage is given."
         ),
     })
     enriched["evidence"] = evidence
@@ -156,19 +164,19 @@ def _with_document_evidence(
             continue
         seen.add(reference)
         text = str(document.get("text") or "")
+        pages = text.count(PAGE_BREAK) + 1 if PAGE_BREAK in text else None
         rows.append({
             "evidence_id": f"upload:{reference}",
             "source_type": "user_upload",
             "source_reference": reference,
-            "title": "Uploaded evidence document",
+            "title": "Your uploaded document (user-provided, not verified)",
             "observed_at": now,
             "freshness": "user_upload",
-            # Retrieval only runs when AI explanations are configured; say which case applies.
             "summary": (
-                f"{len(text.split())} words of user-supplied text extracted; used for grounded, cited answers."
-                if os.getenv("GROQ_API_KEY") else
-                f"{len(text.split())} words of user-supplied text extracted and stored. Not read or cited by any "
-                "analysis: grounded AI retrieval is not configured (no GROQ_API_KEY). The document is unverified."
+                f"{len(text.split())} words extracted" + (f" from {pages} pages" if pages else "")
+                + ". TerraScope searches it for the survey number and village you entered and cites the page where "
+                "they appear. Finding them there does not verify ownership, encumbrance or approval."
+                + (" It is also available to the AI explanation." if os.getenv("GROQ_API_KEY") else "")
             ),
         })
     return rows
@@ -187,6 +195,8 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
     uploaded_documents = evaluated.pop("uploaded_documents", None)
     documents = rag_documents if rag_documents is not None else uploaded_documents
     evaluated["evidence"] = _with_document_evidence(evaluated.get("evidence") or [], documents)
+    # The user's survey identifiers and document types: request-scoped claims, never land_records.
+    evaluated["user_land_details"] = land_details(evaluated.pop("user_land_details", None), documents)
     evaluated["evaluation"] = deepcopy(evaluation)
     result = compute_evaluation(evaluated, evaluation)
     risk = evaluated.setdefault("risk", {}) or {}
@@ -220,6 +230,8 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         "reasoning_summary": result["reasoning_summary"],
         "citations": [],
     }
+    # Every figure the assessment relies on, cited to the evidence row that holds it. No LLM needed.
+    citations = evidence_citations(evaluated, result["factors"])
     # Groq explains the deterministic result; it never computes or changes the scores.
     ai_explanation: dict[str, Any] = {"answer_text": "", "citations": []}
     try:
@@ -227,8 +239,7 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
 
         ai_explanation = generate_evaluation_explanation(evaluated)
     except Exception as error:
-        LOGGER.warning("Groq evaluation explanation unavailable; using deterministic summary: %s", error)
-    citations = list(_section(evaluated, "verdict").get("citations", []) or [])
+        LOGGER.info("AI explanation not used; showing the deterministic summary: %s", error)
     citations.extend(
         {
             "claim": citation["claim"],
@@ -245,10 +256,13 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         }
         for citation in ai_explanation.get("citations", [])
     )
+    ai_text = ai_explanation.get("answer_text")
     evaluated["verdict"] = {
         "recommendation": result["recommendation"],
         "confidence": result["confidence"],  # deliberately null: see scoring_engine
-        "reasoning_summary": ai_explanation.get("answer_text") or result["reasoning_summary"],
+        "reasoning_summary": ai_text or result["reasoning_summary"],
+        # Says who wrote reasoning_summary, so the report never labels rule output as AI.
+        "explanation_source": "ai" if ai_text else "deterministic",
         "citations": citations,
     }
     _validate_snapshot(evaluated)

@@ -114,9 +114,12 @@ def test_flood_evidence_gives_a_partial_assessment_without_a_score() -> None:
     flood = next(f for f in result["factors"] if f["factor"] == "flood_safety")
     assert flood["status"] == "partial"
     assert flood["score"] is None and result["flood_safety_score"] is None
-    assert flood["basis"].startswith("Partial flood assessment available.")
-    assert "1-in-20-year" in flood["basis"]
+    assert flood["basis"].startswith("River flood exposure assessed")
+    assert "other mechanisms incomplete" in flood["basis"]
     assert "rainfall waterlogging" in flood["basis"] and "coastal flooding" in flood["basis"]
+    # The checklist names what is missing, not the river map that was just used.
+    assert not any("hazard map" in item for item in flood["checklist"])
+    assert any("Rainfall" in item for item in flood["checklist"])
     # A withheld factor carrying weight still withholds the verdict.
     assert result["recommendation"] == "INSUFFICIENT_EVIDENCE"
     # Every factor status must be one the shared schema accepts (the service validates it).
@@ -160,7 +163,8 @@ def test_provider_failure_yields_no_growth_score() -> None:
 def test_real_observed_change_still_yields_no_growth_score() -> None:
     """Real imagery measures land cover, which is not investment growth."""
     record = _with(
-        satellite={"change_type": "construction_growth", "change_detected": True, "change_confidence": 0.6},
+        satellite={"change_type": "construction_growth", "change_detected": True, "change_confidence": None,
+                   "change_method": {"method": "seasonal_pairs_v2"}},
         evidence=[{"source_type": "satellite",
                    "source_reference": "Sentinel-2 L2A (Microsoft Planetary Computer)",
                    "freshness": "live"}],
@@ -169,7 +173,7 @@ def test_real_observed_change_still_yields_no_growth_score() -> None:
     assert result["growth_score"] is None
     growth = next(f for f in result["factors"] if f["factor"] == "growth")
     assert growth["status"] == "not_integrated"
-    assert "construction growth" in growth["basis"]
+    assert "consistent with construction" in growth["basis"] and "no investment-growth score" in growth["basis"]
     assert "cannot separate construction" in growth["limitations"]
     assert any("transaction" in item for item in growth["checklist"])
 
@@ -179,7 +183,8 @@ def test_real_observed_change_still_yields_no_growth_score() -> None:
 def test_accessibility_is_marked_straight_line_not_road_network() -> None:
     access = next(f for f in compute_evaluation(KADAPA, EVALUATION)["factors"] if f["factor"] == "accessibility")
     assert access["status"] == "indicative"
-    assert "NOT road-network" in access["limitations"]
+    assert "not routed travel distances" in access["limitations"]
+    assert "not proof of legal or physical access" in access["limitations"]
     assert "not proof of legal or physical access" in access["limitations"]
 
 

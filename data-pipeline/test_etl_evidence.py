@@ -7,7 +7,9 @@ from pathlib import Path
 import pandas as pd
 
 from connectors.rera_ingest import match_parcel_to_rera
-from etl_pipeline import _data_coverage, _elevation_summary, _infrastructure_summary, _rera_summary
+from etl_pipeline import (
+    _data_coverage, _elevation_summary, _infrastructure_summary, _rera_summary, _surface_water_summary, ascii_name,
+)
 
 
 SEED = pd.DataFrame([{ "district": "Vellore", "project_name": "P", "rera_registration_number": "TN/1", "promoter_name": "Promoter", "registered_completion_date": "2027-03-31", "source_url": "https://example.invalid" }])
@@ -15,7 +17,7 @@ SEED = pd.DataFrame([{ "district": "Vellore", "project_name": "P", "rera_registr
 
 def test_rera_summary_never_claims_this_parcel_is_registered() -> None:
     match = match_parcel_to_rera("Vellore", SEED)
-    summary = _rera_summary(match, "Vellore", Path("maharera_seed.csv"), True)
+    summary = _rera_summary(match, "Vellore", "Maharashtra", Path("maharera_seed.csv"), True)
     assert "candidate" in summary.lower()
     assert "stays unknown" in summary
     # The registration belongs to another project; it must be framed as a candidate.
@@ -24,14 +26,30 @@ def test_rera_summary_never_claims_this_parcel_is_registered() -> None:
 
 def test_missing_seed_is_reported_as_unknown_not_as_a_clean_result() -> None:
     match = match_parcel_to_rera("Vellore", pd.DataFrame({"district": pd.Series(dtype="string")}))
-    summary = _rera_summary(match, "Vellore", Path("maharera_seed.csv"), False)
-    assert "unknown" in summary and "No RERA seed dataset is configured" in summary
+    summary = _rera_summary(match, "Pune", "Maharashtra", Path("maharera_seed.csv"), False)
+    assert "unknown" in summary and "No MahaRERA seed dataset is configured" in summary
 
 
 def test_absence_from_the_seed_is_not_reported_as_absence_of_registration() -> None:
     match = match_parcel_to_rera("Chennai", SEED)
-    summary = _rera_summary(match, "Chennai", Path("maharera_seed.csv"), True)
+    summary = _rera_summary(match, "Chennai", "Maharashtra", Path("maharera_seed.csv"), True)
     assert "partial export" in summary and "stays unknown" in summary
+
+
+def test_a_tamil_nadu_parcel_is_never_checked_against_the_maharashtra_seed() -> None:
+    """Regression (VIT report): the ledger said 'MahaRERA static seed' for a Tamil Nadu parcel."""
+    summary = _rera_summary({"district_match_count": 0}, "Vellore", ascii_name("Tamil Nāḍu"),
+                            Path("maharera_seed.csv"), True)
+    assert "Tamil Nadu" in summary and "does not apply here" in summary and "unknown" in summary
+    assert "candidate" not in summary
+
+
+def test_surface_water_summary_is_never_cut_mid_sentence() -> None:
+    """Regression: a [:500] slice stored '...urban street flooding a' in saved reports."""
+    part = {"pixels": 24, "occurrence_max_pct": 0, "occurrence_mean_pct": 0.0, "water_ever_fraction": 0.0}
+    around = {"pixels": 1410, "occurrence_max_pct": 20, "occurrence_mean_pct": 0.13, "water_ever_fraction": 0.0149}
+    summary = _surface_water_summary({"parcel": part, "within_buffer": around, "buffer_m": 500.0})
+    assert len(summary) > 500 and summary.endswith("are largely missed.")
 
 
 def test_coverage_counts_missing_fields() -> None:

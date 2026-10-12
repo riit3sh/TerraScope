@@ -27,9 +27,11 @@ def test_rera_district_match_is_never_reported_as_this_parcel_registration(clien
     assert rera.get("is_rera_project") is not True, (
         "the seed matches on district only, which is not proof this parcel is registered"
     )
-    rows = [item for item in snapshot["evidence"] if item["source_type"] == "maharera_seed"]
+    rows = [item for item in snapshot["evidence"] if item["source_type"] in ("maharera_seed", "rera")]
     assert rows, "the RERA lookup should always leave a ledger row"
     assert "unknown" in rows[0]["summary"].lower()
+    # Regression (VIT report): a Tamil Nadu parcel was shown a "MahaRERA static seed" row.
+    assert rows[0]["source_type"] == "rera" and "does not apply here" in rows[0]["summary"]
 
 
 def test_data_completeness_reflects_missing_evidence(client: httpx.Client) -> None:

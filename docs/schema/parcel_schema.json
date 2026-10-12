@@ -265,7 +265,9 @@
           "enum": [
             "construction_growth",
             "vegetation_loss",
+            "vegetation_gain",
             "no_change",
+            "inconclusive",
             "insufficient_evidence",
             null
           ]
@@ -277,6 +279,30 @@
           ],
           "minimum": 0,
           "maximum": 1
+        },
+        "change_method": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "How change_type was decided (method, same-season pairs, paired differences, thresholds). Absent on snapshots made with statistical_change_v1."
+        },
+        "observations": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          },
+          "description": "Per-observation provenance: scene id, season anchor, clear pixels, cloud fractions, reflectance offset."
+        },
+        "collection": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "How scenes were searched and selected (algorithm version, anchors, scenes matched/read/rejected)."
         }
       }
     },
@@ -433,6 +459,33 @@
           ]
         },
         "search_radius_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "nearest_road_distance_from_boundary_m": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Straight line from the drawn boundary; 0 when a mapped way touches or crosses it."
+        },
+        "nearest_road_boundary_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_road_boundary_type": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nearest_school_distance_from_boundary_m": {
           "type": [
             "number",
             "null"
@@ -835,6 +888,13 @@
                     "null"
                   ]
                 }
+              },
+              "details": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "Inputs behind the factor (e.g. distances, caps and sub-scores for accessibility)."
               }
             }
           }
@@ -1009,9 +1069,34 @@
                   "string",
                   "null"
                 ]
+              },
+              "evidence_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "location": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Page or section inside the cited source, where extraction supports it."
               }
             }
           }
+        },
+        "explanation_source": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "deterministic",
+            "ai",
+            null
+          ],
+          "description": "deterministic: TerraScope's rule-based summary; ai: an AI call succeeded and wrote reasoning_summary."
         }
       }
     },
@@ -1069,6 +1154,16 @@
               "null"
             ]
           }
+        },
+        "data_completeness_fields": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "description": "Each evidence field counted by data_completeness_pct and whether it was obtained."
         }
       }
     },
@@ -1285,6 +1380,13 @@
           ]
         }
       }
+    },
+    "user_land_details": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Survey/subdivision identifiers and document claims supplied by the user. Never independently verified; never populates land_records."
     }
   },
   "$defs": {

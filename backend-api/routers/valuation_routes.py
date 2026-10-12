@@ -11,10 +11,12 @@ import logging
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
-from valuation.predict import ValuationUnavailable, data_status, estimate_value
+from valuation import importer
+from valuation.dataset import DatasetError
+from valuation.predict import ValuationUnavailable, data_status, estimate_value, observations_path
 
 
 LOGGER = logging.getLogger(__name__)
@@ -39,6 +41,37 @@ class ValuationRequest(BaseModel):
 def get_valuation_data() -> dict[str, Any]:
     """Which price observations are loaded, from which sources, and their validation status."""
     return data_status()
+
+
+MAX_IMPORT_BYTES = 20 * 1024 * 1024
+
+
+async def _import_frame(file: UploadFile):
+    content = await file.read()
+    if len(content) > MAX_IMPORT_BYTES:
+        raise HTTPException(status_code=413, detail="Price files must be 20 MB or smaller.")
+    try:
+        return importer.read_csv(content)
+    except (ValueError, UnicodeDecodeError) as error:
+        raise HTTPException(status_code=400, detail=f"Not a readable CSV: {error}") from error
+
+
+@router.post("/api/v1/valuation/import/preview")
+async def preview_price_import(file: UploadFile = File(...)) -> dict[str, Any]:
+    """Validate an owner/broker or licensed price CSV row by row. Writes nothing."""
+    return importer.preview(await _import_frame(file))
+
+
+@router.post("/api/v1/valuation/import/commit")
+async def commit_price_import(file: UploadFile = File(...), permission_confirmed: bool = Form(False)) -> dict[str, Any]:
+    """Add the valid rows to the served observations. The caller confirms each row's reuse_basis is a real permission."""
+    if not permission_confirmed:
+        raise HTTPException(status_code=400, detail="Confirm that you have permission to use these rows before importing.")
+    try:
+        result = importer.commit(await _import_frame(file), observations_path())
+    except DatasetError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {**result, "data": data_status()}
 
 
 @router.post("/api/v1/valuation/estimate")

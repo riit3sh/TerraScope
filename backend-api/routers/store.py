@@ -10,6 +10,9 @@ from pathlib import Path
 from typing import Any
 
 
+PAGE_BREAK = "\f"  # extracted PDF pages are joined with a form feed, so citations can name the page
+
+
 def _path() -> Path:
     return Path(os.getenv("BACKEND_STORE_PATH", "/tmp/terrascope_backend.sqlite3"))
 
@@ -48,8 +51,17 @@ def init_store() -> None:
                 text_content TEXT,
                 created_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS land_details (
+                parcel_id TEXT PRIMARY KEY,
+                details_json TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
             """
         )
+        # Additive migration: existing rows keep doc_type NULL ("type not given").
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(documents)")}
+        if "doc_type" not in columns:
+            connection.execute("ALTER TABLE documents ADD COLUMN doc_type TEXT")
 
 
 def save_snapshot(snapshot: dict[str, Any]) -> None:
@@ -129,11 +141,13 @@ def get_latest_evaluation(parcel_id: str) -> dict[str, Any] | None:
     return json.loads(row["evaluation_json"]) if row else None
 
 
-def save_document(parcel_id: str, filename: str, content_type: str, size_bytes: int, text_content: str | None) -> int:
+def save_document(parcel_id: str, filename: str, content_type: str, size_bytes: int, text_content: str | None,
+                  doc_type: str | None = None) -> int:
     with _connect() as connection:
         cursor = connection.execute(
-            "INSERT INTO documents(parcel_id, filename, content_type, size_bytes, text_content, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (parcel_id, filename, content_type, size_bytes, text_content, datetime.now(timezone.utc).isoformat()),
+            "INSERT INTO documents(parcel_id, filename, content_type, size_bytes, text_content, created_at, doc_type) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (parcel_id, filename, content_type, size_bytes, text_content, datetime.now(timezone.utc).isoformat(), doc_type),
         )
         return int(cursor.lastrowid)
 
@@ -155,3 +169,33 @@ def get_document_texts(parcel_id: str) -> list[dict[str, str]]:
         if row["text_content"]
     ]
 
+
+def list_documents(parcel_id: str) -> list[dict[str, Any]]:
+    """Every upload, including scanned PDFs with no extractable text."""
+    with _connect() as connection:
+        rows = connection.execute(
+            "SELECT id, filename, doc_type, size_bytes, text_content, created_at FROM documents "
+            "WHERE parcel_id = ? ORDER BY id",
+            (parcel_id,),
+        ).fetchall()
+    return [
+        {"document_id": row["id"], "filename": row["filename"], "doc_type": row["doc_type"],
+         "size_bytes": row["size_bytes"], "text_extracted": bool(row["text_content"]),
+         "pages": row["text_content"].count(PAGE_BREAK) + 1 if row["text_content"] and PAGE_BREAK in row["text_content"] else None,
+         "uploaded_at": row["created_at"]}
+        for row in rows
+    ]
+
+
+def save_land_details(parcel_id: str, details: dict[str, Any]) -> None:
+    with _connect() as connection:
+        connection.execute(
+            "INSERT OR REPLACE INTO land_details(parcel_id, details_json, updated_at) VALUES (?, ?, ?)",
+            (parcel_id, json.dumps(details), datetime.now(timezone.utc).isoformat()),
+        )
+
+
+def get_land_details(parcel_id: str) -> dict[str, Any] | None:
+    with _connect() as connection:
+        row = connection.execute("SELECT details_json FROM land_details WHERE parcel_id = ?", (parcel_id,)).fetchone()
+    return json.loads(row["details_json"]) if row else None

@@ -7,6 +7,7 @@ so that the surviving factors renormalise into a better-looking result.
 
 from __future__ import annotations
 
+import unicodedata
 from typing import Any
 
 
@@ -15,6 +16,23 @@ LEGAL_EVIDENCE_CHECKLIST = (
     "Encumbrance certificate or registered transaction history",
     "Land-use zoning approval or restriction record",
     "Project registration from the parcel's own state authority",
+)
+
+MISSING_FLOOD_EVIDENCE = {
+    "river_flooding": "River flood hazard map covering this parcel, with resolution and date",
+    "historical_inundation": "Observed historical inundation footprints for the parcel vicinity (a permitted machine-readable source)",
+    "observed_surface_water": "Observed surface-water history for the parcel and its surroundings",
+    "terrain_and_nearby_water": "Elevation relative to the nearest watercourse and drainage network",
+    "rainfall_waterlogging": "Rainfall intensity and local drainage capacity, or a pluvial flood model",
+    "coastal_flooding": "Storm-surge and sea-level inundation data (relevant near the coast)",
+}
+
+# What a growth score would need. Satellite indices are none of these.
+GROWTH_EVIDENCE_CHECKLIST = (
+    "Registered sale (transaction) counts and prices for the village or sub-registrar office over several years",
+    "Master plan / local planning authority land-use zoning and approved layouts near the parcel",
+    "Committed infrastructure (roads, rail, utilities) with sanction dates and distances",
+    "Population and employment change for the town or taluk (Census / economic survey)",
 )
 
 FLOOD_EVIDENCE_CHECKLIST = (
@@ -46,6 +64,49 @@ def satellite_is_synthetic(record: dict[str, Any]) -> bool:
     return False
 
 
+LAND_IDENTIFIER_FIELDS = ("state", "district", "taluk", "village", "survey_number", "subdivision")
+DOC_TYPE_LABELS = {
+    "patta_chitta": "patta / chitta (ownership record)",
+    "encumbrance_certificate": "encumbrance certificate",
+    "sale_deed": "sale deed",
+    "layout_or_building_approval": "layout or building approval",
+    "fmb_sketch": "FMB / survey sketch",
+    "other": "other document",
+}
+
+
+def parcel_state(record: dict[str, Any]) -> str | None:
+    """The geocoded state, else the boundary file's (polygon-based, so known even without an address)."""
+    states = _section(record, "coverage").get("states") or []
+    name = _section(record, "location").get("state") or (states[0].get("name") if len(states) == 1 else None)
+    return unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode() if name else None
+
+
+def supplied_summary(details: dict[str, Any]) -> str:
+    """One honest sentence about what the user supplied: never 'verified'."""
+    ids = {field: details.get(field) for field in LAND_IDENTIFIER_FIELDS if details.get(field)}
+    parts = []
+    if ids.get("survey_number"):
+        survey = ids["survey_number"] + (f"/{ids['subdivision']}" if ids.get("subdivision") else "")
+        place = ", ".join(ids[f] for f in ("village", "taluk", "district", "state") if ids.get(f))
+        parts.append(f"You supplied survey {survey}" + (f" in {place}" if place else ""))
+        missing = [f for f in ("state", "district", "village") if not ids.get(f)]
+        if missing:
+            parts.append(f"add the {', '.join(missing)}: survey numbers repeat across villages, so the identifier is ambiguous")
+    documents = details.get("documents") or []
+    if documents:
+        listed = []
+        for doc in documents:
+            found = [f"{m['field'].replace('_', ' ')} on page {', '.join(map(str, m['pages']))}" if m.get("pages")
+                     else f"{m['field'].replace('_', ' ')}" for m in doc.get("mentions") or []]
+            listed.append(f"{doc['filename']} ({DOC_TYPE_LABELS.get(doc.get('doc_type'), 'type not given')}"
+                          + (f"; mentions {', '.join(found)}" if found else "") + ")")
+        parts.append("documents: " + "; ".join(listed))
+    if not parts:
+        return ""
+    return "; ".join(parts) + ". These are user-provided and not independently verified, so title is not verified."
+
+
 def land_records_matched(record: dict[str, Any]) -> bool:
     """True only when an authoritative record was actually retrieved and matched."""
     records = record.get("land_records")
@@ -70,21 +131,26 @@ def assess_legal(
     is produced from it.
     """
     if not land_records_matched(record):
-        state = _section(record, "location").get("state") or "this parcel's state"
+        state = parcel_state(record) or "this parcel's state"
+        supplied = _section(record, "user_land_details")
+        basis = (
+            "Legal verification incomplete: no authoritative land record was retrieved or matched for this parcel "
+            f"({state}). Absence of records is not evidence of clear title."
+        )
+        if supplied:
+            basis += " " + supplied_summary(supplied)
         return {
             "factor": "legal_safety",
             "score": None,
             "status": "unavailable",
-            "basis": (
-                "Legal verification incomplete: no authoritative land record was retrieved or "
-                f"matched for this parcel ({state}). Absence of records is not evidence of clear title."
-            ),
+            "basis": basis,
             "limitations": (
-                "No ownership, encumbrance, restriction or land-use approval source is integrated. "
-                "The only registration dataset present is a MahaRERA seed, which covers Maharashtra "
-                "and cannot speak to a parcel in another state."
+                "No ownership, encumbrance, restriction or land-use approval source is integrated, and no dataset "
+                f"from the RERA authority for {state} is. Documents you upload are recorded as your claims: "
+                "TerraScope can show where an identifier appears in them, but that never verifies title."
             ),
             "checklist": list(LEGAL_EVIDENCE_CHECKLIST),
+            "details": supplied or None,
         }
     scoring_record = {**record, "evaluation": evaluation}
     risk = min(100.0, legal_risk_score(scoring_record) + apply_rera_requirement(record, evaluation)["penalty"])
@@ -129,27 +195,24 @@ def assess_flood(record: dict[str, Any]) -> dict[str, Any]:
             c["mechanism"].replace("_", " ") for c in components
             if c.get("status") not in ("assessed", "partial")
         ]
-        basis = "Partial flood assessment available. "
-        if river.get("status") in ("assessed", "partial"):
-            basis += f"River flooding (modelled): {river.get('summary')} "
-        else:
-            basis += f"River flooding: {river.get('summary') or 'not assessed.'} "
-        basis += "Assessed: " + ", ".join(c["mechanism"].replace("_", " ") for c in usable) + "."
-        if missing:
-            basis += " Not assessed: " + ", ".join(missing) + "."
+        # The flood panel carries the measurements; this line only says what was and was not assessed.
+        head = ("River flood exposure assessed (modelled scenarios, ~90 m)" if river.get("status") in ("assessed", "partial")
+                else "River flood exposure not assessed")
+        others = [c["mechanism"].replace("_", " ") for c in usable if c.get("mechanism") != "river_flooding"]
+        basis = head + ("; also measured: " + ", ".join(others) if others else "")
+        basis += ("; other mechanisms incomplete (" + ", ".join(missing) + ")." if missing else ".")
         return {
             "factor": "flood_safety",
             "score": None,
             "status": "partial",
-            "basis": basis[:900],
+            "basis": basis,
             "limitations": (
-                "No overall Flood Safety score: no method combining river, rainfall, coastal and terrain evidence "
-                "has been independently validated, and unassessed mechanisms are unknown, not safe. River hazard "
-                "maps are modelled scenarios at ~90 m for rivers with basins over ~500 km2, not observed floods "
-                "and not building-level safety. Surface water seen by Landsat is not flood history, and height "
-                "above the nearest mapped water is a terrain indicator, not HAND or a flood probability."
+                "No overall Flood Safety score: no validated method combines the mechanisms, and a mechanism that "
+                "is not assessed is unknown, not safe. Measurements and caveats are in the flood section."
             ),
-            "checklist": list(FLOOD_EVIDENCE_CHECKLIST),
+            # What is still missing, not a generic list that includes what was just measured.
+            "checklist": [MISSING_FLOOD_EVIDENCE[c["mechanism"]] for c in components
+                          if c.get("status") not in ("assessed", "partial") and c.get("mechanism") in MISSING_FLOOD_EVIDENCE],
         }
     return {
         "factor": "flood_safety",
@@ -185,6 +248,15 @@ def assess_growth(record: dict[str, Any], growth_opportunity_score) -> dict[str,
             "limitations": "Configure an imagery provider to obtain real observations.",
             "checklist": ["Observed multi-date satellite imagery for this polygon"],
         }
+    if (satellite.get("collection") or {}).get("status") == "timed_out":
+        return {
+            "factor": "growth",
+            "score": None,
+            "status": "unavailable",
+            "basis": "Satellite collection timed out before the evidence deadline, so no land-cover series is in this report.",
+            "limitations": "Analyse the same boundary again: scenes already read are cached and reused.",
+            "checklist": list(GROWTH_EVIDENCE_CHECKLIST),
+        }
     if change_type in (None, "insufficient_evidence"):
         return {
             "factor": "growth",
@@ -194,13 +266,26 @@ def assess_growth(record: dict[str, Any], growth_opportunity_score) -> dict[str,
             "limitations": "At least two cloud-free observations are required.",
             "checklist": ["Two or more usable observations inside the analysis window"],
         }
+    if not satellite.get("change_method"):
+        # statistical_change_v1 (snapshots before 2026-10-12): one straight line through every date.
+        observed = (f"'{change_type.replace('_', ' ')}' under the superseded v1 trend method, which did not "
+                    "compare like seasons and filed unclear movement under no change")
+    else:
+        observed = None
+    observed = observed or {
+        "no_change": "no material land-cover change between same-season images",
+        "inconclusive": "an inconclusive land-cover change signal",
+        "construction_growth": "land-cover change consistent with construction",
+        "vegetation_loss": "vegetation loss",
+        "vegetation_gain": "vegetation gain",
+    }.get(change_type, change_type.replace("_", " "))
     return {
         "factor": "growth",
         "score": None,
         "status": "not_integrated",
         "basis": (
-            f"Observed land-cover change for this parcel is classified as {change_type.replace('_', ' ')}, "
-            "which is reported as evidence in its own right. No investment-growth score is derived from it."
+            f"Satellite imagery shows {observed}. That is land cover, reported separately; no investment-growth "
+            "score is derived from it."
         ),
         "limitations": (
             "NDVI/NDBI measure vegetation and built-up reflectance. They cannot separate construction "
@@ -208,44 +293,56 @@ def assess_growth(record: dict[str, Any], growth_opportunity_score) -> dict[str,
             "approvals or infrastructure investment. A growth score needs economic evidence, not "
             "spectral indices."
         ),
-        "checklist": [
-            "Registered transaction volumes or price trend for the locality",
-            "Approved layouts, building permissions or master-plan land-use change",
-            "Committed infrastructure projects with dates and distances",
-        ],
+        "checklist": list(GROWTH_EVIDENCE_CHECKLIST),
     }
+
+
+def _metres(value: Any) -> str:
+    return f"{value:,.0f} m" if isinstance(value, (int, float)) else "not found"
 
 
 def assess_accessibility(
     record: dict[str, Any],
     evaluation: dict[str, Any],
-    accessibility_score,
+    accessibility_components,
 ) -> dict[str, Any]:
-    """Accessibility from OpenStreetMap, flagged as straight-line."""
+    """Proximity from OpenStreetMap under the user's distance limits, flagged as straight-line."""
     infrastructure = _section(record, "infrastructure")
-    road = infrastructure.get("nearest_road_distance_m")
-    school = infrastructure.get("nearest_school_distance_m")
-    if road is None and school is None:
+    if infrastructure.get("nearest_road_distance_m") is None and infrastructure.get("nearest_school_distance_m") is None             and infrastructure.get("search_radius_m") is None:
         return {
             "factor": "accessibility",
             "score": None,
             "status": "unavailable",
             "basis": "Accessibility unavailable: no infrastructure was retrieved for this parcel.",
             "limitations": "The OpenStreetMap lookup returned nothing usable, or failed.",
-            "checklist": ["A successful Overpass query covering this parcel"],
+            "checklist": ["Regional OpenStreetMap data covering this parcel"],
+            "details": None,
         }
+    parts = accessibility_components({**record, "evaluation": evaluation}, _section(evaluation, "preferences"))
+
+    def describe(name: str, part: dict[str, Any]) -> str:
+        if part["distance_m"] is None:
+            return (f"{name}: {part['measured_from']}, so it scores 0 against your {part['cap_m']:,.0f} m limit"
+                    if part["sub_score"] is not None else f"{name}: not found, so it is left out")
+        centroid = (f" ({_metres(part['centroid_distance_m'])} from the centroid)"
+                    if part["measured_from"] == "parcel boundary" and part["centroid_distance_m"] is not None else "")
+        return (f"{name} {_metres(part['distance_m'])} from the {part['measured_from']}{centroid}: "
+                f"{part['sub_score']:.0f}/100 against your {part['cap_m']:,.0f} m limit")
+
     return {
         "factor": "accessibility",
-        "score": accessibility_score({**record, "evaluation": evaluation}, _section(evaluation, "preferences")),
-        "status": "indicative",
+        "score": parts["score"],
+        "status": "indicative" if parts["score"] is not None else "unavailable",
         "basis": (
-            "Straight-line distance from the polygon centroid to the nearest OpenStreetMap "
-            f"road ({road} m) and school ({school} m)."
+            f"{describe('Nearest mapped road', parts['road'])}; {describe('nearest mapped school', parts['school'])}. "
+            f"Weighted road x{parts['road']['weight']:g}, school x{parts['school']['weight']:g} "
+            "(property type and your importance settings). A sub-score falls linearly to 0 at your limit."
         ),
         "limitations": (
-            "These are straight-line (haversine) distances, NOT road-network travel distances, and a "
-            "nearby way is not proof of legal or physical access. The distance caps are fixed constants; "
-            "the max_road_distance_m and max_school_distance_m preferences are accepted but not applied."
+            "Straight-line distances to OpenStreetMap geometry, not routed travel distances. A nearby road is not "
+            "proof of legal or physical access, and OpenStreetMap can miss schools. The drawn boundary is not a "
+            "cadastral boundary."
         ),
-        "checklist": [],
+        "checklist": [] if parts["score"] is not None else ["Regional OpenStreetMap data covering this parcel"],
+        "details": parts,
     }

@@ -360,3 +360,60 @@ def test_small_datasets_are_not_yet_validated_and_quote_no_errors():
     for holdout in report["holdouts"].values():
         assert holdout["status"] == "not_yet_validated" and holdout["baseline"] is None
     assert report["status"] == "not_yet_validated"
+
+
+# --- import workflow: preview, then commit -----------------------------------------
+
+def test_preview_explains_every_row_and_writes_nothing(tmp_path):
+    from valuation import importer
+
+    rows = plots(6, days_ago=40) + [
+        row(source_record_id="bad-currency", currency="USD"),
+        row(source_record_id="no-permission", reuse_basis=""),
+        row(source_record_id="old", observed_date="2024-01-10", retrieved_date="2024-01-11", longitude="79.2000"),
+        row(source_record_id="town", location_precision="pincode", longitude="79.2500"),
+        plots(1, days_ago=40)[0],  # the same record delivered twice
+    ]
+    result = importer.preview(frame(*rows), today=TODAY)
+    assert result["ok"] and result["rows_read"] == 11
+    assert {(r["row"], r["reason"]) for r in result["rejected"]} == {(8, "currency_not_inr"), (9, "missing_reuse_basis")}
+    assert result["duplicates"] == [{"row": 2, "kind": "same_record_repeated", "kept_row": 12}]
+    assert result["stale_rows"] == [10]
+    assert result["coarse_location_rows"] == [11]
+    assert result["usable_as_comparables_today"] == 6
+    assert [g["price_type"] for g in result["groups"]] == ["asking"]
+    assert not list(tmp_path.iterdir())
+
+
+def test_preview_keeps_price_bases_and_land_uses_apart():
+    from valuation import importer
+
+    rows = plots(3, days_ago=20) + [
+        row(source_record_id="g1", price_type="guideline", price_value="1800", price_unit="per_sqft", area_value="", area_unit=""),
+        row(source_record_id="c1", land_use="commercial", longitude="79.1600"),
+    ]
+    groups = {(g["price_type"], g["land_use"]): g["rows"] for g in importer.preview(frame(*rows), today=TODAY)["groups"]}
+    assert groups == {("asking", "residential"): 3, ("guideline", "residential"): 1, ("asking", "commercial"): 1}
+
+
+def test_commit_appends_valid_rows_backs_up_and_serves_them(tmp_path, monkeypatch):
+    from valuation import importer
+
+    path = tmp_path / "observations.csv"
+    first = importer.commit(frame(*plots(5, days_ago=20)), path, today=TODAY)
+    assert first["rows_added"] == 5 and first["backup"] is None
+    second = importer.commit(frame(*plots(3, days_ago=25, step_m=900.0), row(source_record_id="x", currency="USD")),
+                             path, today=TODAY)
+    assert second["rows_added"] == 3 and second["rows_rejected"] == 1 and second["rows_in_file"] == 8
+    assert (tmp_path / second["backup"]).exists()
+    monkeypatch.setenv("VALUATION_OBSERVATIONS_PATH", str(path))
+    served = predict.estimate_value(KATPADI[0], KATPADI[1], 2400, valuation_date=TODAY)
+    assert served["status"] == "available" and served["comparable_count"] >= 5
+
+
+def test_commit_refuses_a_file_with_no_valid_rows(tmp_path):
+    from valuation import importer
+
+    with pytest.raises(DatasetError):
+        importer.commit(frame(row(currency="USD")), tmp_path / "observations.csv", today=TODAY)
+    assert not (tmp_path / "observations.csv").exists()

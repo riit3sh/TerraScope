@@ -8,22 +8,26 @@ import logging
 import os
 import time
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 import httpx
-from fastapi import APIRouter, File, HTTPException, UploadFile
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel, ConfigDict, Field
 
 from . import places
 from .store import (
+    PAGE_BREAK,
     get_document_texts,
+    get_land_details,
     get_latest_evaluation,
     get_latest_for_parcel,
     get_snapshot,
     init_store,
+    list_documents,
     list_saved_reports,
     save_document,
     save_evaluation,
+    save_land_details,
     save_snapshot,
 )
 
@@ -43,13 +47,42 @@ class AnalyzeRequest(BaseModel):
     analysis_date_to: date
 
 
+class Preferences(BaseModel):
+    """Every preference here changes the evaluation; anything else is rejected rather than ignored."""
+
+    model_config = ConfigDict(extra="forbid")
+    road_importance: Literal["low", "medium", "high"] = "medium"
+    school_importance: Literal["low", "medium", "high"] = "medium"
+    # Distance at which the road / school sub-score reaches 0. The collector searches 5 km,
+    # so a feature beyond it is "not found"; it scores 0 only when the limit is within 5 km.
+    max_road_distance_m: float = Field(3000, ge=100, le=20000)
+    max_school_distance_m: float = Field(5000, ge=100, le=20000)
+    rera_requirement: Literal["strict", "important", "informational"] = "informational"
+
+
 class EvaluationRequest(BaseModel):
     analysis_snapshot_id: str
     profile: str
     property_type: str
     investment_horizon: str
     weights: dict[str, float]
-    preferences: dict[str, Any]
+    preferences: Preferences = Field(default_factory=Preferences)
+
+
+IDENTIFIER = r"^[\w .,/()'-]{1,80}$"
+DOC_TYPES = ("patta_chitta", "encumbrance_certificate", "sale_deed", "layout_or_building_approval", "fmb_sketch", "other")
+
+
+class LandDetails(BaseModel):
+    """Survey identifiers as the user states them. Stored as claims; never treated as a matched land record."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    state: str | None = Field(None, pattern=IDENTIFIER)
+    district: str | None = Field(None, pattern=IDENTIFIER)
+    taluk: str | None = Field(None, pattern=IDENTIFIER)
+    village: str | None = Field(None, pattern=IDENTIFIER)
+    survey_number: str | None = Field(None, pattern=r"^[0-9A-Za-z/ .-]{1,30}$")
+    subdivision: str | None = Field(None, pattern=r"^[0-9A-Za-z/ .-]{1,30}$")
 
 
 def _validate_polygon(polygon: dict[str, Any]) -> None:
@@ -230,12 +263,18 @@ async def evaluate_parcel(parcel_id: str, request: EvaluationRequest) -> dict[st
         "property_type": request.property_type,
         "investment_horizon": request.investment_horizon,
         "weights": request.weights,
-        "preferences": request.preferences,
+        "preferences": request.preferences.model_dump(),
     }
     uploaded_documents = get_document_texts(parcel_id)
     request_snapshot = dict(snapshot)
     if uploaded_documents:
         request_snapshot["uploaded_documents"] = uploaded_documents
+    supplied, documents = get_land_details(parcel_id), list_documents(parcel_id)
+    if supplied or documents:
+        request_snapshot["user_land_details"] = {
+            **(supplied or {}),
+            "documents": [{key: doc[key] for key in ("filename", "doc_type", "text_extracted", "pages")} for doc in documents],
+        }
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -269,14 +308,19 @@ def _document_text(content: bytes, extension: str, content_type: str) -> str | N
         from pypdf import PdfReader
 
         pages = PdfReader(io.BytesIO(content)).pages
-        return "\n".join(page.extract_text() or "" for page in pages).strip() or None
+        # Pages stay separable, so a citation can name the page an identifier was found on.
+        text = PAGE_BREAK.join(page.extract_text() or "" for page in pages)
+        return text if text.replace(PAGE_BREAK, "").strip() else None
     except Exception as error:  # scanned or malformed PDFs stay stored but unindexed
         LOGGER.warning("Could not extract text from uploaded evidence: %s", error)
         return None
 
 
 @router.post("/api/v1/parcels/{parcel_id}/documents")
-async def upload_parcel_document(parcel_id: str, file: UploadFile = File(...)) -> dict[str, Any]:
+async def upload_parcel_document(parcel_id: str, file: UploadFile = File(...),
+                                 doc_type: str | None = Form(None)) -> dict[str, Any]:
+    if doc_type is not None and doc_type not in DOC_TYPES:
+        raise HTTPException(status_code=400, detail=f"doc_type must be one of {', '.join(DOC_TYPES)}.")
     content_type = file.content_type or "application/octet-stream"
     filename = file.filename or "upload"
     extension = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
@@ -286,8 +330,25 @@ async def upload_parcel_document(parcel_id: str, file: UploadFile = File(...)) -
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Evidence files must be 10 MB or smaller.")
     text_content = _document_text(content, extension, content_type)
-    document_id = save_document(parcel_id, filename, content_type, len(content), text_content)
-    return {"document_id": document_id, "parcel_id": parcel_id, "filename": filename, "text_indexed": text_content is not None}
+    document_id = save_document(parcel_id, filename, content_type, len(content), text_content, doc_type)
+    return {"document_id": document_id, "parcel_id": parcel_id, "filename": filename, "doc_type": doc_type,
+            "text_indexed": text_content is not None,
+            "pages": text_content.count(PAGE_BREAK) + 1 if text_content and PAGE_BREAK in text_content else None}
+
+
+@router.get("/api/v1/parcels/{parcel_id}/land-details")
+def read_land_details(parcel_id: str) -> dict[str, Any]:
+    return {"parcel_id": parcel_id, "details": get_land_details(parcel_id), "documents": list_documents(parcel_id),
+            "verification_status": "user_provided_unverified"}
+
+
+@router.put("/api/v1/parcels/{parcel_id}/land-details")
+def write_land_details(parcel_id: str, details: LandDetails) -> dict[str, Any]:
+    """Store the user's survey identifiers. Re-evaluate to see them in the report; they never verify title."""
+    if get_latest_for_parcel(parcel_id) is None:
+        raise HTTPException(status_code=404, detail=f"Parcel not found: {parcel_id}")
+    save_land_details(parcel_id, details.model_dump(exclude_none=True))
+    return read_land_details(parcel_id)
 
 
 @router.get("/api/v1/parcels")
@@ -307,6 +368,8 @@ def get_parcel(parcel_id: str) -> dict[str, Any]:
         "analysis_snapshot_id": snapshot_id,
         "evidence_snapshot": snapshot,
         "uploaded_documents": get_document_texts(parcel_id),
+        "documents": list_documents(parcel_id),
+        "land_details": get_land_details(parcel_id),
         "latest_evaluation": get_latest_evaluation(parcel_id),
     }
 

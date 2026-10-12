@@ -19,7 +19,7 @@ def build_verdict(
     weights: dict[str, float],
     legal_risk_score,
     apply_rera_requirement,
-    accessibility_score,
+    accessibility_components,
     growth_opportunity_score,
     hard_legal_risk_threshold: float,
     buy_threshold: float,
@@ -27,7 +27,7 @@ def build_verdict(
 ) -> dict[str, Any]:
     factors = [
         assess_legal(record, evaluation, legal_risk_score, apply_rera_requirement),
-        assess_accessibility(record, evaluation, accessibility_score),
+        assess_accessibility(record, evaluation, accessibility_components),
         assess_flood(record),
         assess_growth(record, growth_opportunity_score),
     ]
@@ -74,11 +74,13 @@ def build_verdict(
     if blocking:
         composite: float | None = None
         recommendation = "INSUFFICIENT_EVIDENCE"
+        names = {"legal_safety": "legal safety", "flood_safety": "flood safety", "growth": "growth",
+                 "accessibility": "accessibility"}
         summary = (
-            "Insufficient evidence for a recommendation. No score for: "
-            + ", ".join(blocking)
-            + f". Only {assessed_weight:.0f}% of the weighting is backed by evidence, "
-            "so no BUY/WAIT/AVOID is given."
+            "Recommendation withheld: insufficient evidence. "
+            + ", ".join(f"{names.get(f['factor'], f['factor'])} ({f['weight_pct']:g}%)" for f in factors if f["factor"] in blocking)
+            + f" {'has' if len(blocking) == 1 else 'have'} no score, so only {assessed_weight:.0f}% of your weighting is "
+            "backed by a score and no BUY/WAIT/AVOID is given."
         )
     else:
         composite = round(sum(item["contribution"] for item in contributions), 2)

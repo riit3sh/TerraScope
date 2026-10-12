@@ -425,7 +425,7 @@ class InfrastructureClient:
         try:
             response = self.session.get(
                 self.NOMINATIM_URL,
-                params={"q": address_text, "format": "json", "limit": 5},
+                params={"q": address_text, "format": "json", "addressdetails": 1, "limit": 5},
                 headers={"User-Agent": user_agent},
                 timeout=self.request_timeout,
             )

@@ -106,3 +106,61 @@ def test_pipeline_errors_are_relayed_with_their_status(client, monkeypatch) -> N
         "polygon": POLYGON, "address": "Kadapa", "analysis_date_from": "2025-01-01", "analysis_date_to": "2026-01-01"})
     assert response.status_code == 503
     assert "data-pipeline" in response.json()["detail"] and "fetch-data" in response.json()["detail"]
+
+
+class _EchoEvaluateClient(_FakeAsyncClient):
+    """Stands in for ml-models: records what the evaluation request carried."""
+    sent: list[dict] = []
+
+    async def post(self, url, **kwargs):
+        _EchoEvaluateClient.sent.append(kwargs["json"])
+        return _FakeResponse({**kwargs["json"]["snapshot"], "evaluation": kwargs["json"]["evaluation"]})
+
+
+SETTINGS = {"profile": "homebuyer", "property_type": "residential", "investment_horizon": "1_to_3y",
+            "weights": {"growth_pct": 20, "legal_safety_pct": 35, "accessibility_pct": 25, "flood_safety_pct": 20},
+            "preferences": {"road_importance": "medium", "school_importance": "high", "max_road_distance_m": 800,
+                            "max_school_distance_m": 1500, "rera_requirement": "important"}}
+
+
+def _saved(parcel_id="parcel-legal", snapshot_id="snap-legal"):
+    store.save_snapshot({"parcel_id": parcel_id, "geometry": POLYGON,
+                         "metadata": {"analysis_snapshot_id": snapshot_id}})
+    return parcel_id, snapshot_id
+
+
+def test_accessibility_limits_reach_the_evaluation_and_bad_ones_are_rejected(client, monkeypatch) -> None:
+    """Regression: the limits were accepted and (per the report) ignored; unsupported keys were silently dropped."""
+    _EchoEvaluateClient.sent = []
+    monkeypatch.setattr(parcels.httpx, "AsyncClient", _EchoEvaluateClient)
+    parcel_id, snapshot_id = _saved()
+    ok = client.post(f"/api/v1/parcels/{parcel_id}/evaluate", json={"analysis_snapshot_id": snapshot_id, **SETTINGS})
+    assert ok.status_code == 200
+    assert _EchoEvaluateClient.sent[0]["evaluation"]["preferences"]["max_road_distance_m"] == 800
+    for bad in ({"max_road_distance_m": -5}, {"max_school_distance_m": 0}, {"walkability": "high"}, {"road_importance": "extreme"}):
+        response = client.post(f"/api/v1/parcels/{parcel_id}/evaluate", json={
+            "analysis_snapshot_id": snapshot_id, **SETTINGS, "preferences": {**SETTINGS["preferences"], **bad}})
+        assert response.status_code == 422, bad
+    assert len(_EchoEvaluateClient.sent) == 1  # nothing invalid reached the evaluator
+
+
+def test_survey_details_and_typed_documents_travel_as_unverified_claims(client, monkeypatch) -> None:
+    _EchoEvaluateClient.sent = []
+    monkeypatch.setattr(parcels.httpx, "AsyncClient", _EchoEvaluateClient)
+    parcel_id, snapshot_id = _saved()
+    saved = client.put(f"/api/v1/parcels/{parcel_id}/land-details", json={
+        "state": "Tamil Nadu", "district": "Vellore", "village": "Brammapuram", "survey_number": "123", "subdivision": "4A"})
+    assert saved.status_code == 200 and saved.json()["verification_status"] == "user_provided_unverified"
+    upload = client.post(f"/api/v1/parcels/{parcel_id}/documents", data={"doc_type": "encumbrance_certificate"},
+                         files={"file": ("ec.txt", b"Village Brammapuram S.No. 123/4A", "text/plain")})
+    assert upload.status_code == 200 and upload.json()["doc_type"] == "encumbrance_certificate"
+    assert client.post(f"/api/v1/parcels/{parcel_id}/documents", data={"doc_type": "title_verified"},
+                       files={"file": ("x.txt", b"x", "text/plain")}).status_code == 400
+    assert client.put(f"/api/v1/parcels/{parcel_id}/land-details", json={"survey_number": "1; DROP"}).status_code == 422
+    assert client.put("/api/v1/parcels/no-such-parcel/land-details", json={"village": "X"}).status_code == 404
+    client.post(f"/api/v1/parcels/{parcel_id}/evaluate", json={"analysis_snapshot_id": snapshot_id, **SETTINGS})
+    sent = _EchoEvaluateClient.sent[0]["snapshot"]
+    assert sent["user_land_details"]["survey_number"] == "123"
+    assert sent["user_land_details"]["documents"] == [
+        {"filename": "ec.txt", "doc_type": "encumbrance_certificate", "text_extracted": True, "pages": None}]
+    assert "land_records" not in sent  # claims never become a matched land record

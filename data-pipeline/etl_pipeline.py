@@ -6,6 +6,7 @@ import json
 import logging
 import os
 import time
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 from datetime import date, datetime, timezone
@@ -15,6 +16,7 @@ from uuid import uuid4
 
 import pandas as pd
 from jsonschema import Draft202012Validator, FormatChecker
+from shapely.geometry import shape
 
 from connectors import flood_indicators
 from connectors.elevation_dem import ElevationClient, ElevationError
@@ -43,6 +45,10 @@ _EMPTY_AMENITIES: dict[str, Any] = {
     "nearest_road_lat": None, "nearest_road_lon": None,
     "nearest_school_lat": None, "nearest_school_lon": None,
 }
+
+
+# ponytail: process-lifetime dict; bound it (or move it to the regional SQLite cache) if addresses ever number in the 100,000s.
+_GEOCODE_CACHE: dict[tuple, dict[str, Any] | None] = {}
 
 
 class EvidenceSnapshotValidationError(ValueError):
@@ -84,11 +90,19 @@ def _hit_fields(prefix: str, hit: dict[str, Any] | None, *, with_class: bool = F
 def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any]) -> dict[str, Any]:
     """Nearest road, school, hospital, bus and rail station from the local extract."""
     lon, lat = InfrastructureClient._representative_point(geojson_polygon)
+    parcel = shape(geojson_polygon)
     road = osm.nearest(lon, lat, "road", max_distance_m=POI_SEARCH_M)
     school = osm.nearest(lon, lat, "school", max_distance_m=POI_SEARCH_M)
+    # From the drawn edge, too: a road along a big parcel's frontage is far from its centroid.
+    road_edge = osm.nearest(lon, lat, "road", max_distance_m=POI_SEARCH_M, around=parcel)
+    school_edge = osm.nearest(lon, lat, "school", max_distance_m=POI_SEARCH_M, around=parcel)
     road_tags = (road or {}).get("tags", {})
     access_tag = road_tags.get("access")
     return {
+        "nearest_road_distance_from_boundary_m": road_edge["distance_m"] if road_edge else None,
+        "nearest_road_boundary_name": road_edge["name"] if road_edge else None,
+        "nearest_road_boundary_type": road_edge["class"] if road_edge else None,
+        "nearest_school_distance_from_boundary_m": school_edge["distance_m"] if school_edge else None,
         "nearest_road_distance_m": road["distance_m"] if road else None,
         "nearest_road_type": road["class"] if road else None,
         "nearest_road_name": road["name"] if road else None,
@@ -104,9 +118,10 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any]) -> dict[str
         "distance_measurement": "straight_line_to_nearest_point_on_osm_geometry",
         "road_access_verified": False,
         "road_access_note": (
-            "Proximity only. This is the straight-line distance from the parcel centroid to the nearest "
-            "point on an OpenStreetMap way, not a routed travel distance, and it is not evidence of a legal "
-            "right of way or of a physical connection to the parcel."
+            "Proximity only. Straight-line distances to the nearest point on an OpenStreetMap way, from the "
+            "parcel centroid and from the drawn boundary (0 m means a mapped way touches or crosses it). Neither "
+            "is a routed travel distance, and neither is evidence of a legal right of way or of a physical "
+            "connection to the parcel."
             + (f" The way is tagged access={access_tag}." if access_tag else "")
         ),
     }
@@ -127,16 +142,18 @@ def _water_distances(osm: LocalOSM, geojson_polygon: dict[str, Any]) -> dict[str
     }
 
 
+# What was checked is stated, not a claim that no release exists anywhere (J-32).
 NRSC_REFERENCE = (
-    "NRSC/ISRO Flood Affected Area Atlas of India (1998-2022): https://ndem.nrsc.gov.in/documents/downloads/"
-    "allindia_flood_techdoc.pdf. Its spatial layers are hosted for viewing on the NDEM geoportal; no "
-    "machine-readable download is offered, so it is not integrated."
+    "No permitted machine-readable source integrated. Investigated (2026-10-06): the NRSC/ISRO Flood Affected "
+    "Area Atlas of India 1998-2022 (technical document https://ndem.nrsc.gov.in/documents/downloads/"
+    "allindia_flood_techdoc.pdf), whose spatial layers are published for viewing on the NDEM geoportal; no "
+    "download or reuse licence for those layers was found. Unknown, not 'never flooded'."
 )
 
 
 def _river_summary(river: dict[str, Any] | None, error: str | None) -> str:
     if river is None:
-        return f"River flood hazard not assessed: {error or 'no result'}. This is not evidence of safety."[:500]
+        return f"River flood hazard not assessed: {error or 'no result'}. This is not evidence of safety."
     if river["status"] == "not_modelled":
         return "No river flood hazard tile covers this location; river flooding is not modelled here. This is not evidence of safety."
     by_rp = {item["return_period_years"]: item for item in river["scenarios"]}
@@ -154,7 +171,12 @@ def _river_summary(river: dict[str, Any] | None, error: str | None) -> str:
         )
     near = (by_rp.get(100) or {}).get("surroundings_flooded_share")
     if near:
-        head += f". Within {river.get('surroundings_m', 500):.0f} m, {near * 100:.0f}% of the land is modelled as flooded at 1-in-100 years"
+        head += (f". In the parcel and the {river.get('surroundings_m', 500):.0f} m around it, {near * 100:.1f}% of the land "
+                 "(permanent water excluded) is modelled as flooded at 1-in-100 years")
+    if river.get("model_cells_overlapping_parcel"):
+        head += (f". The parcel overlaps {river['model_cells_overlapping_parcel']} model cell(s) of about "
+                 f"{(river.get('model_cell_area_m2') or 0) / 10_000:.1f} ha each, so this describes those cells, not "
+                 "individual buildings")
     flags = []
     if river.get("permanent_water_area_m2"):
         flags.append(f"{river['permanent_water_area_m2']:,.0f} m2 is permanent water (excluded)")
@@ -162,7 +184,7 @@ def _river_summary(river: dict[str, Any] | None, error: str | None) -> str:
         flags.append(f"{river['quality_flagged_area_m2']:,.0f} m2 is in a provider-flagged spurious-depth area (depths withheld)")
     if river["status"] == "partial":
         flags.append(f"only {river['assessed_share_of_parcel'] * 100:.0f}% of the parcel could be assessed")
-    return (head + (". " + "; ".join(flags) if flags else "") + ". Modelled scenarios, not observed floods.")[:500]
+    return (head + (". " + "; ".join(flags) if flags else "") + ". Modelled scenarios, not observed floods.")
 
 
 def _flood_components(river, river_error, flood) -> list[dict[str, Any]]:
@@ -190,12 +212,12 @@ def _flood_components(river, river_error, flood) -> list[dict[str, Any]]:
          "source": "JRC Global Surface Water v1.4", "period": "1984-2021", "resolution": "~30 m",
          "coverage_share": None,
          "summary": (_surface_water_summary(sw) if sw else
-                     f"Unavailable: {errors.get('surface_water') or errors.get('all')}")[:500]},
+                     f"Unavailable: {errors.get('surface_water') or errors.get('all')}")},
         {"mechanism": "terrain_and_nearby_water",
          "status": "assessed" if terrain and water else "partial" if terrain or water else "unavailable",
          "source": "Copernicus DEM GLO-30" + (" + OpenStreetMap" if water else ""),
          "period": "DEM from 2011-2015 acquisitions", "resolution": "~30 m", "coverage_share": None,
-         "summary": terrain_summary[:500]},
+         "summary": terrain_summary},
         {"mechanism": "rainfall_waterlogging", "status": "not_assessed", "source": None, "period": None,
          "resolution": None, "coverage_share": None,
          "summary": "Not assessed: no rainfall, drainage-capacity or pluvial flood dataset is integrated. Urban "
@@ -226,7 +248,7 @@ def _local_infrastructure_summary(amenities: dict[str, Any]) -> str:
         f"hospital {_metres(amenities.get('nearest_hospital_distance_m'))}; "
         f"bus {('stop/station ' + _metres(bus) + ' (' + str(amenities.get('nearest_bus_type')) + ')') if bus is not None else _metres(bus)}; "
         f"rail station {_metres(rail)}. Absence from OpenStreetMap is not proof that a facility does not exist."
-    )[:500]
+    )
 
 
 def _surface_water_summary(sw: dict[str, Any]) -> str:
@@ -245,7 +267,7 @@ def _surface_water_summary(sw: dict[str, Any]) -> str:
         "Occurrence is the share of valid Landsat observations (1984-2021) in which a 30 m pixel was open water. "
         "It records where water was seen - mostly tanks, rivers and seasonal water - and is NOT a flood-inundation "
         "history: short floods between revisits, floods under monsoon cloud and urban street flooding are largely missed."
-    )[:500]
+    )
 
 
 def _water_summary(water: dict[str, Any], terrain: dict[str, Any] | None, terrain_error: str | None) -> str:
@@ -268,7 +290,7 @@ def _water_summary(water: dict[str, Any], terrain: dict[str, Any] | None, terrai
         parts.append(f"no mapped water feature within {terrain['search_radius_m']:.0f} m, so no height above water is reported")
     elif terrain_error:
         parts.append(f"height above water unavailable: {terrain_error}")
-    return ("; ".join(parts) + ".")[:500]
+    return ("; ".join(parts) + ".")
 
 
 def _date_only(value: date | datetime | str) -> str:
@@ -299,38 +321,27 @@ def _location_from_context(
     }
 
 
-def _satellite_facts(series: list[dict[str, Any]]) -> dict[str, Any]:
-    imagery_dates = [record["date"] for record in series]
-    ndvi_trend = [{"date": record["date"], "value": record["ndvi"]} for record in series]
-    ndbi_trend = [{"date": record["date"], "value": record["ndbi"]} for record in series]
-    usable = [record for record in series if record.get("ndvi") is not None and record.get("ndbi") is not None]
-    if len(usable) < 2:
-        return {
-            "imagery_dates": imagery_dates,
-            "ndvi_trend": ndvi_trend,
-            "ndbi_trend": ndbi_trend,
-            "change_detected": None,
-            "change_type": "insufficient_evidence",
-            "change_confidence": None,
-        }
+OBSERVATION_FIELDS = ("date", "scene_id", "anchor_date", "usable_pixel_count", "parcel_pixel_count",
+                      "parcel_cloud_fraction", "scene_covers_fraction", "cloud_coverage", "reflectance_offset_dn")
 
-    first, last = usable[0], usable[-1]
-    ndvi_delta = last["ndvi"] - first["ndvi"]
-    ndbi_delta = last["ndbi"] - first["ndbi"]
-    if ndbi_delta > 0.05:
-        change_type = "construction_growth"
-    elif ndvi_delta < -0.05:
-        change_type = "vegetation_loss"
-    else:
-        change_type = "no_change"
-    confidence = min(1.0, max(0.0, abs(ndvi_delta) + abs(ndbi_delta)))
+
+def _satellite_facts(series: list[dict[str, Any]], client: Any) -> dict[str, Any]:
+    """The observed series and how it was selected. Classification is ml-models' job (enrich)."""
+    usable = [record for record in series if record.get("ndvi") is not None and record.get("ndbi") is not None]
+    diagnostics = getattr(client, "last_diagnostics", {}) or {}
     return {
-        "imagery_dates": imagery_dates,
-        "ndvi_trend": ndvi_trend,
-        "ndbi_trend": ndbi_trend,
-        "change_detected": change_type != "no_change",
-        "change_type": change_type,
-        "change_confidence": round(confidence, 3),
+        "imagery_dates": [record["date"] for record in series],
+        "ndvi_trend": [{"date": record["date"], "value": record["ndvi"]} for record in series],
+        "ndbi_trend": [{"date": record["date"], "value": record["ndbi"]} for record in series],
+        "change_detected": None,
+        "change_type": "insufficient_evidence" if len(usable) < 2 else None,
+        "change_confidence": None,
+        "observations": [{key: record.get(key) for key in OBSERVATION_FIELDS} for record in series],
+        "collection": {key: diagnostics.get(key) for key in (
+            "algorithm_version", "selection", "anchors", "anchors_without_observation", "scenes_matched",
+            "catalogue_truncated", "scenes_read", "observations_rejected", "rejected_too_few_clear_pixels",
+            "rejected_below_clear_fraction", "observations_failed", "scenes_not_covering_parcel", "scenes_from_cache", "catalogue_age_s",
+            "min_usable_pixels", "min_clear_fraction", "max_cloud_cover_pct")} if diagnostics else None,
     }
 
 
@@ -356,7 +367,7 @@ def _infrastructure_summary(amenities: dict[str, Any]) -> str:
 def _elevation_summary(elevation_m: float | None, flood_proxy: dict[str, Any]) -> str:
     """Physical measurements only; the 0-100 terrain-position figure is not shown as a headline."""
     if not isinstance(elevation_m, (int, float)):
-        return f"Elevation unavailable: {flood_proxy.get('basis') or 'no value returned.'}"[:500]
+        return f"Elevation unavailable: {flood_proxy.get('basis') or 'no value returned.'}"
     baseline, relief = flood_proxy.get("baseline_m"), flood_proxy.get("relief_m")
     parts = [f"Centroid elevation {elevation_m:,.1f} m (Copernicus GLO-30 surface model)"]
     if isinstance(baseline, (int, float)):
@@ -367,21 +378,33 @@ def _elevation_summary(elevation_m: float | None, flood_proxy: dict[str, Any]) -
         )
     if isinstance(relief, (int, float)):
         parts.append(f"local relief {relief:,.0f} m")
-    return ("; ".join(parts) + ". Terrain position only: it does not measure rainfall, drainage, river or coastal flooding.")[:500]
+    return ("; ".join(parts) + ". Terrain position only: it does not measure rainfall, drainage, river or coastal flooding.")
 
 
-def _rera_summary(match: dict[str, Any], district: str | None, seed_path: Path, seed_loaded: bool) -> str:
-    """Describe the district-level RERA seed lookup without overclaiming."""
+def ascii_name(value: str | None) -> str | None:
+    """'Tamil Nāḍu' (geoBoundaries spelling) -> 'Tamil Nadu'."""
+    return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode() if value else value
+
+
+def _rera_summary(match: dict[str, Any], district: str | None, state: str | None, seed_path: Path,
+                  seed_loaded: bool) -> str:
+    """Name the authority that applies to this parcel, and what (if anything) was checked against it."""
+    if (state or "").casefold() != "maharashtra":
+        return (
+            f"Project registration for a parcel in {state or 'this state'} is held by that state's RERA authority. "
+            "No dataset from it is integrated, so this parcel's RERA status is unknown. TerraScope's only RERA "
+            "source is a MahaRERA seed, which covers Maharashtra and does not apply here."
+        )
     if not seed_loaded:
         return (
-            f"No RERA seed dataset is configured at {seed_path.name}; "
+            f"No MahaRERA seed dataset is configured at {seed_path.name}; "
             "this parcel's RERA status is unknown."
         )
     count = match.get("district_match_count") or 0
     if not count:
         return (
-            f"No registered project in the seed shares district {district or 'unknown'}. "
-            "The seed is one state's partial export, so this parcel's RERA status stays unknown."
+            f"No registered project in the MahaRERA seed shares district {district or 'unknown'}. "
+            "The seed is a partial export, so this parcel's RERA status stays unknown."
         )
     candidate = match.get("district_candidate") or {}
     registration = candidate.get("rera_registration_number") or "registration number unrecorded"
@@ -390,7 +413,7 @@ def _rera_summary(match: dict[str, Any], district: str | None, seed_path: Path, 
         f"{count} registered project(s) share district {district}; nearest candidate is "
         f"{registration} ({promoter}). District-level candidate only - this is not evidence "
         "that this parcel is registered, so its RERA status stays unknown."
-    )[:500]
+    )
 
 
 def _data_coverage(checks: dict[str, Any]) -> float:
@@ -410,12 +433,24 @@ def _satellite_summary(series: list[dict[str, Any]], client: Any, metrics: dict[
         f"{len(series)} cloud-screened observations from "
         f"{getattr(client, 'source_reference', 'satellite imagery')} "
         f"({series[0]['date']} to {series[-1]['date']})",
-        f"{resolution:.0f} m pixels, {min(pixels)}-{max(pixels)} usable inside the parcel",
+        f"{resolution:.0f} m pixels, {min(pixels) if min(pixels) == max(pixels) else f'{min(pixels)}-{max(pixels)}'} "
+        "usable inside the parcel",
     ]
+    if diagnostics.get("anchors"):
+        missed = diagnostics.get("anchors_without_observation") or []
+        parts.append(
+            f"one scene per season anchor ({len(diagnostics['anchors'])} quarterly anchors, so each date has a "
+            f"same-season partner a year apart)" + (f"; no usable scene near {len(missed)} anchor(s)" if missed else "")
+        )
     if diagnostics.get("scenes_matched"):
         parts.append(
-            f"{diagnostics['scenes_matched']} scenes matched, "
-            f"{diagnostics.get('observations_rejected', 0)} rejected for cloud or too few pixels"
+            f"{diagnostics['scenes_matched']} scenes under {diagnostics.get('max_cloud_cover_pct') or 35:.0f}% scene "
+            "cloud cover the whole window"
+            + (" (catalogue truncated at 1,000 scenes)" if diagnostics.get("catalogue_truncated") else "")
+            + (f"; {diagnostics['scenes_not_covering_parcel']} skipped because the tile does not cover the whole parcel"
+               if diagnostics.get("scenes_not_covering_parcel") else "")
+            + f"; {diagnostics.get('scenes_read', 0)} read, {diagnostics.get('observations_rejected', 0)} rejected "
+            f"because under {diagnostics.get('min_clear_fraction') or 0.5:.0%} of the parcel was cloud-free"
             + (f", {diagnostics['observations_failed']} could not be read (series is partial)"
                if diagnostics.get("observations_failed") else "")
         )
@@ -501,14 +536,22 @@ def build_evidence_snapshot(
     metrics = infrastructure_client.polygon_metrics(geojson_polygon)
 
     def collect_location() -> dict[str, Any] | None:
+        # Nominatim asks clients to cache, and its 1 request/s limit made this the slowest warm step
+        # (0.5-6.4 s, 2026-10-12). Only successful lookups are kept; a failure is retried next time.
+        key = ("search", address) if address else ("reverse", round(latitude, 5), round(longitude, 5))
+        if key in _GEOCODE_CACHE:
+            return _GEOCODE_CACHE[key]
         try:
             if address:
                 geocoded = infrastructure_client.geocode_address(address)
-                return geocoded[0] if geocoded else None
-            return infrastructure_client.reverse_geocode(latitude, longitude)
+                result = geocoded[0] if geocoded else None
+            else:
+                result = infrastructure_client.reverse_geocode(latitude, longitude)
         except (InfrastructureError, ValueError) as error:
             LOGGER.warning("Geocoding unavailable; falling back to coordinates only: %s", error)
             return None
+        _GEOCODE_CACHE[key] = result
+        return result
 
     def collect_terrain() -> tuple[float | None, dict[str, Any]]:
         try:
@@ -584,6 +627,8 @@ def build_evidence_snapshot(
                 timings[label] = round((time.monotonic() - began) * 1000)
         return run
 
+    if hasattr(satellite_client, "give_up_at"):
+        satellite_client.give_up_at = time.monotonic() + deadline
     pool = ThreadPoolExecutor(max_workers=6)
     try:
         location_future = pool.submit(timed("geocoding", collect_location))
@@ -594,6 +639,7 @@ def build_evidence_snapshot(
         river_future = pool.submit(timed("river_flood", collect_river_flood))
 
         started = time.monotonic()
+        timed_out: set[str] = set()
 
         def finish(future, fallback, label):
             remaining = max(1.0, deadline - (time.monotonic() - started))
@@ -601,6 +647,7 @@ def build_evidence_snapshot(
                 return future.result(timeout=remaining)
             except FuturesTimeout:
                 LOGGER.warning("%s did not return within the %.0fs deadline.", label, deadline)
+                timed_out.add(label)
                 future.cancel()
                 return fallback
 
@@ -629,6 +676,9 @@ def build_evidence_snapshot(
         # Do not block the response on a request that already missed its deadline.
         pool.shutdown(wait=False)
     location = _location_from_context(latitude, longitude, location_context, address)
+    # The state is known from the boundary polygon even when the geocoder returns no address parts.
+    if not location["state"] and len(coverage_check["states"]) == 1:
+        location["state"] = ascii_name(coverage_check["states"][0]["name"])
     satellite_is_demo = bool(getattr(satellite_client, "is_demo", False))
 
     if local_osm is not None:
@@ -637,7 +687,9 @@ def build_evidence_snapshot(
     usable = [c for c in components if c["status"] in ("assessed", "partial")]
 
     rera_df, rera_seed_path, rera_seed_loaded = _load_rera_or_empty()
-    rera_match = match_parcel_to_rera(location["district"], rera_df)
+    maharashtra = (location["state"] or "").casefold() == "maharashtra"
+    # A district-name match in another state's seed would be meaningless, so it is never attempted.
+    rera_match = match_parcel_to_rera(location["district"] if maharashtra else None, rera_df)
     rera = rera_match["rera"]
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     snapshot_id = str(uuid4())
@@ -661,6 +713,12 @@ def build_evidence_snapshot(
                 "imagery provider returned data. This is not imagery and must not be read as "
                 "evidence of real vegetation or construction change."
                 if satellite_is_demo
+                else (
+                    f"Satellite collection did not finish within the {deadline:.0f} s evidence deadline, so this "
+                    "report has no satellite series. The scene reads continue in the background and are cached: "
+                    "analysing this boundary again in a minute or two will reuse them. This is a timeout, not an "
+                    "absence of imagery."
+                ) if "Satellite collection" in timed_out
                 else _satellite_summary(change_series, satellite_client, metrics)
             ),
         },
@@ -683,7 +741,7 @@ def build_evidence_snapshot(
                 "No road or school distance is reported rather than an estimated one."
                 if amenities_error
                 else _local_infrastructure_summary(amenities) if local_osm else _infrastructure_summary(amenities)
-            )[:500],
+            ),
         },
         {
             "evidence_id": f"{snapshot_id}:elevation",
@@ -725,7 +783,7 @@ def build_evidence_snapshot(
             "summary": (
                 _surface_water_summary(flood["surface_water"]) if flood.get("surface_water")
                 else f"Surface-water evidence unavailable: {flood['errors'].get('surface_water') or flood['errors'].get('all')}"
-            )[:500],
+            ),
         },
         {
             "evidence_id": f"{snapshot_id}:water-features",
@@ -743,22 +801,27 @@ def build_evidence_snapshot(
                 _water_summary(flood["water_distances"], flood.get("terrain"), flood["errors"].get("terrain"))
                 if flood.get("water_distances")
                 else f"Water-feature evidence unavailable: {flood['errors'].get('water_distances') or flood['errors'].get('all')}"
-            )[:500],
+            ),
         },
         {
             "evidence_id": f"{snapshot_id}:rera",
-            "source_type": "maharera_seed",
-            "source_reference": "MahaRERA static seed dataset",
-            "title": "District-level RERA seed lookup",
+            "source_type": "maharera_seed" if maharashtra else "rera",
+            "source_reference": "MahaRERA static seed dataset" if maharashtra else
+                                f"{location['state'] or 'State'} RERA authority (not integrated)",
+            "title": "District-level RERA seed lookup" if maharashtra else "Project registration (RERA)",
             "observed_at": now,
-            "freshness": "seed_data" if rera_seed_loaded else "derived",
-            "summary": _rera_summary(rera_match, location["district"], rera_seed_path, rera_seed_loaded),
+            "freshness": "seed_data" if rera_seed_loaded and maharashtra else "derived",
+            "summary": _rera_summary(rera_match, location["district"], location["state"], rera_seed_path,
+                                     rera_seed_loaded),
         },
     ]
-    satellite_facts = _satellite_facts(change_series)
+    satellite_facts = _satellite_facts(change_series, satellite_client)
+    if "Satellite collection" in timed_out:
+        # The diagnostics describe a read still in progress; record the timeout instead.
+        satellite_facts["collection"] = {"status": "timed_out", "deadline_s": deadline}
     # Count the fields we actually obtained; these sections are always dicts, so
     # testing the sections themselves would report 100% even with nothing in them.
-    completeness = _data_coverage({
+    completeness_checks = {
         "district": location.get("district"),
         "area_m2": metrics.get("area_m2"),
         "satellite_series": None if satellite_facts["change_type"] == "insufficient_evidence" else True,
@@ -771,7 +834,8 @@ def build_evidence_snapshot(
         "river_flood_hazard": river,
         "rera_status": rera.get("is_rera_project"),
         "land_records": None,  # no land-records connector exists yet
-    })
+    }
+    completeness = _data_coverage(completeness_checks)
     snapshot = {
         "parcel_id": str(uuid4()),
         "location": location,
@@ -818,6 +882,8 @@ def build_evidence_snapshot(
         "metadata": {
             "last_updated": now,
             "data_completeness_pct": completeness,
+            # Which fields the percentage counts, so the report can name its denominator.
+            "data_completeness_fields": {key: value is not None for key, value in completeness_checks.items()},
             "analysis_date_from": start,
             "analysis_date_to": end,
             "analysis_snapshot_id": snapshot_id,
