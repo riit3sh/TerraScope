@@ -1,0 +1,140 @@
+# TerraScope project checklist
+
+The single current progress checklist. Last updated 2026-10-12 on branch `sai/terrascope-progress`.
+
+Rules: an item is "verified" only when a recorded check exercised the real behaviour (real services, real
+data, or the browser), not because code exists, a mocked test passes or a page loads. "Implemented" without
+"verified with real data" means exactly that. History and causes are in [PROJECT_JOURNEY.md](PROJECT_JOURNEY.md)
+(J-numbers below).
+
+Acceptance case for 2026-10-12: the VIT Vellore report, snapshot `568d1f42` (2.75 acres, 2024-10-12 to
+2026-10-12). All checks ran on an isolated copy of the store (`.local-ui-check/audit/`); your saved reports were
+only read.
+
+## 1. Fixed and verified
+
+- [x] **Accessibility limits work and are visible (J-46)**
+  - Behaviour:
+    - Road and school distance limits are in the evaluation drawer and in Scenario mode.
+    - Each sub-score falls to 0 at its limit.
+    - Distances are measured from the drawn boundary, with the centroid distance alongside; older snapshots
+      say they use the centroid.
+    - Unknown or invalid preferences get a 422 instead of being dropped silently.
+  - Evidence (2026-10-12):
+    - VIT: 91.64 at 3,000/5,000 m and 57.39 at 500/1,000 m (contribution 22.91 → 14.35).
+    - The snapshot was byte-identical after re-evaluation, and the price response did not change.
+    - The browser Scenario drawer showed the same 57.39 → 91.64.
+    - A new Katpadi plot: road 0 m from the boundary (a mapped way crosses it), 40 m from the centroid.
+- [x] **Flood figures and wording (J-47, J-48)**
+  - 1-in-75 reads 1.33%. Every AEP is exact and labelled as the probability of the modelled event, not of
+    this parcel flooding.
+  - "Hazard-map cells read for 100% of the parcel: 6 cells of about 0.8 ha (parcel 1.1 ha)", with the river-only
+    scope stated. Cells with no modelled depth read "none modelled", not 0.
+  - Surface water reads 1.5% everywhere. "Parcel + 500 m" is defined.
+  - NRSC: "No permitted machine-readable source integrated", with what was investigated.
+  - Layout: one headline, a compact table and one expandable method section; no flood score.
+  - The surface-water text is no longer truncated when saved; old truncated text is marked as such.
+- [x] **Rule-based summary labelled honestly, with evidence references (J-49)**
+  - "Assessment summary · rule-based, not AI" unless an AI call succeeded (`explanation_source`).
+  - VIT: 5 references, each tied to an evidence row.
+  - **Browser, synthetic 3-page PDF:** survey 123/4A and the village were cited on page 2, and legal stayed
+    "user-provided, not verified".
+- [x] **Satellite change signal (J-50, J-51)**
+  - The whole catalogue is read (136 scenes for VIT, not the newest 100), with one scene per season anchor.
+  - Scenes must cover the whole parcel, and at least 50% of its full footprint must be clear.
+  - Measurement: reflectance offset removed; cloud mask and SWIR on the 10 m grid.
+  - Result: same-season comparison, giving no change, a change class, or inconclusive. No confidence
+    percentage.
+  - **VIT:** no material change (3 pairs, all within ±0.05). Several other test parcels read "inconclusive".
+  - **Old reports:** explained as the superseded v1 method, including the 100-scene limit.
+  - **Deadline:** reads stop starting at the evidence deadline, and concurrent scene reads are capped, so a
+    timeout no longer saturates the link.
+- [x] **Legal status and survey-details workflow (J-53)**
+  - RERA names the Tamil Nadu authority as not integrated; MahaRERA applies only to Maharashtra.
+  - The state comes from the boundary when geocoding gives none.
+  - Survey identifiers and typed documents are stored as unverified claims and never become land records.
+- [x] **Report clarity (J-54)**
+  - "Scored: 25% of your weighting" vs "Measured: 9 of 12 evidence fields", with the denominators.
+  - Short place-name heading; one price reason plus a next step; a price-basis selector.
+  - A re-evaluation banner on older evaluations; reports reopen after a browser refresh.
+- [x] **Price import workflow (J-52)**
+  - Preview with per-line reasons, duplicates, stale and coarse flags and groups; commit with backup and
+    re-validation; a "Price data" page; comparables listed under estimates.
+  - Verified with a synthetic CSV against an audit-only price file, which was then deleted.
+- [x] **Local setup, start and stop**
+  - `terrascope.cmd start | stop | status | fetch-data [region]`.
+  - 2026-10-12: about ten stop/start cycles on the audit store; afterwards a normal `start` served your
+    original store unchanged (see section 5).
+- [x] **India-wide coverage**
+  - Puducherry, Patna and Kadapa (no regional cache) analysed; Colombo refused in 0.26-0.82 s.
+- [x] **Search autocomplete**
+  - Local index only. 2026-10-12 browser check: "katpadi" gave 5 suggestions, and only `/search/suggest` was
+    called.
+- [x] **Map and boundary drawing**
+  - 2026-10-12 browser check: drew a 0.09 ha plot, edited it to 0.14 ha and saved, then analysed it.
+- [x] **Invalid and outside-coverage polygons**
+  - J-38; integration suite.
+- [x] **Saved reports and reopening**
+  - Reopen p50 9 ms. A refresh reopens the open report (URL hash).
+- [x] **Tests (2026-10-12)**
+  - data-pipeline 75, ml-models 51, backend-api 11, valuation 52.
+  - Integration: 17 passed, 1 skipped (needs real price data).
+  - Frontend type-check and production build pass.
+
+## 2. Implemented but not validated
+
+- [ ] **AI explanation path**: the code exists, but no `GROQ_API_KEY` is configured, so "AI explanation" has
+  never been produced (J-26).
+- [ ] **Change-test thresholds**: ±0.05 for stable and 0.10 for change are fixed rules, not calibrated against
+  labelled change data.
+- [ ] **Prediction quality**: the evaluation harness exists; zero real observations, so no metric is quoted
+  (J-42).
+- [ ] **Docker Compose path**: unverified (J-04, J-05).
+- [ ] **Screen-reader and contrast audit**: not done. Labels were added where checks found gaps.
+
+## 3. Blocked by missing external data or access
+
+- [ ] **Live land prices: no permitted dataset.** The verified terms and the smallest input needed are in
+  [SETUP_VALUATION.md](SETUP_VALUATION.md).
+  - **TNREGINET guideline values:** reproduction needs the Registration Department's permission (verified in
+    its copyright policy).
+  - **Listing portals:** need written licences.
+  - **Owner or broker rows:** work today, but none have been supplied.
+- [ ] **Land records, encumbrance and approvals:** no permitted source is integrated, so Legal Safety stays
+  unscored.
+- [ ] **Tamil Nadu RERA (TNRERA) data:** not integrated.
+- [ ] **Growth:** needs economic and planning data (registered sale counts by village or sub-registrar office,
+  master-plan zoning, committed infrastructure, population/employment). None is integrated; no growth score
+  is produced.
+- [ ] **Flood:**
+  - Rainfall/pluvial and coastal datasets are not integrated.
+  - NRSC historical footprints: no permitted machine-readable source found (J-32).
+
+## 4. Still failing or open
+
+- [ ] **Warm analyses outside installed regions are slow**: Kadapa 8.5 s and Patna 9.5 s. Their remote DEM and
+  GSW reads are not cached (J-41); a regional `fetch-data` or a result cache is the next step.
+- [ ] **Monsoon anchors**: often no clear scene (VIT: none near 2025-08-26), so a parcel can have fewer than 4
+  seasonal pairs.
+- [ ] **Browser screenshots in the app pane**: still partial (J-45). Most UI checks are DOM/text checks.
+
+## 5. Your saved reports
+
+- Before this work: 93 snapshots, 93 parcels, 58 evaluations, 9 documents in `.local-ui-check/backend.sqlite3`.
+- A byte copy was kept as `backend.sqlite3.backup-2026-10-12`.
+- All tests and generated reports used `.local-ui-check/audit/backend-audit-2026-10-12.sqlite3`.
+- On the first normal start, the store gains an empty `land_details` table and a nullable `documents.doc_type`
+  column. This is additive; no rows change.
+
+## Measurements (2026-10-12, same machine and Wi-Fi link, test geometry, not surveyed boundaries)
+
+| What | Before | After | Sample |
+|---|---|---|---|
+| Analysis, cold (new parcel), median | 35.9 s, satellite dropped at the deadline (2026-10-12, before J-51); 12.4 s on 2026-10-11 | 13.6 s (4.9-21.8 s), satellite completed for all | 7 India parcels, polygons shifted so run 1 is cold |
+| Analysis, warm, median | 0.66 s (2026-10-11) | 0.43 s | same 7 parcels, run 2 |
+| Exact VIT polygon, warm | 4.4-7.6 s (geocoding not cached) | 0.49 s (1.22 s on the first run after a restart) | 2 runs each |
+| Satellite series, cold, VIT polygon, cache off | 52.1 s and 36.9 s, with 1-2 failed reads (old connector) | 22.6 s and 28.0 s, no failures | interleaved A/B, same network |
+| Evaluation, p50 | 0.24 s (2026-10-11) | 0.26 s | n=14 |
+| Saved-report reopen, API p50 | 6 ms | 9 ms | n=14 |
+| Search suggestion | local index (J-36) | unchanged | — |
+| Errors / timeouts | SSL EOFs and dropped connections while saturated | 0 | benchmark runs |

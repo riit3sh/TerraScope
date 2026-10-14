@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Any
@@ -14,8 +15,24 @@ from sqlalchemy.orm import Session
 from db.models import AnalysisSnapshot, Base
 
 
+LOGGER = logging.getLogger(__name__)
+
+
 class SnapshotAlreadyExistsError(RuntimeError):
     """Raised when code attempts to mutate an existing snapshot id."""
+
+
+def persistence_enabled() -> bool:
+    """Whether the PostGIS snapshot archive is configured.
+
+    Compose always sets DATABASE_URL, so this is True there. Running the service
+    directly on Windows for UI work has no PostGIS, and the geometry column needs
+    it; rather than refuse to start, the archive is skipped. The backend keeps its
+    own copy of every snapshot, so nothing collected is lost -- only the
+    second, spatial archive. A DATABASE_URL that is set but unreachable still
+    fails loudly, so a real misconfiguration is never masked.
+    """
+    return bool(os.getenv("DATABASE_URL"))
 
 
 def _database_url() -> str:
@@ -33,6 +50,12 @@ def _engine():
 
 def init_db() -> None:
     """Create the snapshot table; PostGIS itself is initialized by Compose."""
+    if not persistence_enabled():
+        LOGGER.warning(
+            "DATABASE_URL is not set: the PostGIS snapshot archive is disabled. "
+            "Evidence is still collected and returned, and the backend still stores it."
+        )
+        return
     Base.metadata.create_all(_engine())
 
 
@@ -47,6 +70,8 @@ def _polygon_wkt(geometry: dict[str, Any]) -> WKTElement:
 def save_analysis_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Insert and return a snapshot; existing ids are never updated."""
     snapshot_id = snapshot["metadata"]["analysis_snapshot_id"]
+    if not persistence_enabled():
+        return snapshot
     geometry = snapshot["geometry"]
     row = AnalysisSnapshot(
         snapshot_id=snapshot_id,
@@ -74,6 +99,8 @@ def save_analysis_snapshot(snapshot: dict[str, Any]) -> dict[str, Any]:
 
 def get_analysis_snapshot(snapshot_id: str) -> dict[str, Any] | None:
     """Return the canonical collected JSON for a snapshot id, if present."""
+    if not persistence_enabled():
+        return None
     with Session(_engine()) as session:
         row = session.scalar(select(AnalysisSnapshot).where(AnalysisSnapshot.snapshot_id == snapshot_id))
         return row.snapshot_json if row else None
