@@ -14,11 +14,10 @@ TerraScope Review 2 runs entirely from a laptop. There are no Render, Vercel, or
 
    Grounded explanations use Groq. Set `GROQ_API_KEY` and optionally `GROQ_MODEL`.
 
-   Satellite evidence uses NASA AppEEARS by default. Set `NASA_APPEEARS_USERNAME` and
-   `NASA_APPEEARS_PASSWORD` to your Earthdata Login credentials, or set
-   `NASA_APPEEARS_TOKEN` if your AppEEARS setup provides a token. Confirm the HLS
-   product/layer names in the AppEEARS catalog and update the `NASA_APPEEARS_*_LAYER`
-   values if needed.
+   Satellite evidence uses Microsoft Planetary Computer by default. It reads real
+   Sentinel-2 L2A imagery without a satellite API key. NASA AppEEARS is optional:
+   set `SATELLITE_PROVIDER=appeears` only after verifying your Earthdata login,
+   token, product, and layer names.
 
 3. Start the complete stack from the repository root:
 
@@ -56,10 +55,26 @@ Search suggestions are debounced by 650 ms, cached in the browser and backend, r
 
 ### Satellite evidence reuse
 
-The AppEEARS client caches results using the polygon hash, date range, product, and
-layer parameters. Repeat an analysis with the identical GeoJSON polygon and identical
-date interval to confirm the cached satellite evidence is reused and the external
-archive is not reprocessed.
+The configured satellite provider caches scene/catalogue reads using the polygon,
+date range, and provider parameters. JRC surface-water and Copernicus DEM parcel
+results also use a 30-day on-disk cache. Repeat an analysis with the identical
+GeoJSON polygon and identical date interval to reuse evidence instead of reprocessing
+the external archive.
+
+### Tamil Nadu readiness
+
+For the best local results around Vellore and Chennai, install the India boundary and
+Tamil Nadu regional OSM/DEM/water cache before the demo:
+
+```powershell
+terrascope.cmd fetch-data tamil-nadu
+```
+
+This is a one-time download/build step and can take several minutes. The first
+analysis can still take roughly 10-20 seconds because remote satellite scenes may be
+read. Repeating the exact parcel and date range should be much faster after caches
+are warm. No honest configuration can guarantee seconds for a first live analysis
+while public providers are still downloading data.
 
 ## Stop The Demo
 
