@@ -30,3 +30,17 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Local diagnostics, caches and generated outputs
+.local-ui-check/
+.cache/
+data-pipeline/.cache/
+uploads/
+*.db
+*.log
+# tsc -b emits these from vite.config.ts
+frontend/vite.config.js
+frontend/vite.config.d.ts
+# Local evidence data: India boundary, regional caches, rasters (terrascope.cmd fetch-data)
+data-cache/
+tn-data/

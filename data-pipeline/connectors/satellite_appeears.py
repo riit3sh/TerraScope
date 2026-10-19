@@ -12,7 +12,9 @@ import hashlib
 import io
 import json
 import logging
+import math
 import os
+import random
 import re
 import time
 import zipfile
@@ -41,6 +43,8 @@ class AppEEARSClient:
     """Small, debuggable AppEEARS client implementing the satellite connector contract."""
 
     source_reference = "NASA AppEEARS HLS"
+    # True once this client has served invented data instead of imagery.
+    is_demo = False
     API_URL = os.getenv("NASA_APPEEARS_API_URL", "https://appeears.earthdatacloud.nasa.gov/api").rstrip("/")
     CACHE_PATH = Path(os.getenv("TERRASCOPE_SATELLITE_CACHE_PATH", ".cache/terrascope_satellite.json"))
 
@@ -336,6 +340,53 @@ class AppEEARSClient:
         rows = self._fetch_series(geojson_polygon, day, day)
         return rows[0] if rows else {"date": day, "ndvi": None, "ndbi": None, "usable_pixel_count": 0, "cloud_coverage": None}
 
+    def _demo_series(
+        self,
+        geojson_polygon: dict[str, Any],
+        start: str,
+        end: str,
+    ) -> list[dict[str, Any]]:
+        """Invent a deterministic NDVI/NDBI series so demo mode has a chart.
+
+        THIS IS NOT IMAGERY. It exists only so the UI can be exercised without
+        NASA credentials. It is seeded from the parcel centroid so one parcel
+        always yields the same curve, and every caller marks it as synthetic:
+        ``is_demo`` is set, ``source_reference`` says SYNTHETIC, and the evidence
+        ledger records it as seed data rather than a live observation.
+        """
+        import hashlib
+        from datetime import timedelta
+
+        ring = geojson_polygon["coordinates"][0]
+        seed_source = f"{ring[0][0]:.4f},{ring[0][1]:.4f},{len(ring)}"
+        seed = int(hashlib.sha256(seed_source.encode("utf-8")).hexdigest()[:8], 16)
+        rng = random.Random(seed)
+
+        first = datetime.strptime(start, "%Y-%m-%d").date()
+        last = datetime.strptime(end, "%Y-%m-%d").date()
+        span_days = max(1, (last - first).days)
+        count = 8
+        # A mild built-up trend in one direction or the other, plus seasonality.
+        ndbi_drift = rng.uniform(-0.04, 0.12)
+        base_ndvi = rng.uniform(0.28, 0.55)
+        base_ndbi = rng.uniform(-0.16, 0.02)
+
+        rows: list[dict[str, Any]] = []
+        for index in range(count):
+            fraction = index / (count - 1)
+            day = first + timedelta(days=round(span_days * fraction))
+            season = math.sin(2 * math.pi * (day.timetuple().tm_yday / 365.0)) * 0.05
+            ndvi = base_ndvi + season - ndbi_drift * fraction * 1.2 + rng.uniform(-0.015, 0.015)
+            ndbi = base_ndbi + ndbi_drift * fraction + rng.uniform(-0.012, 0.012)
+            rows.append({
+                "date": day.isoformat(),
+                "ndvi": round(max(-1.0, min(1.0, ndvi)), 4),
+                "ndbi": round(max(-1.0, min(1.0, ndbi)), 4),
+                "usable_pixel_count": rng.randint(180, 900),
+                "cloud_coverage": round(rng.uniform(0.0, 0.35), 3),
+            })
+        return rows
+
     def get_change_series(self, geojson_polygon: dict[str, Any], date_from: date | datetime | str, date_to: date | datetime | str) -> list[dict[str, Any]]:
         start, end = self._date_string(date_from), self._date_string(date_to)
         try:
@@ -343,9 +394,10 @@ class AppEEARSClient:
         except Exception as exc:
             if not self.demo_fallback:
                 raise
-            LOGGER.warning("Live AppEEARS unavailable; using local demo satellite evidence: %s", exc)
-            rows = []
-            self.source_reference = "NASA AppEEARS HLS (unavailable)"
+            LOGGER.warning("Live AppEEARS unavailable; using synthetic demo satellite evidence: %s", exc)
+            rows = self._demo_series(geojson_polygon, start, end)
+            self.is_demo = True
+            self.source_reference = "SYNTHETIC demo series (no AppEEARS credentials)"
         if len(rows) <= 8:
             return rows
         indices = [round(i * (len(rows) - 1) / 7) for i in range(8)]

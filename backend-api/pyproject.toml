@@ -7,7 +7,7 @@ name = "terrascope-backend-api"
 version = "0.1.0"
 description = "TerraScope backend API service scaffold"
 requires-python = ">=3.11"
-dependencies = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1", "httpx>=0.28,<1", "python-multipart>=0.0.20,<1"]
+dependencies = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1", "httpx>=0.28,<1", "python-multipart>=0.0.20,<1", "pypdf>=5,<6", "pandas>=2.2,<3", "scikit-learn>=1.6,<2", "joblib>=1.4,<2"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

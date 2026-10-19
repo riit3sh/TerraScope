@@ -1,0 +1,504 @@
+{
+ "parcel_id": "9f534738-18d9-452e-89af-0355d6fd5d81",
+ "location": {
+  "latitude": 12.969238540792325,
+  "longitude": 79.15593397669306,
+  "address": "Vellore Institute of Technology, Subway, Brammapuram, Katpadi, Vellore, Tamil Nadu, 632014, India",
+  "village": null,
+  "district": null,
+  "state": null,
+  "pincode": null
+ },
+ "geometry": {
+  "type": "Polygon",
+  "coordinates": [
+   [
+    [
+     79.15536230217474,
+     12.969645765583497
+    ],
+    [
+     79.15654219912079,
+     12.969619636743653
+    ],
+    [
+     79.15649929377727,
+     12.968846221841105
+    ],
+    [
+     79.15534084950296,
+     12.968835770271891
+    ],
+    [
+     79.15536230217474,
+     12.969645765583497
+    ]
+   ]
+  ]
+ },
+ "geometry_metadata": {
+  "area_m2": 11113.622,
+  "area_acres": 2.746236,
+  "perimeter_m": 429.073,
+  "boundary_source": "user_drawn",
+  "boundary_verified": null
+ },
+ "land_records": null,
+ "rera": {
+  "is_rera_project": null,
+  "rera_registration_number": null,
+  "promoter_name": null,
+  "registered_completion_date": null,
+  "source_url": null
+ },
+ "satellite": {
+  "imagery_dates": [
+   "2025-04-07",
+   "2025-05-07",
+   "2025-09-04",
+   "2025-12-28",
+   "2026-02-16",
+   "2026-03-20",
+   "2026-04-12",
+   "2026-09-29"
+  ],
+  "ndvi_trend": [
+   {
+    "date": "2025-04-07",
+    "value": 0.254
+   },
+   {
+    "date": "2025-05-07",
+    "value": 0.2742
+   },
+   {
+    "date": "2025-09-04",
+    "value": 0.2931
+   },
+   {
+    "date": "2025-12-28",
+    "value": 0.2165
+   },
+   {
+    "date": "2026-02-16",
+    "value": 0.2519
+   },
+   {
+    "date": "2026-03-20",
+    "value": 0.2468
+   },
+   {
+    "date": "2026-04-12",
+    "value": 0.249
+   },
+   {
+    "date": "2026-09-29",
+    "value": 0.24
+   }
+  ],
+  "ndbi_trend": [
+   {
+    "date": "2025-04-07",
+    "value": -0.0633
+   },
+   {
+    "date": "2025-05-07",
+    "value": -0.0685
+   },
+   {
+    "date": "2025-09-04",
+    "value": -0.1069
+   },
+   {
+    "date": "2025-12-28",
+    "value": -0.0281
+   },
+   {
+    "date": "2026-02-16",
+    "value": -0.0561
+   },
+   {
+    "date": "2026-03-20",
+    "value": -0.0459
+   },
+   {
+    "date": "2026-04-12",
+    "value": -0.0532
+   },
+   {
+    "date": "2026-09-29",
+    "value": -0.0475
+   }
+  ],
+  "change_detected": false,
+  "change_type": "no_change",
+  "change_confidence": 0.117
+ },
+ "infrastructure": {
+  "nearest_road_distance_m": 125.15,
+  "nearest_road_type": "primary",
+  "nearest_road_name": "Tiruvalam - Katpadi Road",
+  "nearest_road_access_tag": null,
+  "nearest_road_surface": "asphalt",
+  "nearest_road_lat": 12.968111,
+  "nearest_road_lon": 79.155835,
+  "nearest_school_distance_m": 620.51,
+  "nearest_school_name": "Narayana e-Techno School",
+  "nearest_school_lat": 12.969088,
+  "nearest_school_lon": 79.150216,
+  "nearest_hospital_distance_m": 126.96,
+  "nearest_hospital_name": "Health Centre",
+  "nearest_bus_distance_m": 126.11,
+  "nearest_bus_name": "VIT",
+  "nearest_bus_type": "bus_stop",
+  "nearest_rail_station_distance_m": 3717.33,
+  "nearest_rail_station_name": "Sevur",
+  "nearest_rail_station_type": "station",
+  "search_radius_m": 5000.0,
+  "distance_measurement": "straight_line_to_nearest_point_on_osm_geometry",
+  "road_access_verified": false,
+  "road_access_note": "Proximity only. This is the straight-line distance from the parcel centroid to the nearest point on an OpenStreetMap way, not a routed travel distance, and it is not evidence of a legal right of way or of a physical connection to the parcel."
+ },
+ "risk": {
+  "flood_risk_score": null,
+  "flood_risk_basis": null,
+  "flood_assessment_status": "unavailable",
+  "terrain_relative_elevation_score": 43,
+  "terrain_basis": "Parcel elevation 218.3 m, 6.7 m above the median of 16 surrounding samples within 5 km (211.6 m); local relief 190 m. This 43/100 figure is a RELATIVE TERRAIN POSITION indicator only. It is not a flood probability: it uses no rainfall, drainage, watercourse, river-stage or coastal data, and no flood hazard map. Do not read it as flood risk.",
+  "elevation_m": 218.28407287597656,
+  "legal_risk_score": null,
+  "accessibility_score": null
+ },
+ "flood_indicators": {
+  "scoring_status": "not_scored",
+  "assessment_status": "partial",
+  "components": [
+   {
+    "mechanism": "river_flooding",
+    "status": "assessed",
+    "source": "JRC global river flood hazard maps v2.1.2",
+    "period": "Modelled return-period scenarios (1-in-10 to 1-in-500 years), not observed events",
+    "resolution": "~90 m",
+    "coverage_share": 1.0,
+    "summary": "No modelled river inundation on the parcel in any scenario up to 1-in-500 years. The maps cover rivers with basins over ~500 km2 at ~90 m; they do not show small streams, rainfall waterlogging or coastal surge. Modelled scenarios, not observed floods."
+   },
+   {
+    "mechanism": "historical_inundation",
+    "status": "not_integrated",
+    "source": "NRSC/ISRO Flood Affected Area Atlas of India",
+    "period": "1998-2022",
+    "resolution": null,
+    "coverage_share": null,
+    "summary": "NRSC/ISRO Flood Affected Area Atlas of India (1998-2022): https://ndem.nrsc.gov.in/documents/downloads/allindia_flood_techdoc.pdf. Its spatial layers are hosted for viewing on the NDEM geoportal; no machine-readable download is offered, so it is not integrated."
+   },
+   {
+    "mechanism": "observed_surface_water",
+    "status": "assessed",
+    "source": "JRC Global Surface Water v1.4",
+    "period": "1984-2021",
+    "resolution": "~30 m",
+    "coverage_share": null,
+    "summary": "Inside the parcel: max occurrence 0%, mean 0.0%, water seen at least once on 0.0% of 24 pixels. Parcel plus 500 m: max occurrence 20%, mean 0.13%, water seen at least once on 1.5% of 1410 pixels. Occurrence is the share of valid Landsat observations (1984-2021) in which a 30 m pixel was open water. It records where water was seen - mostly tanks, rivers and seasonal water - and is NOT a flood-inundation history: short floods between revisits, floods under monsoon cloud and urban street flooding a"
+   },
+   {
+    "mechanism": "terrain_and_nearby_water",
+    "status": "assessed",
+    "source": "Copernicus DEM GLO-30 + OpenStreetMap",
+    "period": "DEM from 2011-2015 acquisitions",
+    "resolution": "~30 m",
+    "coverage_share": null,
+    "summary": "Nearest river/canal 1,839 m (river); nearest tank/lake 326 m (VIT Lake); parcel median elevation 215.0 m is +10.5 m relative to the nearest mapped water feature (lake, 326 m away). Terrain indicator only: not HAND (no drainage routing), not a flood probability, and the DEM is a surface model that includes buildings and trees."
+   },
+   {
+    "mechanism": "rainfall_waterlogging",
+    "status": "not_assessed",
+    "source": null,
+    "period": null,
+    "resolution": null,
+    "coverage_share": null,
+    "summary": "Not assessed: no rainfall, drainage-capacity or pluvial flood dataset is integrated. Urban waterlogging can occur where no river flooding is modelled."
+   },
+   {
+    "mechanism": "coastal_flooding",
+    "status": "not_assessed",
+    "source": null,
+    "period": null,
+    "resolution": null,
+    "coverage_share": null,
+    "summary": "Not assessed: no storm-surge or sea-level dataset is integrated. Distance from the sea or elevation alone is not used as evidence of safety."
+   }
+  ],
+  "river_flood": {
+   "status": "assessed",
+   "dataset": "JRC global river flood hazard maps v2.1.2",
+   "licence": "CC BY 4.0 - (c) European Union, Copernicus Emergency Management Service (JRC)",
+   "citation": "Baugh et al., Global river flood hazard maps, European Commission JRC, doi:10.2905/JRC.VD32YWG",
+   "resolution": "3 arc-seconds (~90 m)",
+   "model": "LISFLOOD hydrology (GloFAS v4 reanalysis) + LISFLOOD-FP inundation; modelled scenarios, not observed events",
+   "parcel_area_m2": 11106.2,
+   "assessed_share_of_parcel": 1.0,
+   "permanent_water_area_m2": 0.0,
+   "quality_flagged_area_m2": 0.0,
+   "surroundings_m": 500.0,
+   "tiles": [
+    "ID185_N20_E70"
+   ],
+   "scenarios": [
+    {
+     "return_period_years": 10,
+     "annual_exceedance_probability": 0.1,
+     "flooded_area_m2": 0.0,
+     "flooded_share_of_parcel": 0.0,
+     "flagged_flooded_area_m2": 0.0,
+     "max_depth_m": null,
+     "mean_depth_m": null,
+     "zero_depth_area_m2": 0.0,
+     "no_modelled_inundation_area_m2": 11106.2,
+     "surroundings_flooded_share": 0.0
+    },
+    {
+     "return_period_years": 20,
+     "annual_exceedance_probability": 0.05,
+     "flooded_area_m2": 0.0,
+     "flooded_share_of_parcel": 0.0,
+     "flagged_flooded_area_m2": 0.0,
+     "max_depth_m": null,
+     "mean_depth_m": null,
+     "zero_depth_area_m2": 0.0,
+     "no_modelled_inundation_area_m2": 11106.2,
+     "surroundings_flooded_share": 0.0
+    },
+    {
+     "return_period_years": 50,
+     "annual_exceedance_probability": 0.02,
+     "flooded_area_m2": 0.0,
+     "flooded_share_of_parcel": 0.0,
+     "flagged_flooded_area_m2": 0.0,
+     "max_depth_m": null,
+     "mean_depth_m": null,
+     "zero_depth_area_m2": 0.0,
+     "no_modelled_inundation_area_m2": 11106.2,
+     "surroundings_flooded_share": 0.0
+    },
+    {
+     "return_period_years": 75,
+     "annual_exceedance_probability": 0.0133,
+     "flooded_area_m2": 0.0,
+     "flooded_share_of_parcel": 0.0,
+     "flagged_flooded_area_m2": 0.0,
+     "max_depth_m": null,
+     "mean_depth_m": null,
+     "zero_depth_area_m2": 0.0,
+     "no_modelled_inundation_area_m2": 11106.2,
+     "surroundings_flooded_share": 0.0
+    },
+    {
+     "return_period_years": 100,
+     "annual_exceedance_probability": 0.01,
+     "flooded_area_m2": 0.0,
+     "flooded_share_of_parcel": 0.0,
+     "flagged_flooded_area_m2": 0.0,
+     "max_depth_m": null,
+     "mean_depth_m": null,
+     "zero_depth_area_m2": 0.0,
+     "no_modelled_inundation_area_m2": 11106.2,
+     "surroundings_flooded_share": 0.0
+    },
+    {
+     "return_period_years": 200,
+     "annual_exceedance_probability": 0.005,
+     "flooded_area_m2": 0.0,
+     "flooded_share_of_parcel": 0.0,
+     "flagged_flooded_area_m2": 0.0,
+     "max_depth_m": null,
+     "mean_depth_m": null,
+     "zero_depth_area_m2": 0.0,
+     "no_modelled_inundation_area_m2": 11106.2,
+     "surroundings_flooded_share": 0.0281
+    },
+    {
+     "return_period_years": 500,
+     "annual_exceedance_probability": 0.002,
+     "flooded_area_m2": 0.0,
+     "flooded_share_of_parcel": 0.0,
+     "flagged_flooded_area_m2": 0.0,
+     "max_depth_m": null,
+     "mean_depth_m": null,
+     "zero_depth_area_m2": 0.0,
+     "no_modelled_inundation_area_m2": 11106.2,
+     "surroundings_flooded_share": 0.0397
+    }
+   ],
+   "coverage_note": null,
+   "errors": null,
+   "cache": "new"
+  },
+  "surface_water": {
+   "parcel": {
+    "pixels": 24,
+    "occurrence_max_pct": 0,
+    "occurrence_mean_pct": 0.0,
+    "water_ever_fraction": 0.0
+   },
+   "within_buffer": {
+    "pixels": 1410,
+    "occurrence_max_pct": 20,
+    "occurrence_mean_pct": 0.13,
+    "water_ever_fraction": 0.0149
+   },
+   "buffer_m": 500.0,
+   "observation_period": "1984-03 to 2021-12",
+   "resolution_m": 30,
+   "dataset": "JRC Global Surface Water v1.4",
+   "data_access": "local tiles"
+  },
+  "terrain": {
+   "parcel_elevation_m": 215.0,
+   "parcel_elevation_basis": "median of 20 DEM pixels touching the parcel",
+   "parcel_elevation_range_m": [
+    210.8,
+    218.6
+   ],
+   "nearest_water_feature_kind": "water body",
+   "nearest_water_feature_class": "lake",
+   "nearest_water_feature_name": "VIT Lake",
+   "nearest_water_feature_distance_m": 326.2,
+   "water_feature_elevation_m": 204.5,
+   "elevation_above_nearest_water_m": 10.5,
+   "search_radius_m": 2000.0,
+   "water_features_available": true,
+   "dataset": "Copernicus DEM GLO-30 + OpenStreetMap water features",
+   "resolution_m": 30,
+   "data_access": "local tiles"
+  },
+  "water_distances": {
+   "nearest_river_canal_distance_m": 1838.6,
+   "nearest_river_canal_name": null,
+   "nearest_river_canal_type": "river",
+   "nearest_tank_lake_distance_m": 325.96,
+   "nearest_tank_lake_name": "VIT Lake",
+   "nearest_tank_lake_type": "lake",
+   "search_radius_m": 5000.0
+  },
+  "unavailable": null
+ },
+ "coverage": {
+  "status": "inside",
+  "reason": null,
+  "inside_india_share": 1.0,
+  "states": [
+   {
+    "name": "Tamil N\u0101du",
+    "iso": "IN-TN",
+    "share": 1.0
+   }
+  ],
+  "crosses_state_border": false,
+  "boundary_source": "geoBoundaries gbOpen IND ADM1 (DataMeet India community, Election Commission of India)",
+  "boundary_licence": "Creative Commons Attribution 2.5 India (CC BY 2.5 IN)",
+  "boundary_as_of": "Thu Jan 19 07:31:04 2023",
+  "regional_data": "tamil-nadu"
+ },
+ "evidence": [
+  {
+   "evidence_id": "568d1f42-1c3f-435a-9396-db7301a95a92:satellite",
+   "source_type": "satellite",
+   "source_reference": "Sentinel-2 L2A (Microsoft Planetary Computer)",
+   "title": "Land-cover change (NDVI/NDBI) from observed imagery",
+   "observed_at": "2026-10-12T06:10:43Z",
+   "freshness": "live",
+   "summary": "8 cloud-screened observations from Sentinel-2 L2A (Microsoft Planetary Computer) (2025-04-07 to 2026-09-29). 10 m pixels, 36-134 usable inside the parcel. 100 scenes matched, 1 rejected for cloud or too few pixels. This is a land-cover signal, not evidence of investment or development approval."
+  },
+  {
+   "evidence_id": "568d1f42-1c3f-435a-9396-db7301a95a92:osm",
+   "source_type": "openstreetmap",
+   "source_reference": "OpenStreetMap, Geofabrik extract (southern-zone-261004.osm.pbf), region tamil-nadu",
+   "title": "Nearby infrastructure",
+   "observed_at": "2026-10-04T20:20:21Z",
+   "freshness": "cached",
+   "licence": "ODbL 1.0 - (c) OpenStreetMap contributors",
+   "resolution": "vector features",
+   "summary": "Straight-line distances from the parcel centroid to the nearest point on each mapped feature: road 125 m (primary, Tiruvalam - Katpadi Road); school 621 m; hospital 127 m; bus stop/station 126 m (bus_stop); rail station 3,717 m. Absence from OpenStreetMap is not proof that a facility does not exist."
+  },
+  {
+   "evidence_id": "568d1f42-1c3f-435a-9396-db7301a95a92:elevation",
+   "source_type": "copernicus_dem",
+   "source_reference": "Copernicus DEM GLO-30 (via Microsoft Planetary Computer; local tiles)",
+   "title": "Elevation and terrain position (not flood risk)",
+   "observed_at": "2021-04-22T00:00:00Z",
+   "freshness": "cached",
+   "licence": "Copernicus DEM licence (free use). (c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA",
+   "resolution": "~30 m surface model (includes buildings and trees)",
+   "observation_period": "TanDEM-X acquisitions 2011-2015",
+   "summary": "Centroid elevation 218.3 m (Copernicus GLO-30 surface model); 6.7 m above the median of the surrounding terrain within 5 km (211.6 m); local relief 190 m. Terrain position only: it does not measure rainfall, drainage, river or coastal flooding."
+  },
+  {
+   "evidence_id": "568d1f42-1c3f-435a-9396-db7301a95a92:river-flood",
+   "source_type": "jrc_flood_hazard",
+   "source_reference": "JRC global river flood hazard maps v2.1.2 (doi:10.2905/JRC.VD32YWG)",
+   "title": "Modelled river flooding by return period (not observed events)",
+   "observed_at": "2026-01-12T00:00:00Z",
+   "freshness": "live",
+   "licence": "CC BY 4.0 - (c) European Union, Copernicus Emergency Management Service (JRC)",
+   "resolution": "~90 m",
+   "observation_period": "Modelled scenarios, 1-in-10 to 1-in-500 years",
+   "summary": "No modelled river inundation on the parcel in any scenario up to 1-in-500 years. The maps cover rivers with basins over ~500 km2 at ~90 m; they do not show small streams, rainfall waterlogging or coastal surge. Modelled scenarios, not observed floods."
+  },
+  {
+   "evidence_id": "568d1f42-1c3f-435a-9396-db7301a95a92:surface-water",
+   "source_type": "jrc_gsw",
+   "source_reference": "JRC Global Surface Water v1.4 (EC JRC/Google), local tiles",
+   "title": "Surface water observed 1984-2021 (not flood history)",
+   "observed_at": "2021-12-31T00:00:00Z",
+   "freshness": "cached",
+   "licence": "Copernicus Programme, free of charge without restriction of use. Source: EC JRC/Google",
+   "resolution": "30 m",
+   "observation_period": "1984-03 to 2021-12",
+   "summary": "Inside the parcel: max occurrence 0%, mean 0.0%, water seen at least once on 0.0% of 24 pixels. Parcel plus 500 m: max occurrence 20%, mean 0.13%, water seen at least once on 1.5% of 1410 pixels. Occurrence is the share of valid Landsat observations (1984-2021) in which a 30 m pixel was open water. It records where water was seen - mostly tanks, rivers and seasonal water - and is NOT a flood-inundation history: short floods between revisits, floods under monsoon cloud and urban street flooding a"
+  },
+  {
+   "evidence_id": "568d1f42-1c3f-435a-9396-db7301a95a92:water-features",
+   "source_type": "osm_water",
+   "source_reference": "OpenStreetMap water features (southern-zone-261004.osm.pbf) + Copernicus DEM GLO-30",
+   "title": "Distance and height relative to mapped rivers, canals and tanks",
+   "observed_at": "2026-10-04T20:20:21Z",
+   "freshness": "cached",
+   "licence": "ODbL 1.0 - (c) OpenStreetMap contributors; Copernicus DEM licence",
+   "resolution": "vector features; DEM 30 m",
+   "summary": "Nearest river/canal 1,839 m (river); nearest tank/lake 326 m (VIT Lake); parcel median elevation 215.0 m is +10.5 m relative to the nearest mapped water feature (lake, 326 m away). Terrain indicator only: not HAND (no drainage routing), not a flood probability, and the DEM is a surface model that includes buildings and trees."
+  },
+  {
+   "evidence_id": "568d1f42-1c3f-435a-9396-db7301a95a92:rera",
+   "source_type": "maharera_seed",
+   "source_reference": "MahaRERA static seed dataset",
+   "title": "District-level RERA seed lookup",
+   "observed_at": "2026-10-12T06:10:43Z",
+   "freshness": "derived",
+   "summary": "No RERA seed dataset is configured at maharera_seed.csv; this parcel's RERA status is unknown."
+  },
+  {
+   "evidence_id": "568d1f42-1c3f-435a-9396-db7301a95a92:statistical-change",
+   "source_type": "derived",
+   "source_reference": "statistical_change_v1",
+   "title": "Statistical satellite change detection",
+   "observed_at": "2026-10-12T06:10:43Z",
+   "freshness": "derived",
+   "summary": "Linear NDVI/NDBI trend classification: no_change (detected=False, confidence=0.117)."
+  }
+ ],
+ "metadata": {
+  "last_updated": "2026-10-12T06:10:43Z",
+  "data_completeness_pct": 75.0,
+  "analysis_date_from": "2024-10-12",
+  "analysis_date_to": "2026-10-12",
+  "analysis_snapshot_id": "568d1f42-1c3f-435a-9396-db7301a95a92",
+  "collection_timings_ms": {
+   "geocoding": 515,
+   "satellite": 11922,
+   "accessibility": 266,
+   "terrain": 235,
+   "flood_indicators": 329,
+   "river_flood": 2094
+  }
+ }
+}

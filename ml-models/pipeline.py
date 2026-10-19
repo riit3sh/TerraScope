@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -15,12 +16,13 @@ from jsonschema import Draft202012Validator, FormatChecker
 from pydantic import BaseModel
 
 from change_detection.statistical_change import detect_change_from_series
+from citations import PAGE_BREAK, evidence_citations, land_details
 from scoring_engine.scoring import compute_evaluation
 
 
 LOGGER = logging.getLogger(__name__)
 app = FastAPI(title="TerraScope ML Pipeline")
-_RAG_CACHE: dict[tuple[str, str], dict[str, Any]] = {}
+_RAG_CACHE: dict[tuple[str, str, str], dict[str, Any]] = {}
 
 
 def _schema_path() -> Path:
@@ -68,24 +70,42 @@ def enrich_evidence(snapshot: dict[str, Any]) -> dict[str, Any]:
     evidence = enriched.setdefault("evidence", []) or []
     evidence = [
         item for item in evidence
-        if not (isinstance(item, dict) and item.get("source_reference") == "statistical_change_v1")
+        if not (isinstance(item, dict) and item.get("evidence_id", "").endswith(":statistical-change"))
     ]
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    method = change["change_method"]
+    medians = (
+        f" Median same-season change: NDVI {method['median_ndvi_change']:+.3f}, NDBI {method['median_ndbi_change']:+.3f}."
+        if method.get("median_ndvi_change") is not None else ""
+    )
     evidence.append({
         "evidence_id": f"{enriched.get('metadata', {}).get('analysis_snapshot_id', 'snapshot')}:statistical-change",
         "source_type": "derived",
-        "source_reference": "statistical_change_v1",
-        "title": "Statistical satellite change detection",
+        "source_reference": method["method"],
+        "title": "Land-cover change test (same season, a year apart)",
         "observed_at": now,
         "freshness": "derived",
         "summary": (
-            f"Linear NDVI/NDBI trend classification: {change['change_type']} "
-            f"(detected={change['change_detected']}, confidence={change['change_confidence']:.3f})."
+            f"Result: {change['change_type'].replace('_', ' ')}. {method['pairs']} same-season pair(s) from "
+            f"{method['observations']} observations.{medians} {method['reason']} Fixed rule thresholds "
+            f"(stable within ±{method['stable_limit']}, change from {method['change_limit']}), not calibrated "
+            "against labelled change, so no confidence percentage is given."
         ),
     })
     enriched["evidence"] = evidence
     _validate_snapshot(enriched)
     return enriched
+
+
+def _documents_fingerprint(documents: list[dict[str, Any]]) -> str:
+    """Stable digest of the retrieval corpus, so new uploads invalidate cached answers."""
+    digest = hashlib.sha256()
+    for document in sorted(documents, key=lambda item: str(item.get("source_reference") or "")):
+        digest.update(str(document.get("source_reference") or "").encode("utf-8"))
+        digest.update(b"|ref|")
+        digest.update(str(document.get("text") or "").encode("utf-8"))
+        digest.update(b"|end|")
+    return digest.hexdigest()
 
 
 def _maybe_grounded_reasoning(
@@ -108,7 +128,14 @@ def _maybe_grounded_reasoning(
     if not documents:
         return []
     question = snapshot.get("rag_question", "Summarize the parcel's title and RERA evidence.")
-    cache_key = (str(snapshot.get("metadata", {}).get("analysis_snapshot_id", parcel_id)), question)
+    # The document set is part of the key: uploading new evidence after an earlier
+    # evaluation changes neither the snapshot id nor the question, so keying on
+    # those alone would serve an answer that never saw the new upload.
+    cache_key = (
+        str(snapshot.get("metadata", {}).get("analysis_snapshot_id", parcel_id)),
+        question,
+        _documents_fingerprint(documents),
+    )
     if cache_key not in _RAG_CACHE:
         try:
             from rag_pipeline.ingest import build_vector_index
@@ -119,6 +146,40 @@ def _maybe_grounded_reasoning(
             LOGGER.warning("Grounded RAG reasoning unavailable: %s", error)
             _RAG_CACHE[cache_key] = {"answer_text": "", "citations": []}
     return _RAG_CACHE[cache_key].get("citations", [])
+
+
+def _with_document_evidence(
+    evidence: list[dict[str, Any]],
+    documents: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    """Add one ledger row per uploaded document so the report can show what was attached."""
+    rows = [item for item in evidence if not (isinstance(item, dict) and item.get("source_type") == "user_upload")]
+    if not documents:
+        return rows
+    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    seen: set[str] = set()
+    for document in documents:
+        reference = str(document.get("source_reference") or "uploaded document")
+        if reference in seen:
+            continue
+        seen.add(reference)
+        text = str(document.get("text") or "")
+        pages = text.count(PAGE_BREAK) + 1 if PAGE_BREAK in text else None
+        rows.append({
+            "evidence_id": f"upload:{reference}",
+            "source_type": "user_upload",
+            "source_reference": reference,
+            "title": "Your uploaded document (user-provided, not verified)",
+            "observed_at": now,
+            "freshness": "user_upload",
+            "summary": (
+                f"{len(text.split())} words extracted" + (f" from {pages} pages" if pages else "")
+                + ". TerraScope searches it for the survey number and village you entered and cites the page where "
+                "they appear. Finding them there does not verify ownership, encumbrance or approval."
+                + (" It is also available to the AI explanation." if os.getenv("GROQ_API_KEY") else "")
+            ),
+        })
+    return rows
 
 
 def _section(record: dict[str, Any], name: str) -> dict[str, Any]:
@@ -132,11 +193,18 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
     # These are request-scoped RAG inputs, never persisted evidence-schema fields.
     rag_documents = evaluated.pop("rag_documents", None)
     uploaded_documents = evaluated.pop("uploaded_documents", None)
+    documents = rag_documents if rag_documents is not None else uploaded_documents
+    evaluated["evidence"] = _with_document_evidence(evaluated.get("evidence") or [], documents)
+    # The user's survey identifiers and document types: request-scoped claims, never land_records.
+    evaluated["user_land_details"] = land_details(evaluated.pop("user_land_details", None), documents)
     evaluated["evaluation"] = deepcopy(evaluation)
     result = compute_evaluation(evaluated, evaluation)
     risk = evaluated.setdefault("risk", {}) or {}
-    risk["legal_risk_score"] = round(100.0 - result["legal_safety_score"], 2)
-    risk.setdefault("flood_risk_score", round(100.0 - result["flood_safety_score"], 2))
+    # An unassessed factor stays null everywhere; it is never back-filled with a
+    # derived number, because that is what made unknowns look like real scores.
+    legal = result["legal_safety_score"]
+    risk["legal_risk_score"] = round(100.0 - legal, 2) if legal is not None else None
+    risk["flood_assessment_status"] = "assessed" if result["flood_safety_score"] is not None else "unavailable"
     evaluated["risk"] = risk
     opportunity = evaluated.setdefault("opportunity", {}) or {}
     opportunity["growth_score"] = result["growth_score"]
@@ -150,15 +218,20 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
             "growth_score",
             "composite_score",
             "weighted_contributions",
+            "factors",
+            "assessed_weight_pct",
+            "unassessed_factors",
         )
     }
     # Include the authoritative rule-based verdict in the facts sent to Groq.
     evaluated["verdict"] = {
         "recommendation": result["recommendation"],
-        "confidence": result["confidence"],
+        "confidence": result["confidence"],  # deliberately null: see scoring_engine
         "reasoning_summary": result["reasoning_summary"],
         "citations": [],
     }
+    # Every figure the assessment relies on, cited to the evidence row that holds it. No LLM needed.
+    citations = evidence_citations(evaluated, result["factors"])
     # Groq explains the deterministic result; it never computes or changes the scores.
     ai_explanation: dict[str, Any] = {"answer_text": "", "citations": []}
     try:
@@ -166,18 +239,14 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
 
         ai_explanation = generate_evaluation_explanation(evaluated)
     except Exception as error:
-        LOGGER.warning("Groq evaluation explanation unavailable; using deterministic summary: %s", error)
-    citations = list(_section(evaluated, "verdict").get("citations", []) or [])
+        LOGGER.info("AI explanation not used; showing the deterministic summary: %s", error)
     citations.extend(
         {
             "claim": citation["claim"],
             "source_type": "rag",
             "source_reference": citation["source_reference"],
         }
-        for citation in _maybe_grounded_reasoning(
-            evaluated,
-            rag_documents if rag_documents is not None else uploaded_documents,
-        )
+        for citation in _maybe_grounded_reasoning(evaluated, documents)
     )
     citations.extend(
         {
@@ -187,10 +256,13 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         }
         for citation in ai_explanation.get("citations", [])
     )
+    ai_text = ai_explanation.get("answer_text")
     evaluated["verdict"] = {
         "recommendation": result["recommendation"],
-        "confidence": result["confidence"],
-        "reasoning_summary": ai_explanation.get("answer_text") or result["reasoning_summary"],
+        "confidence": result["confidence"],  # deliberately null: see scoring_engine
+        "reasoning_summary": ai_text or result["reasoning_summary"],
+        # Says who wrote reasoning_summary, so the report never labels rule output as AI.
+        "explanation_source": "ai" if ai_text else "deterministic",
         "citations": citations,
     }
     _validate_snapshot(evaluated)

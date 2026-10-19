@@ -9,3 +9,5 @@ sqlalchemy==2.0.41
 geoalchemy2==0.17.1
 numpy==2.2.3
 rasterio==1.4.3
+shapely==2.1.2
+osmium==4.3.1

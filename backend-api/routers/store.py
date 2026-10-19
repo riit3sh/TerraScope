@@ -10,6 +10,9 @@ from pathlib import Path
 from typing import Any
 
 
+PAGE_BREAK = "\f"  # extracted PDF pages are joined with a form feed, so citations can name the page
+
+
 def _path() -> Path:
     return Path(os.getenv("BACKEND_STORE_PATH", "/tmp/terrascope_backend.sqlite3"))
 
@@ -48,8 +51,17 @@ def init_store() -> None:
                 text_content TEXT,
                 created_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS land_details (
+                parcel_id TEXT PRIMARY KEY,
+                details_json TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
             """
         )
+        # Additive migration: existing rows keep doc_type NULL ("type not given").
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(documents)")}
+        if "doc_type" not in columns:
+            connection.execute("ALTER TABLE documents ADD COLUMN doc_type TEXT")
 
 
 def save_snapshot(snapshot: dict[str, Any]) -> None:
@@ -77,6 +89,41 @@ def get_latest_for_parcel(parcel_id: str) -> tuple[str, dict[str, Any]] | None:
     return (row["snapshot_id"], json.loads(row["snapshot_json"])) if row else None
 
 
+def list_saved_reports(limit: int = 50) -> list[dict[str, Any]]:
+    """Most recent snapshot per parcel, for the saved-reports list."""
+    with _connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT s.parcel_id, s.snapshot_id, s.snapshot_json, s.created_at,
+                   (SELECT COUNT(*) FROM documents d WHERE d.parcel_id = s.parcel_id) AS document_count
+            FROM snapshots s
+            JOIN (SELECT parcel_id, MAX(created_at) AS newest FROM snapshots GROUP BY parcel_id) latest
+              ON latest.parcel_id = s.parcel_id AND latest.newest = s.created_at
+            ORDER BY s.created_at DESC LIMIT ?
+            """,
+            (int(limit),),
+        ).fetchall()
+    reports = []
+    for row in rows:
+        snapshot = json.loads(row["snapshot_json"])
+        location = snapshot.get("location") or {}
+        metadata = snapshot.get("metadata") or {}
+        geometry = snapshot.get("geometry_metadata") or {}
+        reports.append({
+            "parcel_id": row["parcel_id"],
+            "analysis_snapshot_id": row["snapshot_id"],
+            "created_at": row["created_at"],
+            "address": location.get("address"),
+            "district": location.get("district"),
+            "area_acres": geometry.get("area_acres"),
+            "analysis_date_from": metadata.get("analysis_date_from"),
+            "analysis_date_to": metadata.get("analysis_date_to"),
+            "document_count": int(row["document_count"] or 0),
+            "has_evaluation": get_latest_evaluation(row["parcel_id"]) is not None,
+        })
+    return reports
+
+
 def save_evaluation(parcel_id: str, snapshot_id: str, evaluation: dict[str, Any]) -> None:
     with _connect() as connection:
         connection.execute(
@@ -94,11 +141,13 @@ def get_latest_evaluation(parcel_id: str) -> dict[str, Any] | None:
     return json.loads(row["evaluation_json"]) if row else None
 
 
-def save_document(parcel_id: str, filename: str, content_type: str, size_bytes: int, text_content: str | None) -> int:
+def save_document(parcel_id: str, filename: str, content_type: str, size_bytes: int, text_content: str | None,
+                  doc_type: str | None = None) -> int:
     with _connect() as connection:
         cursor = connection.execute(
-            "INSERT INTO documents(parcel_id, filename, content_type, size_bytes, text_content, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (parcel_id, filename, content_type, size_bytes, text_content, datetime.now(timezone.utc).isoformat()),
+            "INSERT INTO documents(parcel_id, filename, content_type, size_bytes, text_content, created_at, doc_type) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (parcel_id, filename, content_type, size_bytes, text_content, datetime.now(timezone.utc).isoformat(), doc_type),
         )
         return int(cursor.lastrowid)
 
@@ -120,3 +169,33 @@ def get_document_texts(parcel_id: str) -> list[dict[str, str]]:
         if row["text_content"]
     ]
 
+
+def list_documents(parcel_id: str) -> list[dict[str, Any]]:
+    """Every upload, including scanned PDFs with no extractable text."""
+    with _connect() as connection:
+        rows = connection.execute(
+            "SELECT id, filename, doc_type, size_bytes, text_content, created_at FROM documents "
+            "WHERE parcel_id = ? ORDER BY id",
+            (parcel_id,),
+        ).fetchall()
+    return [
+        {"document_id": row["id"], "filename": row["filename"], "doc_type": row["doc_type"],
+         "size_bytes": row["size_bytes"], "text_extracted": bool(row["text_content"]),
+         "pages": row["text_content"].count(PAGE_BREAK) + 1 if row["text_content"] and PAGE_BREAK in row["text_content"] else None,
+         "uploaded_at": row["created_at"]}
+        for row in rows
+    ]
+
+
+def save_land_details(parcel_id: str, details: dict[str, Any]) -> None:
+    with _connect() as connection:
+        connection.execute(
+            "INSERT OR REPLACE INTO land_details(parcel_id, details_json, updated_at) VALUES (?, ?, ?)",
+            (parcel_id, json.dumps(details), datetime.now(timezone.utc).isoformat()),
+        )
+
+
+def get_land_details(parcel_id: str) -> dict[str, Any] | None:
+    with _connect() as connection:
+        row = connection.execute("SELECT details_json FROM land_details WHERE parcel_id = ?", (parcel_id,)).fetchone()
+    return json.loads(row["details_json"]) if row else None
