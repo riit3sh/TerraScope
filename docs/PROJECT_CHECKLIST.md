@@ -92,6 +92,9 @@ only read.
   (J-42).
 - [ ] **Docker Compose path**: unverified (J-04, J-05).
 - [ ] **Screen-reader and contrast audit**: not done. Labels were added where checks found gaps.
+- [x] **Warm-analysis cache implemented**: JRC surface-water and Copernicus DEM parcel results now use a
+  versioned, 30-day on-disk cache keyed by the exact polygon and data source version. Provider failures are
+  never cached. A regression test confirms a repeated parcel read does not reopen the raster.
 
 ## 3. Blocked by missing external data or access
 
@@ -113,8 +116,9 @@ only read.
 
 ## 4. Still failing or open
 
-- [ ] **Warm analyses outside installed regions are slow**: Kadapa 8.5 s and Patna 9.5 s. Their remote DEM and
-  GSW reads are not cached (J-41); a regional `fetch-data` or a result cache is the next step.
+- [ ] **Warm analyses outside installed regions are slow**: the remote DEM and GSW layers now have a persistent
+  parcel-result cache, but a real Kadapa/Patna timing run is still needed before this performance item can be
+  marked verified.
 - [ ] **Monsoon anchors**: often no clear scene (VIT: none near 2025-08-26), so a parcel can have fewer than 4
   seasonal pairs.
 - [ ] **Browser screenshots in the app pane**: still partial (J-45). Most UI checks are DOM/text checks.

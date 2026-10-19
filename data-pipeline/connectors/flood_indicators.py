@@ -15,6 +15,8 @@ read that fails is reported as unavailable, never as "no water".
 from __future__ import annotations
 
 import math
+import hashlib
+import json
 import os
 import threading
 import time
@@ -57,6 +59,57 @@ DEM_LICENCE = ("Copernicus DEM licence (free use). (c) DLR e.V. 2010-2014 and (c
                "2014-2018 provided under COPERNICUS by the European Union and ESA")
 DEM_PRODUCT_DATE = "2021-04-22"
 DEM_PERIOD = "TanDEM-X acquisitions 2011-2015"
+CACHE_VERSION = "flood-indicators-1"
+CACHE_TTL_SECONDS = 30 * 86400
+_RESULT_CACHE_LOCK = threading.Lock()
+
+
+def _result_cache_path() -> Path:
+    return data_root() / "flood-indicators-cache.json"
+
+
+def _result_cache_key(layer: str, geojson_polygon: dict[str, Any], extra: Any = None) -> str:
+    payload = {
+        "version": CACHE_VERSION,
+        "layer": layer,
+        "polygon": geojson_polygon,
+        "extra": extra,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def _cached_result(key: str) -> dict[str, Any] | None:
+    if os.getenv("TERRASCOPE_FLOOD_CACHE", "on").strip().lower() in {"off", "0", "false", "no"}:
+        return None
+    try:
+        with _RESULT_CACHE_LOCK:
+            payload = json.loads(_result_cache_path().read_text(encoding="utf-8"))
+        item = payload.get(key)
+        if isinstance(item, dict) and time.time() - float(item.get("stored_at", 0)) < CACHE_TTL_SECONDS:
+            return item.get("value") if isinstance(item.get("value"), dict) else None
+    except (OSError, ValueError, TypeError):
+        return None
+    return None
+
+
+def _cache_result(key: str, value: dict[str, Any]) -> None:
+    if os.getenv("TERRASCOPE_FLOOD_CACHE", "on").strip().lower() in {"off", "0", "false", "no"}:
+        return
+    path = _result_cache_path()
+    try:
+        with _RESULT_CACHE_LOCK:
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                payload = {}
+            payload[key] = {"stored_at": time.time(), "value": value}
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = path.with_suffix(".tmp")
+            temporary.write_text(json.dumps(payload), encoding="utf-8")
+            temporary.replace(path)
+    except OSError as error:
+        # A cache write must never turn valid evidence into an analysis failure.
+        logging.getLogger(__name__).warning("Could not write flood evidence cache: %s", error)
 
 
 def rasters_dir() -> Path:
@@ -143,6 +196,10 @@ def gsw_sources(layer: str, bounds) -> tuple[list[str], str]:
 
 
 def surface_water(geojson_polygon: dict[str, Any]) -> dict[str, Any]:
+    cache_key = _result_cache_key("surface-water", geojson_polygon, {"buffer_m": BUFFER_M, "gsw": "v1.4"})
+    cached = _cached_result(cache_key)
+    if cached is not None:
+        return {**cached, "data_access": "cached parcel result"}
     parcel = shape(geojson_polygon)
     ring = buffered(parcel, BUFFER_M)
     bounds = ring.bounds
@@ -166,7 +223,7 @@ def surface_water(geojson_polygon: dict[str, Any]) -> dict[str, Any]:
             "water_ever_fraction": round(float((ext == 1).mean()), 4) if ext.size else None,
         }
 
-    return {
+    result = {
         "parcel": stats(parcel),
         "within_buffer": stats(ring),
         "buffer_m": BUFFER_M,
@@ -175,6 +232,8 @@ def surface_water(geojson_polygon: dict[str, Any]) -> dict[str, Any]:
         "dataset": "JRC Global Surface Water v1.4",
         "data_access": access,
     }
+    _cache_result(cache_key, result)
+    return result
 
 
 # --- Copernicus DEM ------------------------------------------------------------
@@ -254,6 +313,18 @@ def _dem_window(bounds):
 def terrain_above_water(geojson_polygon: dict[str, Any], osm: LocalOSM | None) -> dict[str, Any]:
     """Parcel elevation, and - when a regional OSM store is installed - its height
     relative to the nearest mapped water feature."""
+    osm_cache_identity = None if osm is None else {
+        "path": str(osm.path),
+        "data_as_of": osm.meta.get("data_as_of"),
+    }
+    cache_key = _result_cache_key("terrain", geojson_polygon, {
+        "dem": DEM_PRODUCT_DATE,
+        "osm": osm_cache_identity,
+    })
+    cached = _cached_result(cache_key)
+    if cached is not None:
+        cached["data_access"] = "cached parcel result"
+        return cached
     parcel = shape(geojson_polygon)
     centre = parcel.centroid
     waterway = osm.nearest(centre.x, centre.y, "waterway", max_distance_m=WATER_SEARCH_M) if osm else None
@@ -297,4 +368,5 @@ def terrain_above_water(geojson_polygon: dict[str, Any], osm: LocalOSM | None) -
             water_level = float(window.min())
             result["water_feature_elevation_m"] = round(water_level, 1)
             result["elevation_above_nearest_water_m"] = round(parcel_elevation - water_level, 1)
+    _cache_result(cache_key, result)
     return result

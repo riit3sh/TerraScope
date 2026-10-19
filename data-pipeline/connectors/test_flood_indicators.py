@@ -61,6 +61,20 @@ def test_dry_parcel_reports_zero_not_missing(tmp_path, monkeypatch) -> None:
     assert result["parcel"]["water_ever_fraction"] == 0.0
 
 
+def test_surface_water_reuses_persistent_parcel_result(tmp_path, monkeypatch) -> None:
+    _gsw(tmp_path, monkeypatch, np.zeros((200, 200)), np.zeros((200, 200)))
+    parcel = _parcel(50, 50, 10, 10)
+    first = flood_indicators.surface_water(parcel)
+
+    def provider_must_not_run(*_args, **_kwargs):
+        raise AssertionError("cached parcel evidence should not read the remote/local raster again")
+
+    monkeypatch.setattr(flood_indicators, "_read_window", provider_must_not_run)
+    second = flood_indicators.surface_water(parcel)
+    assert second["parcel"] == first["parcel"]
+    assert second["data_access"] == "cached parcel result"
+
+
 def test_height_above_nearest_mapped_water(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("TERRASCOPE_DATA_DIR", str(tmp_path))
     dem_res = 1 / 3600
