@@ -63,8 +63,10 @@ crossing a state border lists every state it touches, with its share.
 - JRC Global Surface Water.
 - Copernicus DEM elevation.
 
-These rasters are read remotely, window by window. River-flood results and Sentinel-2 scene
-measurements are cached per parcel; other remote reads are not yet cached.
+These rasters are read remotely, window by window when a local regional cache is not
+installed. River-flood results, Sentinel-2 scene measurements, JRC surface-water
+results, and Copernicus DEM parcel results are cached per parcel. The JRC/DEM result
+cache is versioned and retained for 30 days; failed provider reads are never cached.
 
 **What needs a regional cache** (`fetch-data <region>`):
 
@@ -135,8 +137,9 @@ expect it to take several minutes on a slow connection.
 The stack runs without any keys, but two evidence layers stay empty until you
 supply them in `.env`:
 
-- **Satellite:** none needed. Sentinel-2 comes from Planetary Computer without an account;
-  AppEEARS is used only if `NASA_APPEEARS_*` credentials are set.
+- **Satellite:** none needed. Sentinel-2 comes from Planetary Computer without an account.
+  The default is `SATELLITE_PROVIDER=planetary`; AppEEARS is opt-in only when you explicitly
+  set `SATELLITE_PROVIDER=appeears` and configure its credentials.
 - **AI explanations:** `GROQ_API_KEY`. Without it the report shows the rule-based
   "Assessment summary", which still cites the evidence rows behind each figure, and uploaded
   documents are still searched for the survey number and village you enter (cited by page).
@@ -146,6 +149,14 @@ RERA evidence additionally needs a seed CSV — see
 [data-pipeline/data/raw/README.md](data-pipeline/data/raw/README.md).
 
 The Compose stack is for local demo use only. Service-to-service URLs use Compose service names such as `http://data-pipeline:8001` and `http://ml-models:8002` inside the network.
+
+### Performance expectations
+
+The first analysis of a new parcel can take roughly 10-20 seconds because live
+satellite and raster evidence may need to be downloaded. Repeating the identical
+GeoJSON polygon and date range reuses the evidence caches and should be much faster.
+No live-data configuration can guarantee a few-second first run when public providers
+are still responding over the network.
 
 
 ## Land valuation
