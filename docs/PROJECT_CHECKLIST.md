@@ -1,6 +1,6 @@
 # TerraScope project checklist
 
-The single current progress checklist. Last updated 2026-10-12 on branch `sai/terrascope-progress`.
+The single current progress checklist. Last updated 2026-10-19 on `main` after merging NSB PR #1.
 
 Rules: an item is "verified" only when a recorded check exercised the real behaviour (real services, real
 data, or the browser), not because code exists, a mocked test passes or a page loads. "Implemented" without
@@ -83,8 +83,9 @@ only read.
 
 ## 2. Implemented but not validated
 
-- [ ] **AI explanation path**: the code exists, but no `GROQ_API_KEY` is configured, so "AI explanation" has
-  never been produced (J-26).
+- [x] **AI explanation path**: verified 2026-10-19 with the configured Groq key and the VIT fixture; the
+  merged evaluation path returned a non-empty model-generated explanation. Groq explains the deterministic
+  scores and recommendation; it does not change them.
 - [ ] **Change-test thresholds**: ±0.05 for stable and 0.10 for change are fixed rules, not calibrated against
   labelled change data.
 - [ ] **Prediction quality**: the evaluation harness exists; zero real observations, so no metric is quoted
@@ -117,6 +118,14 @@ only read.
 - [ ] **Monsoon anchors**: often no clear scene (VIT: none near 2025-08-26), so a parcel can have fewer than 4
   seasonal pairs.
 - [ ] **Browser screenshots in the app pane**: still partial (J-45). Most UI checks are DOM/text checks.
+
+## 6. Verification after NSB PR #1
+
+- PR #1 merged into `main` without conflicts.
+- Valuation tests: 52 passed locally.
+- Frontend TypeScript check and production build: passed locally.
+- Python compile check across backend, data-pipeline, ML, and valuation: passed locally.
+- Docker-backed verification remains open because Docker Desktop was unavailable during this check.
 
 ## 5. Your saved reports
 
