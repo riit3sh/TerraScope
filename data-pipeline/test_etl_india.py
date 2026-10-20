@@ -6,7 +6,7 @@ import pytest
 from shapely.geometry import box
 
 import etl_pipeline
-from connectors import flood_indicators, river_flood
+from connectors import flood_indicators, land_cover_history, river_flood
 from connectors.regions import IndiaCoverage
 
 STATE = {"name": "Andhra Pradesh", "iso": "IN-AP", "geometry": box(77.0, 13.0, 80.0, 16.0)}
@@ -56,6 +56,11 @@ def offline(monkeypatch):
 
     monkeypatch.setattr(flood_indicators, "terrain_above_water", terrain)
     monkeypatch.setattr(river_flood, "assess", lambda _p: _river_result())
+    trend = {"first_year": 2017, "first_share": 0.2, "last_year": 2023, "last_share": 0.3, "years_used": 7,
+             "slope_pts_per_year": 1.6}
+    monkeypatch.setattr(land_cover_history, "assess", lambda _p: {
+        "status": "assessed", "parcel": [{"year": 2017, "dominant": "crops"}], "surroundings": [],
+        "trend_within_1km": trend, "trend_1_to_3km": None, "cache": "new"})
 
 
 def test_indian_parcel_without_regional_data_still_collects_india_wide_evidence(offline) -> None:
@@ -78,6 +83,10 @@ def test_indian_parcel_without_regional_data_still_collects_india_wide_evidence(
     assert snapshot["risk"]["flood_risk_score"] is None  # evidence only, never a score
     elevation_row = next(e for e in snapshot["evidence"] if e["source_type"] == "copernicus_dem")
     assert "/100" not in elevation_row["summary"]
+    # The area's development history is India-wide too.
+    assert snapshot["land_cover_history"]["trend_within_1km"]["slope_pts_per_year"] == 1.6
+    land_row = next(e for e in snapshot["evidence"] if e["source_type"] == "land_cover")
+    assert "Within 1 km: built area 20% (2017) to 30% (2023)" in land_row["summary"]
 
 
 def test_provider_failure_is_unavailable_not_safe(offline, monkeypatch) -> None:
@@ -92,6 +101,16 @@ def test_provider_failure_is_unavailable_not_safe(offline, monkeypatch) -> None:
     assert "503" in snapshot["flood_indicators"]["unavailable"]["river_flood"]
 
 
+def test_land_cover_failure_is_unavailable_not_no_development(offline, monkeypatch) -> None:
+    def down(_polygon):
+        raise RuntimeError("HTTP 429")
+
+    monkeypatch.setattr(land_cover_history, "assess", down)
+    snapshot = etl_pipeline.build_evidence_snapshot(KADAPA, "2025-01-01", "2026-01-01")
+    assert snapshot["land_cover_history"] == {"status": "unavailable", "error": "HTTP 429"}
+    assert "unavailable: HTTP 429" in next(e for e in snapshot["evidence"] if e["source_type"] == "land_cover")["summary"]
+
+
 def test_parcel_outside_india_runs_no_collector(monkeypatch) -> None:
     monkeypatch.setattr(etl_pipeline, "india_coverage", lambda: COVERAGE)
 
@@ -99,7 +118,7 @@ def test_parcel_outside_india_runs_no_collector(monkeypatch) -> None:
         raise AssertionError("a collector ran for a parcel outside India")
 
     for target, name in ((etl_pipeline, "get_satellite_client"), (etl_pipeline, "region_for"),
-                         (river_flood, "assess"), (flood_indicators, "surface_water")):
+                         (river_flood, "assess"), (flood_indicators, "surface_water"), (land_cover_history, "assess")):
         monkeypatch.setattr(target, name, explode)
     with pytest.raises(etl_pipeline.OutsideCoverage) as caught:
         etl_pipeline.build_evidence_snapshot(PUNE, "2025-01-01", "2026-01-01")  # outside the test "India"

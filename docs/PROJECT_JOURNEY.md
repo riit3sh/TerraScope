@@ -1364,3 +1364,69 @@ the reason the approach changed.
   - Earlier on the same day, before J-51, cold runs hit the 35 s deadline with satellite dropped.
   - 2026-10-11 reference: cold 12.4 s, warm 0.66 s.
 - **Status:** measured.
+
+## J-56 Buy or wait: a decision from the history of the plot and its surroundings
+
+- **Date / problem:** 2026-10-20. The product's aim is to tell a buyer whether to buy now or wait, from the
+  history of the plot and the land around it. It never did: all 58 saved evaluations in the user's store were
+  `INSUFFICIENT_EVIDENCE`. Legal and growth always carried weight with no possible score (no land-records
+  source; growth was refused from NDVI/NDBI, J-53), so every verdict was withheld.
+- **Root cause (confirmed):** a weighted factor with no score withheld the verdict, and two of the four could
+  never be scored. Growth had no evidence about the *surroundings*: only the plot's own Sentinel-2 indices.
+- **Changes:**
+  - **New evidence, India-wide, no account:** `data-pipeline/connectors/land_cover_history.py` reads Impact
+    Observatory / Esri 10 m Annual Land Use Land Cover v2 (2017-2023, CC BY 4.0) from Planetary Computer. Per
+    year it records the plot's own class shares and the built-up share within 1 km of the plot edge and 1-3 km
+    away, then fits a least-squares trend (points a year) so one misclassified year cannot swing it. Years
+    where cloud or a tile edge hides more than half a zone are dropped. Tiles are read in parallel; results go
+    into the existing 30-day parcel-result cache. One collection token is reused (per-file signing returned
+    429), and 429/5xx responses are retried, honouring Retry-After.
+  - **Area growth is scored** from the 1 km trend: +2 points of built land a year scores 100 (a rule, not
+    calibrated). A ring already 90% built in 2017 uses the 1-3 km ring; if both are, the factor is
+    `built_out`: not scored, and it does not withhold the decision.
+  - **Decision rules** (`ml-models/scoring_engine/_verdict.py`):
+    - AVOID only on hard evidence: proven legal risk (unchanged), or a red flag from the plot's history:
+      modelled river flooding over 25% of the plot at 1-in-100 or more often; open water seen on the plot in
+      at least 10% of Landsat passes 1984-2021 on average (a likely tank or lake bed); or the plot mapped as
+      water / flooded vegetation in any year 2017-2023.
+    - Otherwise BUY at a composite of 75 or more, else WAIT. The composite is shared over the scored factors.
+      The WAIT summary names the weakest factor.
+    - Unscored legal safety no longer withholds the decision. It becomes the "before you pay" checklist
+      (`verdict.pre_purchase_checks`); title is still never verified. A change in the plot's own class
+      between 2017 and 2023 is added there too.
+    - An unscored *location* factor (area growth, accessibility) still withholds the decision.
+  - **Report:** the badge asks "Buy now or wait?". A new section under it shows red flags, the built-up
+    chart for both rings, the plot's own class each year, and the checklist. Old reports say to analyse the
+    boundary again. The land-cover row is in the evidence ledger (Satellite tab) and is cited in the summary.
+  - **Schema:** `land_cover_history`, `verdict.red_flags`, `verdict.pre_purchase_checks`, factor status
+    `built_out`.
+  - **Bugs found and fixed in passing:** at 375 px the report scrolled sideways (620 px): the accessibility
+    table widened its grid track. The ETL tests reached the network for the new collector; they now stub it.
+- **Verification (2026-10-20, audit copy `.local-ui-check/audit/backend-audit-2026-10-20.sqlite3`):**
+  - **Land cover, cold reads:** 2.2-3.8 s per parcel. Rural Tiruvannamalai fields +0.11 points a year;
+    Kelambakkam (OMR) +1.81; Oragadam +1.03; T Nagar 100% built (built out); rural Kadapa 0.
+  - **Real analyses through the API, homebuyer lens:**
+    - VIT acceptance plot: BUY, composite 94. Accessibility 92; area growth 96 (63% to 73% built within 1 km,
+      2017-2023). Four title checks listed.
+    - Kelambakkam: AVOID. Area growth 90, but modelled river flooding covers 91% of the plot at 1-in-10.
+    - Rural Tiruvannamalai: WAIT, composite 19 (growth 6, accessibility 31).
+  - **Timings:** a repeat analysis took 2.5 s. Evaluation p50 0.27 s (n=12), the same as J-55's 0.26 s.
+    Requests to `localhost` cost about 2 s each on this machine (IPv6 first) against 18 ms for `127.0.0.1`.
+    The services already call each other on 127.0.0.1, and the first 2.4 s figure came from the test script.
+  - **Browser:** the VIT, Kelambakkam and an old report at desktop and 375 px. No console errors, no sideways
+    scroll after the fix.
+  - **Tests:** ml-models 59, data-pipeline 80, backend-api 11, valuation 52. Integration: 17 passed, 1
+    skipped. The integration run first caught `built_out` missing from the schema enum (central Chennai
+    parcels); fixed, with a schema-validated regression test. Frontend type-check and build pass.
+  - **Your store:** byte-identical before and after (93 snapshots, 58 evaluations, 9 documents); a normal
+    start serves it.
+- **Limitations:**
+  - Every threshold (2 points a year, 75, 25%, 10%, 90%) is a rule, not calibrated against prices or sales.
+  - Built-up land is a proxy for demand. It does not show prices, approvals or planned infrastructure, and the
+    maps stop at 2023.
+  - The classification is modelled; small plots (a few hundred 10 m pixels) inherit its errors.
+  - The 58 saved evaluations keep their old verdicts. A re-evaluation without re-analysis stays "no decision
+    yet", because those snapshots have no area history.
+- **Status:** fixed and verified. This supersedes J-53's position that growth stays unscored: growth is now
+  scored from the area's observed development, not from the plot's NDVI/NDBI. The thresholds are still open
+  (checklist section 2).

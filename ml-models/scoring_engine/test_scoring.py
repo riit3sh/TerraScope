@@ -43,7 +43,7 @@ def test_clean_parcel_is_buy_with_high_explainable_scores():
     assert result["recommendation"] == "BUY"
     assert result["growth_score"] is None, "growth is not derivable from spectral indices"
     assert sum(item["contribution"] for item in result["weighted_contributions"]) == result["composite_score"]
-    assert "composite" in result["reasoning_summary"] and "legal_safety" in result["reasoning_summary"]
+    assert "composite" in result["reasoning_summary"] and "legal safety" in result["reasoning_summary"]
 
 
 def test_flood_prone_parcel_passes_through_risk_as_low_flood_safety():
@@ -60,7 +60,8 @@ def test_terrain_indicator_alone_never_produces_a_flood_score():
         _evidenced_profile("conservative"),
     )
     assert terrain_only["flood_safety_score"] is None
-    assert terrain_only["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert "flood_safety" in terrain_only["unassessed_factors"]
+    assert "flood_safety" not in {c["factor"] for c in terrain_only["weighted_contributions"]}
 
 
 def test_encumbered_title_triggers_hard_avoid():
@@ -130,6 +131,6 @@ def test_missing_land_records_produce_no_legal_score_at_all() -> None:
     unverified = compute_verdict({"land_records": None}, evaluation)
     assert unverified["legal_safety_score"] is None
     assert unverified["recommendation"] == "INSUFFICIENT_EVIDENCE"
-    assert "insufficient evidence" in unverified["reasoning_summary"] and "legal safety" in unverified["reasoning_summary"]
+    assert any("Ownership record" in check for check in unverified["pre_purchase_checks"])
     verified = compute_verdict({"land_records": {"title_clear": True, "encumbrance_flag": False}}, evaluation)
     assert "land records not provided" not in verified["reasoning_summary"]
