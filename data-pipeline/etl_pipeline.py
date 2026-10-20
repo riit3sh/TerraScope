@@ -20,7 +20,7 @@ from shapely.geometry import shape
 
 from connectors import flood_indicators
 from connectors.elevation_dem import ElevationClient, ElevationError
-from connectors import river_flood
+from connectors import land_cover_history, river_flood
 from connectors.local_osm import LocalOSM
 from connectors.regions import LocalDataMissing, india_coverage, region_for, slug
 from connectors.osm_infrastructure import InfrastructureClient, InfrastructureError
@@ -268,6 +268,20 @@ def _surface_water_summary(sw: dict[str, Any]) -> str:
         "It records where water was seen - mostly tanks, rivers and seasonal water - and is NOT a flood-inundation "
         "history: short floods between revisits, floods under monsoon cloud and urban street flooding are largely missed."
     )
+
+
+def _land_cover_summary(history: dict[str, Any]) -> str:
+    near, far = history.get("trend_within_1km"), history.get("trend_1_to_3km")
+    if not near:
+        return f"Land-cover history unavailable: {history.get('error') or 'too few years were classified around the parcel.'}"
+    def change(trend: dict[str, Any], where: str) -> str:
+        return (f"{where}: built area {trend['first_share']:.0%} ({trend['first_year']}) to {trend['last_share']:.0%} "
+                f"({trend['last_year']}), trend {trend['slope_pts_per_year']:+.1f} points a year")
+    plot = history.get("parcel") or []
+    classes = ", ".join(f"{p['year']} {p['dominant'].replace('_', ' ')}" for p in plot)
+    return (f"{change(near, 'Within 1 km')}. " + (f"{change(far, '1-3 km away')}. " if far else "")
+            + (f"The parcel itself: {classes}. " if classes else "")
+            + "A modelled 10 m classification of each year's Sentinel-2 imagery, not a survey.")
 
 
 def _water_summary(water: dict[str, Any], terrain: dict[str, Any] | None, terrain_error: str | None) -> str:
@@ -603,6 +617,13 @@ def build_evidence_snapshot(
             out["errors"]["water_distances"] = local_osm_error
         return out
 
+    def collect_land_cover() -> dict[str, Any]:
+        try:
+            return land_cover_history.assess(geojson_polygon)
+        except Exception as error:  # noqa: BLE001 - a provider failure is "unavailable", never "no development"
+            LOGGER.warning("Land-cover history unavailable: %s", error)
+            return {"status": "unavailable", "error": str(error)[:300]}
+
     def collect_river_flood() -> tuple[dict[str, Any] | None, str | None]:
         try:
             return river_flood.assess(geojson_polygon), None
@@ -629,7 +650,7 @@ def build_evidence_snapshot(
 
     if hasattr(satellite_client, "give_up_at"):
         satellite_client.give_up_at = time.monotonic() + deadline
-    pool = ThreadPoolExecutor(max_workers=6)
+    pool = ThreadPoolExecutor(max_workers=7)
     try:
         location_future = pool.submit(timed("geocoding", collect_location))
         satellite_future = pool.submit(timed("satellite", satellite_client.get_change_series, geojson_polygon, start, end))
@@ -637,6 +658,7 @@ def build_evidence_snapshot(
         terrain_future = pool.submit(timed("terrain", collect_terrain))
         flood_future = pool.submit(timed("flood_indicators", collect_flood))
         river_future = pool.submit(timed("river_flood", collect_river_flood))
+        land_cover_future = pool.submit(timed("land_cover", collect_land_cover))
 
         started = time.monotonic()
         timed_out: set[str] = set()
@@ -671,6 +693,11 @@ def build_evidence_snapshot(
         )
         river, river_error = finish(
             river_future, (None, f"River flood hazard maps exceeded the {deadline:.0f}s evidence deadline."), "River flood hazard"
+        )
+        land_cover = finish(
+            land_cover_future,
+            {"status": "unavailable", "error": f"the land-cover maps were not read within the {deadline:.0f} s evidence deadline."},
+            "Land-cover history",
         )
     finally:
         # Do not block the response on a request that already missed its deadline.
@@ -770,6 +797,18 @@ def build_evidence_snapshot(
             "summary": _river_summary(river, river_error),
         },
         {
+            "evidence_id": f"{snapshot_id}:land-cover",
+            "source_type": "land_cover",
+            "source_reference": f"{land_cover_history.DATASET} (Microsoft Planetary Computer, {land_cover_history.COLLECTION})",
+            "title": "Land cover 2017-2023 on the parcel and within 1 km and 3 km of it",
+            "observed_at": "2023-12-31T00:00:00Z",
+            "freshness": "cached" if land_cover.get("cache") == "reused" else "live",
+            "licence": land_cover_history.LICENCE,
+            "resolution": "10 m",
+            "observation_period": "2017 to 2023, one map a year",
+            "summary": _land_cover_summary(land_cover),
+        },
+        {
             "evidence_id": f"{snapshot_id}:surface-water",
             "source_type": "jrc_gsw",
             "source_reference": "JRC Global Surface Water v1.4 (EC JRC/Google)"
@@ -832,6 +871,7 @@ def build_evidence_snapshot(
         "surface_water": flood.get("surface_water"),
         "water_features": flood.get("water_distances"),
         "river_flood_hazard": river,
+        "area_history": land_cover.get("trend_within_1km"),
         "rera_status": rera.get("is_rera_project"),
         "land_records": None,  # no land-records connector exists yet
     }
@@ -848,6 +888,7 @@ def build_evidence_snapshot(
         "land_records": None,
         "rera": rera,
         "satellite": satellite_facts,
+        "land_cover_history": land_cover,
         "infrastructure": amenities,
         "risk": {
             # No flood hazard dataset is integrated, so flood risk stays unknown.
@@ -889,7 +930,7 @@ def build_evidence_snapshot(
             "analysis_snapshot_id": snapshot_id,
             # A collector still running at the deadline has no entry yet: null.
             "collection_timings_ms": {label: timings.get(label) for label in (
-                "geocoding", "satellite", "accessibility", "terrain", "flood_indicators", "river_flood")},
+                "geocoding", "satellite", "accessibility", "terrain", "flood_indicators", "river_flood", "land_cover")},
         },
     }
     _validate_snapshot(snapshot)

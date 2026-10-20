@@ -1,4 +1,4 @@
-"""Assemble the verdict from evidence-gated factors."""
+"""Assemble the buy / wait decision from evidence-gated factors."""
 
 from __future__ import annotations
 
@@ -9,7 +9,15 @@ from ._assessment import (
     assess_flood,
     assess_growth,
     assess_legal,
+    plot_history_checks,
+    red_flags,
 )
+
+LABEL = {"legal_safety": "legal safety", "flood_safety": "flood safety", "growth": "area growth",
+         "accessibility": "accessibility"}
+# The location factors. A weighted one with no score withholds the decision; legal and flood never do,
+# because unscored they become, respectively, the checks before paying and the red flags.
+LOCATION_FACTORS = ("growth", "accessibility")
 
 
 def build_verdict(
@@ -23,7 +31,6 @@ def build_verdict(
     growth_opportunity_score,
     hard_legal_risk_threshold: float,
     buy_threshold: float,
-    wait_threshold: float,
 ) -> dict[str, Any]:
     factors = [
         assess_legal(record, evaluation, legal_risk_score, apply_rera_requirement),
@@ -33,68 +40,46 @@ def build_verdict(
     ]
     for factor in factors:
         factor["weight_pct"] = weights[f"{factor['factor']}_pct"]
-
-    contributions = [
-        {"factor": f["factor"], "contribution": round(f["score"] * f["weight_pct"] / 100.0, 2)}
-        for f in factors
-        if f["score"] is not None
-    ]
-    # A factor that carries weight but has no evidence blocks the composite.
-    # Renormalising over whatever survived would quietly raise the result by
-    # dropping the unknowns, which is exactly the inflation to avoid.
-    blocking = [f["factor"] for f in factors if f["score"] is None and f["weight_pct"] > 0]
-    assessed_weight = round(sum(f["weight_pct"] for f in factors if f["score"] is not None), 2)
-
     legal = factors[0]
-    disqualifying = (
-        legal["score"] is not None and (100.0 - legal["score"]) > hard_legal_risk_threshold
-    )
-    if disqualifying:
-        # Proven disqualifying evidence decides on its own. Gaps elsewhere cannot
-        # make a parcel with a bad title look merely unassessed.
-        return {
-            "legal_safety_score": factors[0]["score"],
-            "accessibility_score": factors[1]["score"],
-            "flood_safety_score": factors[2]["score"],
-            "growth_score": factors[3]["score"],
-            "weighted_contributions": contributions,
-            "composite_score": None,
-            "factors": factors,
-            "assessed_weight_pct": assessed_weight,
-            "unassessed_factors": blocking,
-            "recommendation": "AVOID",
-            "confidence": None,
-            "reasoning_summary": (
-                f"AVOID on legal risk alone: effective legal risk {100.0 - legal['score']:.0f}/100 "
-                f"exceeds the {hard_legal_risk_threshold:.0f} threshold. "
-                + (f"Other factors remain unassessed ({', '.join(blocking)})." if blocking else "")
-            )[:500],
-        }
 
-    if blocking:
-        composite: float | None = None
+    scored = [f for f in factors if f["score"] is not None and f["weight_pct"] > 0]
+    scored_weight = round(sum(f["weight_pct"] for f in scored), 2)
+    # Shares of the scored weight, so contributions add up to the composite. Unscored legal and flood are
+    # not quietly dropped: they come back as checks and red flags beside the decision.
+    contributions = [{"factor": f["factor"], "contribution": round(f["score"] * f["weight_pct"] / scored_weight, 2)}
+                     for f in scored]
+    blocking = [f for f in factors if f["factor"] in LOCATION_FACTORS and f["score"] is None
+                and f["weight_pct"] > 0 and f["status"] != "built_out"]
+    flags = red_flags(record)
+    checks = (legal["checklist"] if legal["score"] is None else []) + plot_history_checks(record)
+    composite = round(sum(c["contribution"] for c in contributions), 2) if scored and not blocking else None
+
+    if legal["score"] is not None and (100.0 - legal["score"]) > hard_legal_risk_threshold:
+        # Proven disqualifying evidence decides on its own.
+        recommendation = "AVOID"
+        summary = (f"AVOID on legal risk alone: effective legal risk {100.0 - legal['score']:.0f}/100 exceeds the "
+                   f"{hard_legal_risk_threshold:.0f} threshold.")
+        composite = None
+    elif flags:
+        recommendation = "AVOID"
+        summary = "AVOID: " + " ".join(flags)
+    elif blocking or composite is None:
         recommendation = "INSUFFICIENT_EVIDENCE"
-        names = {"legal_safety": "legal safety", "flood_safety": "flood safety", "growth": "growth",
-                 "accessibility": "accessibility"}
-        summary = (
-            "Recommendation withheld: insufficient evidence. "
-            + ", ".join(f"{names.get(f['factor'], f['factor'])} ({f['weight_pct']:g}%)" for f in factors if f["factor"] in blocking)
-            + f" {'has' if len(blocking) == 1 else 'have'} no score, so only {assessed_weight:.0f}% of your weighting is "
-            "backed by a score and no BUY/WAIT/AVOID is given."
-        )
+        missing = blocking or [f for f in factors if f["factor"] in LOCATION_FACTORS]
+        summary = "No buy/wait decision yet. " + " ".join(f"{LABEL[f['factor']].capitalize()}: {f['basis']}" for f in missing)
     else:
-        composite = round(sum(item["contribution"] for item in contributions), 2)
-        if composite >= buy_threshold:
-            recommendation = "BUY"
-        elif composite >= wait_threshold:
-            recommendation = "WAIT"
-        else:
-            recommendation = "AVOID"
-        summary = (
-            f"{recommendation}: composite {composite:.1f} from "
-            + "; ".join(f"{f['factor']} {f['score']:.1f}" for f in factors if f["score"] is not None)
-            + "."
-        )
+        recommendation = "BUY" if composite >= buy_threshold else "WAIT"
+        growth = factors[3]
+        parts = [f"{recommendation}: composite {composite:.0f} of 100 (BUY from {buy_threshold:.0f}) from "
+                 + ", ".join(f"{LABEL[f['factor']]} {f['score']:.0f}" for f in scored) + "."]
+        if growth["status"] in ("indicative", "built_out"):
+            parts.append(growth["basis"].split(". Further out")[0].rstrip(".") + ".")
+        if recommendation == "WAIT":
+            weakest = min(scored, key=lambda f: f["score"])
+            parts.append(f"Holding it back: {LABEL[weakest['factor']]} {weakest['score']:.0f}.")
+        if legal["score"] is None:
+            parts.append("Before paying, check title, encumbrance and approvals: TerraScope cannot verify them.")
+        summary = " ".join(parts)
 
     return {
         "legal_safety_score": factors[0]["score"],
@@ -104,12 +89,12 @@ def build_verdict(
         "weighted_contributions": contributions,
         "composite_score": composite,
         "factors": factors,
-        "assessed_weight_pct": assessed_weight,
-        "unassessed_factors": blocking,
+        "assessed_weight_pct": scored_weight,
+        "unassessed_factors": [f["factor"] for f in factors if f["score"] is None and f["weight_pct"] > 0],
         "recommendation": recommendation,
-        # Percentage confidence is deliberately not emitted. The previous figure
-        # multiplied "how many top-level keys are non-null" by distance from 50,
-        # which is not a probability of anything. Coverage is reported instead.
+        # Percentage confidence is deliberately not emitted: no figure here is a probability of anything.
         "confidence": None,
         "reasoning_summary": summary[:500],
+        "red_flags": flags,
+        "pre_purchase_checks": checks,
     }

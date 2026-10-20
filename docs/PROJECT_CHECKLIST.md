@@ -1,6 +1,6 @@
 # TerraScope project checklist
 
-The single current progress checklist. Last updated 2026-10-19 on `main` after merging NSB PR #1.
+The single current progress checklist. Last updated 2026-10-20 on `main` (buy/wait decision, J-56).
 
 Rules: an item is "verified" only when a recorded check exercised the real behaviour (real services, real
 data, or the browser), not because code exists, a mocked test passes or a page loads. "Implemented" without
@@ -13,6 +13,15 @@ only read.
 
 ## 1. Fixed and verified
 
+- [x] **Buy or wait from the history of the plot and its surroundings (J-56)**
+  - Behaviour:
+    - Land cover 2017-2023 (10 m, India-wide, no account) for the plot, within 1 km and 1-3 km. The built-up
+      trend scores Area growth.
+    - BUY at composite 75 or more, else WAIT. AVOID only on proven legal risk or red flags from the plot's
+      history (frequent modelled river flooding, a likely tank or lake bed).
+    - Unverifiable title is a "before you pay" checklist, not a blocker.
+  - Evidence (2026-10-20, audit copy): VIT BUY 94; Kelambakkam AVOID (91% flooded at 1-in-10); rural
+    Tiruvannamalai WAIT 19. Before this, all 58 saved evaluations were "insufficient evidence".
 - [x] **Accessibility limits work and are visible (J-46)**
   - Behaviour:
     - Road and school distance limits are in the evaluation drawer and in Scenario mode.
@@ -86,6 +95,8 @@ only read.
 - [x] **AI explanation path**: verified 2026-10-19 with the configured Groq key and the VIT fixture; the
   merged evaluation path returned a non-empty model-generated explanation. Groq explains the deterministic
   scores and recommendation; it does not change them.
+- [ ] **Buy/wait thresholds** (J-56): +2 points a year for full growth, BUY at 75, flood flag at 25% of the
+  plot at 1-in-100, water bed at 10% occurrence. All are rules, not calibrated against sale prices.
 - [ ] **Change-test thresholds**: ±0.05 for stable and 0.10 for change are fixed rules, not calibrated against
   labelled change data.
 - [ ] **Prediction quality**: the evaluation harness exists; zero real observations, so no metric is quoted
@@ -107,9 +118,8 @@ only read.
 - [ ] **Land records, encumbrance and approvals:** no permitted source is integrated, so Legal Safety stays
   unscored.
 - [ ] **Tamil Nadu RERA (TNRERA) data:** not integrated.
-- [ ] **Growth:** needs economic and planning data (registered sale counts by village or sub-registrar office,
-  master-plan zoning, committed infrastructure, population/employment). None is integrated; no growth score
-  is produced.
+- [ ] **Growth, economic side:** area growth is now scored from observed development (J-56). Registered sale
+  counts, master-plan zoning, committed infrastructure and population/employment are still not integrated.
 - [ ] **Flood:**
   - Rainfall/pluvial and coastal datasets are not integrated.
   - NRSC historical footprints: no permitted machine-readable source found (J-32).

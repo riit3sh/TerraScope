@@ -27,14 +27,6 @@ MISSING_FLOOD_EVIDENCE = {
     "coastal_flooding": "Storm-surge and sea-level inundation data (relevant near the coast)",
 }
 
-# What a growth score would need. Satellite indices are none of these.
-GROWTH_EVIDENCE_CHECKLIST = (
-    "Registered sale (transaction) counts and prices for the village or sub-registrar office over several years",
-    "Master plan / local planning authority land-use zoning and approved layouts near the parcel",
-    "Committed infrastructure (roads, rail, utilities) with sanction dates and distances",
-    "Population and employment change for the town or taluk (Census / economic survey)",
-)
-
 FLOOD_EVIDENCE_CHECKLIST = (
     "Flood hazard / inundation extent map covering this parcel, with resolution and date",
     "Historical inundation records for the parcel vicinity",
@@ -46,22 +38,6 @@ FLOOD_EVIDENCE_CHECKLIST = (
 def _section(record: dict[str, Any], name: str) -> dict[str, Any]:
     value = record.get(name)
     return value if isinstance(value, dict) else {}
-
-
-def _evidence_rows(record: dict[str, Any]) -> list[dict[str, Any]]:
-    rows = record.get("evidence")
-    return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
-
-
-def satellite_is_synthetic(record: dict[str, Any]) -> bool:
-    """True when the satellite series was invented for demo mode."""
-    for row in _evidence_rows(record):
-        if row.get("source_type") != "satellite":
-            continue
-        label = f"{row.get('source_reference') or ''} {row.get('title') or ''}".lower()
-        if "synthetic" in label or row.get("freshness") == "seed_data":
-            return True
-    return False
 
 
 LAND_IDENTIFIER_FIELDS = ("state", "district", "taluk", "village", "survey_number", "subdivision")
@@ -228,73 +204,114 @@ def assess_flood(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def assess_growth(record: dict[str, Any], growth_opportunity_score) -> dict[str, Any]:
-    """Growth is not derivable from NDVI/NDBI, however real the imagery is.
+# Rules, not calibrated against prices: +2 points of built land a year within 1 km scores 100, and a ring
+# that was already this built in the first year has no open land left to show a trend.
+GROWTH_FULL_SCORE_PTS_PER_YEAR = 2.0
+BUILT_OUT_SHARE = 0.9
+# Red flags that stop a purchase whatever the other factors say.
+RIVER_FLAG_MAX_RETURN_PERIOD = 100
+RIVER_FLAG_PARCEL_SHARE = 0.25
+WATER_BED_MEAN_OCCURRENCE_PCT = 10.0
 
-    Observed land-cover change is real evidence of *land cover* changing. It does
-    not distinguish a new warehouse from a cleared field, a seasonal crop cycle
-    from construction, or any of it from investment value. Inferring an
-    investment-growth score from two spectral indices would be the same
-    unsupported leap the audit removed, just with better inputs.
+AREA_HISTORY_LIMITS = (
+    "Built-area share from a 10 m machine-learning land-cover map (Impact Observatory / Esri, 2017-2023). It shows "
+    "development on the ground, not prices, approvals or planned infrastructure. Single years can be misclassified, "
+    "so the least-squares trend over every year is used. Scoring rule, not calibrated: +2 points a year scores 100."
+)
+
+
+def _built_change(trend: dict[str, Any], where: str) -> str:
+    return (f"built-up land {where} went from {trend['first_share']:.0%} in {trend['first_year']} to "
+            f"{trend['last_share']:.0%} in {trend['last_year']} ({trend['slope_pts_per_year']:+.1f} points a year)")
+
+
+def assess_growth(record: dict[str, Any], growth_opportunity_score) -> dict[str, Any]:
+    """How fast the land around the parcel has been built up, 2017-2023.
+
+    The parcel's own Sentinel-2 change is not used: land cover changing on one plot cannot separate
+    construction from cropping. The surroundings' built-area trend over seven annual maps is the
+    development history the buy/wait decision rests on.
     """
-    satellite = _section(record, "satellite")
-    change_type = satellite.get("change_type")
-    if satellite_is_synthetic(record):
+    history = _section(record, "land_cover_history")
+    near, far = history.get("trend_within_1km"), history.get("trend_1_to_3km")
+    if not history:
         return {
             "factor": "growth",
             "score": None,
             "status": "unavailable",
-            "basis": "Growth unavailable: the satellite series is synthetic demo data, not observed imagery.",
-            "limitations": "Configure an imagery provider to obtain real observations.",
-            "checklist": ["Observed multi-date satellite imagery for this polygon"],
+            "basis": "This report was made before TerraScope read the area's development history (land cover "
+                     "2017-2023 around the plot). Analyse the same boundary again to add it.",
+            "limitations": AREA_HISTORY_LIMITS,
+            "checklist": ["Area development history: analyse the boundary again"],
         }
-    if (satellite.get("collection") or {}).get("status") == "timed_out":
+    if history.get("status") != "assessed" or not near:
         return {
             "factor": "growth",
             "score": None,
             "status": "unavailable",
-            "basis": "Satellite collection timed out before the evidence deadline, so no land-cover series is in this report.",
-            "limitations": "Analyse the same boundary again: scenes already read are cached and reused.",
-            "checklist": list(GROWTH_EVIDENCE_CHECKLIST),
+            "basis": "Area development history unavailable: "
+                     + (history.get("error") or "too few years were classified around the plot."),
+            "limitations": AREA_HISTORY_LIMITS,
+            "checklist": ["Area development history: analyse the boundary again"],
         }
-    if change_type in (None, "insufficient_evidence"):
+    if near["first_share"] >= BUILT_OUT_SHARE and (not far or far["first_share"] >= BUILT_OUT_SHARE):
         return {
             "factor": "growth",
             "score": None,
-            "status": "unavailable",
-            "basis": "Growth unavailable: no usable satellite observations for this parcel and date range.",
-            "limitations": "At least two cloud-free observations are required.",
-            "checklist": ["Two or more usable observations inside the analysis window"],
+            "status": "built_out",
+            "basis": f"Already built out: {_built_change(near, 'within 1 km')}. With no open land left there is no "
+                     "development trend to measure, so the decision rests on the other factors.",
+            "limitations": AREA_HISTORY_LIMITS,
+            "checklist": [],
+            "details": {"trend": near},
         }
-    if not satellite.get("change_method"):
-        # statistical_change_v1 (snapshots before 2026-10-12): one straight line through every date.
-        observed = (f"'{change_type.replace('_', ' ')}' under the superseded v1 trend method, which did not "
-                    "compare like seasons and filed unclear movement under no change")
-    else:
-        observed = None
-    observed = observed or {
-        "no_change": "no material land-cover change between same-season images",
-        "inconclusive": "an inconclusive land-cover change signal",
-        "construction_growth": "land-cover change consistent with construction",
-        "vegetation_loss": "vegetation loss",
-        "vegetation_gain": "vegetation gain",
-    }.get(change_type, change_type.replace("_", " "))
+    # Next to a built-out core, the frontier is further out.
+    trend, where = (near, "within 1 km") if near["first_share"] < BUILT_OUT_SHARE else (far, "1-3 km away")
+    slope = trend["slope_pts_per_year"]
+    pace = "Fast" if slope >= 1.5 else "Steady" if slope >= 0.5 else "Little or no"
+    other = far if trend is near else None
     return {
         "factor": "growth",
-        "score": None,
-        "status": "not_integrated",
-        "basis": (
-            f"Satellite imagery shows {observed}. That is land cover, reported separately; no investment-growth "
-            "score is derived from it."
-        ),
-        "limitations": (
-            "NDVI/NDBI measure vegetation and built-up reflectance. They cannot separate construction "
-            "from seasonal cropping or clearance, and say nothing about prices, demand, planning "
-            "approvals or infrastructure investment. A growth score needs economic evidence, not "
-            "spectral indices."
-        ),
-        "checklist": list(GROWTH_EVIDENCE_CHECKLIST),
+        "score": round(max(0.0, min(100.0, 100.0 * slope / GROWTH_FULL_SCORE_PTS_PER_YEAR)), 2),
+        "status": "indicative",
+        "basis": f"{pace} development around the plot: {_built_change(trend, where)}."
+                 + (f" Further out, {_built_change(other, '1-3 km away')}." if other else ""),
+        "limitations": AREA_HISTORY_LIMITS,
+        "checklist": [],
+        "details": {"trend": trend, "ring": where},
     }
+
+
+def red_flags(record: dict[str, Any]) -> list[str]:
+    """History that argues against buying at all: frequent modelled river flooding, or a likely water bed."""
+    flags = []
+    flood = _section(record, "flood_indicators")
+    for scenario in _section(flood, "river_flood").get("scenarios") or []:  # most frequent first
+        period, share = scenario.get("return_period_years"), scenario.get("flooded_share_of_parcel") or 0
+        if period and period <= RIVER_FLAG_MAX_RETURN_PERIOD and share >= RIVER_FLAG_PARCEL_SHARE:
+            flags.append(f"Modelled river flooding covers {share:.0%} of the plot in the 1-in-{period}-year flood "
+                         f"({100 / period:.3g}% chance in any year).")
+            break
+    water = _section(_section(flood, "surface_water"), "parcel")
+    if (water.get("occurrence_mean_pct") or 0) >= WATER_BED_MEAN_OCCURRENCE_PCT:
+        flags.append(f"Open water was seen on this plot in {water['occurrence_mean_pct']:.0f}% of satellite passes "
+                     "from 1984 to 2021: it may be a tank, lake or river bed.")
+    wet = [str(p["year"]) for p in _section(record, "land_cover_history").get("parcel") or []
+           if p.get("dominant") in ("water", "flooded_vegetation")]
+    if wet:
+        flags.append(f"The plot was mapped as water or flooded vegetation in {', '.join(wet)}.")
+    return flags
+
+
+def plot_history_checks(record: dict[str, Any]) -> list[str]:
+    """What the plot itself became over the years, when that changed: something to see before paying."""
+    years = _section(record, "land_cover_history").get("parcel") or []
+    if len(years) < 2 or years[0]["dominant"] == years[-1]["dominant"]:
+        return []
+    def name(cls: str) -> str:
+        return cls.replace("_", " ").replace("built", "built area")
+    return [f"The plot itself changed from {name(years[0]['dominant'])} ({years[0]['year']}) to "
+            f"{name(years[-1]['dominant'])} ({years[-1]['year']}): see what stands on it today."]
 
 
 def _metres(value: Any) -> str:

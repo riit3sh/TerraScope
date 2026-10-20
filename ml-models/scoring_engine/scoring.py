@@ -18,7 +18,6 @@ LEGAL_MISSING_RERA_PENALTY = 20
 LEGAL_MISSING_LAND_RECORDS_PENALTY = 10
 HARD_LEGAL_RISK_THRESHOLD = 70
 BUY_COMPOSITE_THRESHOLD = 75
-WAIT_COMPOSITE_THRESHOLD = 50
 MAX_USEFUL_ROAD_DISTANCE_M = 3_000.0
 MAX_USEFUL_SCHOOL_DISTANCE_M = 5_000.0
 DEFAULT_ROAD_IMPORTANCE = 1.0
@@ -218,7 +217,6 @@ def compute_verdict(record: dict[str, Any], evaluation: dict[str, Any]) -> dict[
         growth_opportunity_score=growth_opportunity_score,
         hard_legal_risk_threshold=HARD_LEGAL_RISK_THRESHOLD,
         buy_threshold=BUY_COMPOSITE_THRESHOLD,
-        wait_threshold=WAIT_COMPOSITE_THRESHOLD,
     )
 
 

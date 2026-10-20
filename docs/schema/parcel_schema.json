@@ -306,6 +306,13 @@
         }
       }
     },
+    "land_cover_history": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Annual land cover 2017-2023 (Impact Observatory / Esri 10 m) for the parcel and the land within 1 km and 1-3 km of it, with built-area trends. Evidence for the area-growth factor."
+    },
     "infrastructure": {
       "type": [
         "object",
@@ -854,6 +861,7 @@
                   "unavailable",
                   "not_integrated",
                   "partial",
+                  "built_out",
                   null
                 ]
               },
@@ -1097,6 +1105,26 @@
             null
           ],
           "description": "deterministic: TerraScope's rule-based summary; ai: an AI call succeeded and wrote reasoning_summary."
+        },
+        "red_flags": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "History that argues against buying at all (frequent modelled river flooding, a likely water bed)."
+        },
+        "pre_purchase_checks": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "What TerraScope could not check and the buyer must, before paying (title, encumbrance, approvals; changes on the plot)."
         }
       }
     },

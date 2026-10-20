@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowLeft, FileText, FlaskConical, History, IndianRupee, Printer, RefreshCw, Sparkles, TriangleAlert, Upload, X } from 'lucide-react'
-import { DOC_TYPE_LABEL, DocType, estimateValuation, evaluateParcel, PriceBasis, EvaluationSettings, FactorAssessment, FloodIndicators, LandDetails, ParcelRecord, PropertyDetails, saveLandDetails, uploadEvidence, Valuation } from '../lib/api'
+import { DOC_TYPE_LABEL, DocType, estimateValuation, evaluateParcel, PriceBasis, EvaluationSettings, FactorAssessment, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, PropertyDetails, saveLandDetails, uploadEvidence, Valuation } from '../lib/api'
 
 type EvidenceTab = 'Satellite' | 'Infrastructure' | 'Flood indicators' | 'RERA' | 'Uploaded Documents' | 'Derived Scores'
 
 const MECHANISM_LABEL: Record<string, string> = { river_flooding: 'River flooding (modelled)', historical_inundation: 'Historical inundation (observed)', observed_surface_water: 'Surface water seen 1984-2021', terrain_and_nearby_water: 'Terrain and nearby water', rainfall_waterlogging: 'Rainfall / waterlogging', coastal_flooding: 'Coastal flooding' }
 const STATUS_LABEL: Record<string, string> = { assessed: 'assessed', partial: 'partly assessed', not_modelled: 'not modelled here', unavailable: 'unavailable', not_integrated: 'not integrated', not_assessed: 'not assessed' }
-const FACTOR_LABEL: Record<string, string> = { legal_safety: 'Legal safety', accessibility: 'Accessibility', flood_safety: 'Flood safety', growth: 'Growth' }
-const COMPLETENESS_LABEL: Record<string, string> = { district: 'District (from geocoding)', area_m2: 'Parcel area', satellite_series: 'Satellite series', nearest_road: 'Nearest road', nearest_school: 'Nearest school', elevation: 'Elevation', flood_proxy: 'Terrain position', surface_water: 'Surface water', water_features: 'Rivers, canals, tanks', river_flood_hazard: 'River flood model', rera_status: 'RERA registration', land_records: 'Land records' }
+const FACTOR_LABEL: Record<string, string> = { legal_safety: 'Legal safety', accessibility: 'Accessibility', flood_safety: 'Flood safety', growth: 'Area growth' }
+const COMPLETENESS_LABEL: Record<string, string> = { district: 'District (from geocoding)', area_m2: 'Parcel area', satellite_series: 'Satellite series', nearest_road: 'Nearest road', nearest_school: 'Nearest school', elevation: 'Elevation', flood_proxy: 'Terrain position', surface_water: 'Surface water', water_features: 'Rivers, canals, tanks', river_flood_hazard: 'River flood model', area_history: 'Area history 2017-2023', rera_status: 'RERA registration', land_records: 'Land records' }
 const CHANGE_LABEL: Record<string, string> = { no_change: 'no material change', inconclusive: 'inconclusive change signal', construction_growth: 'change consistent with construction', vegetation_loss: 'vegetation loss', vegetation_gain: 'vegetation gain', insufficient_evidence: 'too few observations' }
 /** Whole percent, except one decimal below 10% so 1.49% never shows as "1%" beside a "1.5%". */
 const pct = (value: number | null | undefined) => value == null ? '—' : `${(value * 100).toFixed(value > 0 && value < 0.1 ? 1 : 0)}%`
@@ -78,7 +78,7 @@ function FloodPanel({ indicators, latitude }: { indicators?: FloodIndicators | n
   const cellArea = river?.model_cell_area_m2 ?? (latitude == null ? null : (3 / 3600) * 111320 * Math.cos(latitude * Math.PI / 180) * (3 / 3600) * 110574)
   const parcelArea = river?.parcel_area_m2
   const cells = river?.model_cells_overlapping_parcel
-  return <section className="flood-section"><div className="section-head"><div><div className="section-label">FLOOD EVIDENCE · NOT USED IN ANY SCORE OR PRICE</div><h2>{floodHeadline(indicators)}</h2></div><span className="completeness">No overall flood score or safety percentage: mechanisms that are not assessed are unknown, not safe.</span></div>
+  return <section className="flood-section"><div className="section-head"><div><div className="section-label">FLOOD EVIDENCE · RED FLAGS ONLY, NO FLOOD SCORE OR PRICE</div><h2>{floodHeadline(indicators)}</h2></div><span className="completeness">No overall flood score or safety percentage: mechanisms that are not assessed are unknown, not safe.</span></div>
     <table className="flood-glance"><tbody>{floodGlance(indicators).map(line => <tr key={line.mechanism}><th>{MECHANISM_LABEL[line.mechanism] || line.mechanism}</th><td><span className={`factor-badge ${line.status}`}>{STATUS_LABEL[line.status] || line.status}</span></td><td>{line.text}</td></tr>)}</tbody></table>
     <details className="flood-details"><summary>Scenarios, sources and method</summary>
       {river && river.scenarios?.length > 0 && <div className="flood-table-wrap"><table className="flood-table"><caption>Modelled river flooding by return period · {river.dataset} · {river.resolution}</caption><thead><tr><th>Scenario</th><th>Annual exceedance probability</th><th>Parcel flooded</th><th>Max depth</th><th>Mean depth</th><th>Parcel + {river.surroundings_m || 500} m flooded</th></tr></thead><tbody>{river.scenarios.map(s => <tr key={s.return_period_years}><td>1-in-{s.return_period_years} years</td><td>{aep(s.return_period_years)}</td><td>{s.flooded_area_m2 > 0 ? `${pct(s.flooded_share_of_parcel)} (${Math.round(s.flooded_area_m2).toLocaleString()} m²)` : 'none modelled'}</td><td>{s.max_depth_m == null ? '—' : `${s.max_depth_m} m`}</td><td>{s.mean_depth_m == null ? '—' : `${s.mean_depth_m} m`}</td><td>{pct(s.surroundings_flooded_share)}</td></tr>)}</tbody></table></div>}
@@ -92,12 +92,52 @@ function FloodPanel({ indicators, latitude }: { indicators?: FloodIndicators | n
   </section>
 }
 
+const CLASS_LABEL: Record<string, string> = { built: 'built area', crops: 'crops', trees: 'trees', rangeland: 'rangeland', bare: 'bare ground', water: 'water', flooded_vegetation: 'flooded vegetation', snow_ice: 'snow / ice' }
+
+/** "crops 2017–2021, then built area 2022–2023": the plot's own class each year, with runs collapsed. */
+function plotStory(years: NonNullable<LandCoverHistory['parcel']>) {
+  const runs: { cls: string; from: number; to: number }[] = []
+  for (const y of years) {
+    const last = runs[runs.length - 1]
+    if (last && last.cls === y.dominant && last.to === y.year - 1) last.to = y.year
+    else runs.push({ cls: y.dominant, from: y.year, to: y.year })
+  }
+  return runs.map(r => `${CLASS_LABEL[r.cls] || r.cls} ${r.from === r.to ? r.from : `${r.from}–${r.to}`}`).join(', then ')
+}
+
+/** What the buy / wait call rests on: red flags, the area's development history, and what TerraScope cannot check. */
+function DecisionPanel({ record, growth }: { record: ParcelRecord; growth?: FactorAssessment }) {
+  const history = record.land_cover_history
+  const flags = record.verdict?.red_flags || []
+  const checks = record.verdict?.pre_purchase_checks
+  const share = (value: number | null) => value == null ? null : Number((value * 100).toFixed(1))
+  const data = (history?.surroundings || []).map(r => ({ year: String(r.year), near: share(r.built_share_within_1km), far: share(r.built_share_1_to_3km) }))
+  const headline = growth && ['indicative', 'built_out'].includes(growth.status) ? growth.basis.split(':')[0] : 'No area history in this report'
+  return <section className="decision-section">
+    <div>
+      <div className="section-label">AREA HISTORY · WHAT THE BUY / WAIT CALL RESTS ON</div>
+      <h2>{headline}</h2>
+      {flags.length > 0 && <div className="red-flags" role="alert"><strong><TriangleAlert size={14} /> Red flags: don’t buy unless these are explained</strong><ul>{flags.map(flag => <li key={flag}>{flag}</li>)}</ul></div>}
+      {data.length > 1 ? <div className="chart-wrap history-chart"><ResponsiveContainer width="100%" height={210}><LineChart data={data}><CartesianGrid stroke="#25313a" vertical={false} /><XAxis dataKey="year" stroke="#71808b" tickLine={false} axisLine={false} /><YAxis domain={[0, 100]} stroke="#71808b" tickLine={false} axisLine={false} unit="%" width={44} /><Tooltip contentStyle={{ background: '#11191d', border: '1px solid #2d3b42' }} formatter={value => `${value}%`} /><Line type="monotone" dataKey="near" stroke="#b8f36a" strokeWidth={2} dot={{ r: 3 }} name="Built up within 1 km" connectNulls={false} /><Line type="monotone" dataKey="far" stroke="#77d8ff" strokeWidth={2} dot={{ r: 3 }} name="Built up 1–3 km away" connectNulls={false} /></LineChart></ResponsiveContainer></div>
+        : <p className="muted">{history ? `Area history unavailable: ${history.error || 'too few years were classified around the plot.'}` : 'This report was made before TerraScope read the area history. Analyse the same boundary again to add it.'}</p>}
+      {data.length > 1 && <p className="history-legend"><span><i className="dot near" /> built up within 1 km of the plot</span><span><i className="dot far" /> 1–3 km away</span></p>}
+      {history?.parcel?.length ? <p className="muted window-note"><strong>The plot itself:</strong> {plotStory(history.parcel)}.</p> : null}
+      {data.length > 1 && <p className="muted window-note">{history?.dataset || 'Annual land cover'}, 10 m, one map a year. A modelled classification: a single year can be off, so the decision uses the trend over every year. It shows building on the ground, not prices or approvals.</p>}
+    </div>
+    <div>
+      <div className="section-label">BEFORE YOU PAY</div>
+      {checks == null ? <p className="muted">This evaluation predates the checklist. Re-evaluate the report to list it.</p> : checks.length ? <ul className="checklist">{checks.map(check => <li key={check}>{check}</li>)}</ul> : <p className="muted">Nothing outstanding.</p>}
+      <p className="field-hint">TerraScope cannot read land records, so title, encumbrance and approvals are never verified here. Get them from the sub-registrar office and the seller.</p>
+    </div>
+  </section>
+}
+
 function Bar({ label, value, color, status }: { label: string; value: number | null; color: string; status?: string }) {
   const available = typeof value === 'number'
   return <div className={`score-line${available ? '' : ' unassessed'}`}>
     <div><span>{label}</span><strong>{available ? value : status === 'partial' ? 'Partly assessed' : 'Not scored'}</strong></div>
     <div className="bar"><i style={{ width: available ? `${Math.max(0, Math.min(100, value))}%` : '0%', background: color }} /></div>
-    {status && status !== 'assessed' && <small className="score-status">{status === 'indicative' ? 'indicative only' : status === 'partial' ? 'evidence shown · not scored' : 'no supporting evidence'}</small>}
+    {status && status !== 'assessed' && <small className="score-status">{status === 'indicative' ? 'indicative only' : status === 'partial' ? 'evidence shown · not scored' : status === 'built_out' ? 'already built out · not scored' : 'no supporting evidence'}</small>}
   </div>
 }
 
@@ -175,7 +215,7 @@ function ValuationSection({ valuation, property, record }: { valuation: Valuatio
 function AccessibilityDetails({ factor }: { factor: FactorAssessment }) {
   const d = factor.details
   if (!d?.road) return null
-  return <table className="flood-table access-table"><thead><tr><th>Feature</th><th>Straight-line distance</th><th>Measured from</th><th>Your limit</th><th>Sub-score</th><th>Weight</th></tr></thead><tbody>{([['Road', d.road], ['School', d.school]] as const).map(([name, part]) => <tr key={name}><td>{name}</td><td>{part.distance_m == null ? '—' : m(part.distance_m)}{part.measured_from === 'parcel boundary' && part.centroid_distance_m != null ? ` (${m(part.centroid_distance_m)} from centroid)` : ''}</td><td>{part.measured_from}</td><td>{m(part.cap_m)}</td><td>{part.sub_score == null ? 'left out' : Math.round(part.sub_score)}</td><td>×{part.weight}</td></tr>)}</tbody></table>
+  return <div className="flood-table-wrap"><table className="flood-table access-table"><thead><tr><th>Feature</th><th>Straight-line distance</th><th>Measured from</th><th>Your limit</th><th>Sub-score</th><th>Weight</th></tr></thead><tbody>{([['Road', d.road], ['School', d.school]] as const).map(([name, part]) => <tr key={name}><td>{name}</td><td>{part.distance_m == null ? '—' : m(part.distance_m)}{part.measured_from === 'parcel boundary' && part.centroid_distance_m != null ? ` (${m(part.centroid_distance_m)} from centroid)` : ''}</td><td>{part.measured_from}</td><td>{m(part.cap_m)}</td><td>{part.sub_score == null ? 'left out' : Math.round(part.sub_score)}</td><td>×{part.weight}</td></tr>)}</tbody></table></div>
 }
 
 function LegalEvidence({ record, onChanged }: { record: ParcelRecord; onChanged: () => Promise<void> }) {
@@ -241,7 +281,7 @@ export function Report({ initialSnapshot, initialSettings, valuation, property, 
   const scored = factors.filter(f => f.score != null)
   const unscored = factors.filter(f => f.score == null && f.weight_pct > 0)
   const satelliteIsDemo = evidence.some(item => (item.source_type || '') === 'satellite' && /synthetic/i.test(`${item.source_reference || ''} ${item.title || ''}`))
-  const tabMatch: Record<EvidenceTab, string[]> = { Satellite: ['satellite'], Infrastructure: ['openstreetmap', 'infrastructure'], 'Flood indicators': ['jrc_gsw', 'jrc_flood_hazard', 'copernicus_dem', 'osm_water', 'open_elevation', 'elevation'], RERA: ['maharera_seed', 'rera'], 'Uploaded Documents': ['document', 'user_upload'], 'Derived Scores': ['derived'] }
+  const tabMatch: Record<EvidenceTab, string[]> = { Satellite: ['satellite', 'land_cover'], Infrastructure: ['openstreetmap', 'infrastructure'], 'Flood indicators': ['jrc_gsw', 'jrc_flood_hazard', 'copernicus_dem', 'osm_water', 'open_elevation', 'elevation'], RERA: ['maharera_seed', 'rera'], 'Uploaded Documents': ['document', 'user_upload'], 'Derived Scores': ['derived'] }
   const visibleEvidence = evidence.filter(item => tabMatch[activeEvidenceTab].some(type => (item.source_type || '').toLowerCase().includes(type)))
   const fields = record.metadata.data_completeness_fields
   const fieldCount = fields ? Object.keys(fields).length : 12
@@ -274,14 +314,15 @@ export function Report({ initialSnapshot, initialSettings, valuation, property, 
   return <main className="report-shell">
     <header className="report-topbar"><button className="back-button" onClick={onBack}><ArrowLeft size={16} /> Workspace</button><div className="wordmark"><span className="mark"><Sparkles size={14} /></span> TERRASCOPE</div><div className="report-tools"><button className="quiet-button" onClick={() => setHistoryOpen(true)}><History size={15} /> Scenario history</button><button className="quiet-button" onClick={() => setScenario(true)}><FlaskConical size={15} /> Explore scenarios</button><button className="quiet-button" onClick={() => window.print()}><Printer size={15} /> Print</button></div></header>
     <div className="report-content">
-      <section className="report-heading"><div><div className="eyebrow"><span className="pulse" /> ANALYSIS SNAPSHOT · {(record.metadata.analysis_snapshot_id || '—').slice(0, 8)}</div><h1>{placeName(address)}</h1>{address && <p className="full-address">{address}</p>}<p>{record.geometry_metadata?.area_acres == null ? 'Area unavailable' : `${record.geometry_metadata.area_acres.toFixed(2)} acres`} <span>·</span> {record.metadata.analysis_date_from || '—'} — {record.metadata.analysis_date_to || '—'}</p></div><div className={`verdict-badge ${verdict.toLowerCase()}`}><span>INVESTMENT RECOMMENDATION</span><strong>{insufficient ? 'INSUFFICIENT EVIDENCE' : verdict}</strong><small>{insufficient ? `recommendation withheld · scores cover ${assessedWeight}% of your weighting` : 'rule-based verdict'}</small></div></section>
+      <section className="report-heading"><div><div className="eyebrow"><span className="pulse" /> ANALYSIS SNAPSHOT · {(record.metadata.analysis_snapshot_id || '—').slice(0, 8)}</div><h1>{placeName(address)}</h1>{address && <p className="full-address">{address}</p>}<p>{record.geometry_metadata?.area_acres == null ? 'Area unavailable' : `${record.geometry_metadata.area_acres.toFixed(2)} acres`} <span>·</span> {record.metadata.analysis_date_from || '—'} — {record.metadata.analysis_date_to || '—'}</p></div><div className={`verdict-badge ${verdict.toLowerCase()}`}><span>BUY NOW OR WAIT?</span><strong>{insufficient ? 'NO DECISION YET' : verdict}</strong><small>{!record.verdict ? 'not evaluated yet' : insufficient ? 'see what is missing below' : record.verdict.red_flags?.length ? 'red flags in the plot’s history' : 'rule-based · check title before paying'}</small></div></section>
+      <DecisionPanel record={record} growth={factorOf('growth')} />
       {olderEvaluation && <div className="older-note" role="note"><TriangleAlert size={15} /><span>This saved evaluation was made with an earlier version. Some of its wording was wrong (for example, it said your distance limits were ignored; they were applied). The evidence is unchanged.</span><button className="quiet-button" disabled={busy} onClick={() => rerun(settings).catch(() => undefined)}><RefreshCw size={14} /> {busy ? 'Re-evaluating…' : 'Re-evaluate with current methods'}</button></div>}
       <ValuationSection valuation={valuation} property={property} record={record} />
       <div className="section-label suitability-divider">SUITABILITY FOR YOU — scored from your weights, independent of the market price above</div>
-      <section className="score-strip"><Bar label="Legal Safety" value={breakdown?.legal_safety_score ?? null} color="#77d8ff" status={factorOf('legal_safety')?.status} /><Bar label="Accessibility" value={breakdown?.accessibility_score ?? null} color="#f8c15c" status={factorOf('accessibility')?.status} /><Bar label="Flood Safety" value={breakdown?.flood_safety_score ?? null} color="#d49aff" status={factorOf('flood_safety')?.status} /><Bar label="Growth" value={breakdown?.growth_score ?? null} color="#b8f36a" status={factorOf('growth')?.status} /></section>
+      <section className="score-strip"><Bar label="Legal Safety" value={breakdown?.legal_safety_score ?? null} color="#77d8ff" status={factorOf('legal_safety')?.status} /><Bar label="Accessibility" value={breakdown?.accessibility_score ?? null} color="#f8c15c" status={factorOf('accessibility')?.status} /><Bar label="Flood Safety" value={breakdown?.flood_safety_score ?? null} color="#d49aff" status={factorOf('flood_safety')?.status} /><Bar label="Area growth" value={breakdown?.growth_score ?? null} color="#b8f36a" status={factorOf('growth')?.status} /></section>
       <section className="evidence-status"><div className="section-head"><div><div className="section-label">EVIDENCE BEHIND EACH FACTOR</div><h2>What is measured, and what is scored</h2></div></div>
         <div className="coverage-figures"><div><span>SCORED</span><strong>{assessedWeight}%</strong><small>of your weighting has a score{scored.length ? ` (${scored.map(f => FACTOR_LABEL[f.factor] || f.factor).join(', ')})` : ''}</small></div><div><span>MEASURED</span><strong>{collectedCount} of {fieldCount}</strong><small>evidence fields collected for this parcel</small></div></div>
-        <details className="denominators"><summary>How these two figures are counted</summary><p><strong>Scored</strong> adds up the weights of factors that have a score. {unscored.length ? `${unscored.map(f => `${FACTOR_LABEL[f.factor] || f.factor} (${f.weight_pct}%)`).join(', ')} ${unscored.length === 1 ? 'has' : 'have'} no score, so no BUY / WAIT / AVOID is given; unscored factors are never filled in with 50 or re-weighted away.` : 'Every weighted factor has a score.'}</p><p><strong>Measured</strong> counts the evidence fields TerraScope tries to collect for every parcel ({record.metadata.data_completeness_pct ?? '—'}%). A field can be collected without being enough to score a factor: flood evidence is measured but not combined into a score.</p>{fields && <ul className="field-checks">{Object.entries(fields).map(([key, ok]) => <li key={key} className={ok ? 'ok' : 'missing'}>{ok ? '✓' : '—'} {COMPLETENESS_LABEL[key] || key}</li>)}</ul>}</details>
+        <details className="denominators"><summary>How these two figures are counted</summary><p><strong>Scored</strong> adds up the weights of factors that have a score. {unscored.length ? `${unscored.map(f => `${FACTOR_LABEL[f.factor] || f.factor} (${f.weight_pct}%)`).join(', ')} ${unscored.length === 1 ? 'has' : 'have'} no score and ${unscored.length === 1 ? 'is' : 'are'} never filled in with 50. The composite is shared over the scored factors only. Unscored legal safety becomes the checks before you pay, and flood history can raise red flags. An unscored location factor (area growth, accessibility) withholds the decision.` : 'Every weighted factor has a score.'}</p><p><strong>Measured</strong> counts the evidence fields TerraScope tries to collect for every parcel ({record.metadata.data_completeness_pct ?? '—'}%). A field can be collected without being enough to score a factor: flood evidence is measured but not combined into a score.</p>{fields && <ul className="field-checks">{Object.entries(fields).map(([key, ok]) => <li key={key} className={ok ? 'ok' : 'missing'}>{ok ? '✓' : '—'} {COMPLETENESS_LABEL[key] || key}</li>)}</ul>}</details>
         <div className="factor-list">{[...factors].sort((a, b) => Number(b.score != null) - Number(a.score != null)).map(f => <div className={`factor ${f.status}`} key={f.factor}><div className="factor-head"><strong>{FACTOR_LABEL[f.factor] || f.factor.replace(/_/g, ' ')}</strong><span className={`factor-badge ${f.status}`}>{f.score == null ? (f.status === 'partial' ? 'partly assessed · not scored' : f.status.replace(/_/g, ' ')) : `${f.score} · ${f.status}`}</span><em>{f.weight_pct}% weight</em></div>
           <p>{f.factor === 'flood_safety' && record.flood_indicators?.components?.length ? `${floodHeadline(record.flood_indicators)}. The measurements are in the flood section below.` : f.basis}</p>
           {f.factor === 'accessibility' && <AccessibilityDetails factor={f} />}

@@ -46,7 +46,8 @@ def test_accessibility_preferences_change_the_score_and_nothing_is_recollected()
     assert wide["score_breakdown"]["accessibility_score"] == 90.25  # the saved report's figure
     assert tight["score_breakdown"]["accessibility_score"] < 50
     contributions = {c["factor"]: c["contribution"] for c in tight["score_breakdown"]["weighted_contributions"]}
-    assert contributions["accessibility"] < 22.56
+    # The only scored factor carries all of the scored weight.
+    assert contributions["accessibility"] == tight["score_breakdown"]["accessibility_score"]
     # Same immutable evidence: evaluation never touches collected sections.
     for section in ("satellite", "infrastructure", "flood_indicators", "geometry", "metadata"):
         assert tight[section] == wide[section] == VIT[section]
@@ -125,10 +126,22 @@ def test_old_v1_change_label_is_not_restated_as_a_seasonal_finding() -> None:
     """Regression: re-evaluating the v1 snapshot cited 'no change between same-season images' - v1 compared no seasons."""
     result = evaluate_snapshot(copy.deepcopy(VIT), SETTINGS)
     growth = _factor(result, "growth")
-    assert "superseded v1 trend method" in growth["basis"] and "same-season" not in growth["basis"]
+    assert "same-season" not in growth["basis"] and "Analyse the same boundary again" in growth["basis"]
     assert not any(c["evidence_id"].endswith(":statistical-change") for c in result["verdict"]["citations"])
 
 
 def test_legal_names_the_state_from_the_boundary_when_geocoding_gave_none() -> None:
     legal = _factor(evaluate_snapshot(copy.deepcopy(VIT), SETTINGS), "legal_safety")
     assert "(Tamil Nadu)" in legal["basis"] and "RERA authority for Tamil Nadu" in legal["limitations"]
+
+
+@pytest.mark.parametrize("first_share, status", [(0.63, "indicative"), (0.98, "built_out")])
+def test_every_area_growth_status_passes_schema_validation(first_share: float, status: str) -> None:
+    """Regression: a built-out area (central Chennai) failed schema validation on every evaluation."""
+    trend = {"first_year": 2017, "first_share": first_share, "last_year": 2023, "last_share": first_share,
+             "years_used": 7, "slope_pts_per_year": 0.0}
+    snapshot = {**copy.deepcopy(VIT), "land_cover_history": {"status": "assessed", "trend_within_1km": trend,
+                                                             "trend_1_to_3km": trend, "parcel": []}}
+    result = evaluate_snapshot(snapshot, SETTINGS)  # schema-validated inside
+    assert _factor(result, "growth")["status"] == status
+    assert result["verdict"]["recommendation"] in {"BUY", "WAIT"}

@@ -1,6 +1,6 @@
 # TerraScope
 
-TerraScope is a local-first geospatial intelligence platform for land due diligence. You search a place, draw the parcel boundary, and it collects one immutable evidence snapshot — satellite NDVI/NDBI change, OpenStreetMap infrastructure distances, centroid elevation, RERA seed matches, and any documents you upload — then evaluates that fixed snapshot against your investor profile to produce a BUY / WAIT / AVOID verdict with visible weights and citations.
+TerraScope is a local-first geospatial intelligence platform for land due diligence. You search a place, draw the parcel boundary, and it collects one immutable evidence snapshot — satellite NDVI/NDBI change, OpenStreetMap infrastructure distances, centroid elevation, RERA seed matches, and any documents you upload — then evaluates that fixed snapshot against your investor profile to answer one question: **buy now or wait?** The answer rests on the history of the plot and the land around it: how fast the surroundings have been built up since 2017, how reachable the plot is, and red flags such as frequent river flooding or a likely tank bed. Title cannot be verified, so every answer comes with a "before you pay" checklist.
 
 Collection and evaluation are deliberately separate: moving a slider or switching profiles re-runs only the fast evaluation layer and never re-collects evidence. See [docs/architecture.md](docs/architecture.md).
 
@@ -59,6 +59,7 @@ crossing a state border lists every state it touches, with its share.
 **What works everywhere in India, with no regional download:**
 
 - Sentinel-2 land cover.
+- Annual land cover 2017-2023 around the plot (the area's development history).
 - JRC river flood hazard maps.
 - JRC Global Surface Water.
 - Copernicus DEM elevation.
@@ -84,6 +85,7 @@ disk space and reuses any extract and tiles already on disk.
 | `regions\<slug>\osm.sqlite` | OpenStreetMap via the Geofabrik India zone extract, ODbL 1.0 | accessibility; rivers, canals, tanks |
 | `rasters\gsw\` | JRC Global Surface Water v1.4 (1984-2021), Copernicus, "Source: EC JRC/Google" | surface water seen inside the parcel and within 500 m |
 | `rasters\dem\` | Copernicus DEM GLO-30 via Planetary Computer, Copernicus DEM licence | elevation; height above the nearest mapped water |
+| `flood-indicators-cache.json` | derived from Impact Observatory / Esri 10 m Annual Land Use Land Cover v2 (CC BY 4.0, Planetary Computer), and from JRC GSW / Copernicus DEM | per-parcel results, 30 days: land cover per year on the plot, within 1 km and 1-3 km |
 | `flood-hazard\` | JRC global river flood hazard maps v2.1.2, CC BY 4.0 (doi:10.2905/JRC.VD32YWG) | tile index and cached per-parcel results |
 | `places\places.sqlite` | GeoNames gazetteer and postal codes for India, CC BY 4.0 (credit GeoNames) | search suggestions while typing (no web geocoder is called while typing) |
 | `satellite\sentinel2-cache.sqlite` | derived from Sentinel-2 L2A (Planetary Computer) | reused scene measurements (immutable) and catalogue searches (refreshed after 6 h for recent windows) |
@@ -189,6 +191,13 @@ Prediction quality: **not yet validated**.
 - **Accessibility** — straight-line distances to OpenStreetMap geometry, from the
   drawn boundary (and from the centroid, shown alongside). Your road and school
   distance limits set where each sub-score reaches 0. Proximity is not legal access.
+- **Area growth** — the built-up share of the land within 1 km of the plot (or 1-3 km away, if the inner
+  ring was already built out), 2017-2023, from a 10 m modelled land-cover map. The trend is scored: +2 points
+  a year scores 100 (a rule, not calibrated). It measures building on the ground, not prices or approvals.
+- **Buy / wait / avoid** — BUY at a composite of 75 or more, otherwise WAIT. AVOID only on hard evidence:
+  proven legal risk, modelled river flooding over a quarter of the plot at 1-in-100 or more often, or open
+  water seen on the plot in at least 10% of satellite passes (a likely tank or lake bed). Unverified title
+  never blocks the answer and never counts as clear; it is the "before you pay" checklist.
 - **Satellite change** — one Sentinel-2 scene per season anchor across the whole
   window, compared same season against same season a year apart. The result is
   "no material change", a change class, or "inconclusive", with no confidence
