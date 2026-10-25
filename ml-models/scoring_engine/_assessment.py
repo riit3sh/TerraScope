@@ -367,8 +367,8 @@ def assess_accessibility(
 
     def describe(name: str, part: dict[str, Any]) -> str:
         if part["distance_m"] is None:
-            return (f"{name}: {part['measured_from']}, so it scores 0 against your {part['cap_m']:,.0f} m limit"
-                    if part["sub_score"] is not None else f"{name}: not found, so it is left out")
+            return (f"{name}: {part['measured_from']}, so it is left out of the score"
+                    if part["measured_from"].startswith("none mapped") else f"{name}: not found, so it is left out")
         centroid = (f" ({_metres(part['centroid_distance_m'])} from the centroid)"
                     if part["measured_from"] == "parcel boundary" and part["centroid_distance_m"] is not None else "")
         return (f"{name} {_metres(part['distance_m'])} from the {part['measured_from']}{centroid}: "

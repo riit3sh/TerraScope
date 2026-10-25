@@ -1,6 +1,6 @@
 # TerraScope project checklist
 
-The single current progress checklist. Last updated 2026-10-25 (decision clarity and Andhra Pradesh data, J-60; area-development display fix and dataset audit, J-59; land prices removed, J-58; completion pass, J-57; buy/wait decision, J-56).
+The single current progress checklist. Last updated 2026-10-26 (due diligence gate, charts, satellite basemap, news, claims, speed, J-61; decision clarity and Andhra Pradesh data, J-60; area-development display fix and dataset audit, J-59; land prices removed, J-58; completion pass, J-57; buy/wait decision, J-56).
 
 Rules: an item is "verified" only when a recorded check exercised the real behaviour (real services, real
 data, or the browser), not because code exists, a mocked test passes or a page loads. "Implemented" without
@@ -13,6 +13,14 @@ only read.
 
 ## 1. Fixed and verified
 
+- [x] **BUY needs verified due diligence (J-61)**: strong location + unverified legal = WAIT with the pending checks;
+  "what would change this" on every answer; unmapped roads/schools are unknown, not absent.
+- [x] **Plain-language charts (J-61)**: titles, axes, findings and "What do these graphs mean?" explainers.
+- [x] **Satellite basemap (J-61)**: EOxCloudless 2023, attributed, labelled as 2023 orientation imagery.
+- [x] **Development claims (J-61)**: recorded per parcel, never scored, never assumed complete.
+- [x] **Speed (J-61)**: report list 149 → 24 ms; first analysis after restart 8.8 → 2.4 s.
+- [ ] **Local news (J-61)**: implemented and tested with a fake provider; live GDELT mostly rate-limited (HTTP 429)
+  during testing, so a live results case is not yet demonstrated.
 - [x] **Decision clarity (J-60)**: BUY / WAIT / WALK AWAY / INSUFFICIENT DATA in buyer words; a plain explanation
   first; strongest positives and negatives; evidence completeness; nearby facilities with distances; an established,
   dense area is described but not scored for or against. Rules in [DECISION_RULES.md](DECISION_RULES.md).

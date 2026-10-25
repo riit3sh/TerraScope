@@ -19,7 +19,7 @@ export interface ScoreBreakdown { legal_safety_score: number|null; accessibility
 export interface Finding { area: string; finding: string; assessment: 'red_flag'|'caution'|'ok'|'unknown'; basis: 'measured'|'modelled'|'user_provided'|'not_verified'|'unavailable'; source?: string|null; evidence_id?: string|null; as_of?: string|null; next_step: string }
 export interface Citation { claim: string; source_type: string; source_reference: string; evidence_id?: string|null; location?: string|null }
 /** explanation_source: 'deterministic' = TerraScope's rule-based summary; 'ai' = an AI call succeeded. Absent on older reports (always deterministic then). */
-export interface Verdict { recommendation: Recommendation; confidence: number|null; reasoning_summary: string; explanation_source?: 'deterministic'|'ai'|null; citations: Citation[]; red_flags?: string[]|null; pre_purchase_checks?: string[]|null; findings?: Finding[]|null }
+export interface Verdict { recommendation: Recommendation; confidence: number|null; reasoning_summary: string; explanation_source?: 'deterministic'|'ai'|null; citations: Citation[]; red_flags?: string[]|null; pre_purchase_checks?: string[]|null; findings?: Finding[]|null; would_change?: string[]|null }
 export type DocType = 'patta_chitta'|'encumbrance_certificate'|'sale_deed'|'layout_or_building_approval'|'fmb_sketch'|'other'
 export const DOC_TYPE_LABEL: Record<DocType, string> = { patta_chitta: 'Patta / chitta', encumbrance_certificate: 'Encumbrance certificate', sale_deed: 'Sale deed', layout_or_building_approval: 'Layout / building approval', fmb_sketch: 'FMB / survey sketch', other: 'Other' }
 export interface LandDetails { state?: string|null; district?: string|null; taluk?: string|null; village?: string|null; survey_number?: string|null; subdivision?: string|null }
@@ -60,3 +60,15 @@ export function listSavedReports() { return request<{ reports: SavedReport[] }>(
 export function getSavedParcel(parcelId: string) {
   return request<{ parcel_id: string; analysis_snapshot_id: string; evidence_snapshot: ParcelRecord; uploaded_documents: { source_reference: string }[]; documents?: DocumentInfo[]; land_details?: LandDetails|null; latest_evaluation: ParcelRecord | null }>(`/api/v1/parcels/${encodeURIComponent(parcelId)}`)
 }
+
+/** Local news: discovery evidence only. 'unavailable' means the search failed, never "no news". */
+export interface NewsItem { title: string; topic: 'hazards'|'legal_planning'|'development'; topic_label: string; publisher: string; url: string; published: string|null; language: string|null; outlets: number; other_urls: string[]; verification: 'official_source'|'corroborated'|'single_report'; speculative: boolean; stale: boolean }
+export interface AreaNews { status: 'results'|'no_results'|'unavailable'|'not_searched'; provider: string; coverage: string; retrieved_at: string; searched_from: string; place: { locality: string|null; variants: string[]; district: string|null }; queries: { topic: string; query: string }[]; items: NewsItem[]; limitations: string; reason?: string; cached: boolean; cache_age_s?: number }
+export function getAreaNews(parcelId: string, refresh = false) { return request<AreaNews>(`/api/v1/parcels/${encodeURIComponent(parcelId)}/area-news${refresh ? '?refresh=true' : ''}`) }
+
+export type ProjectType = 'road'|'transport'|'industrial'|'residential_layout'|'school'|'hospital'|'commercial'|'other'
+export interface DevelopmentClaimInput { claim: string; project_type: ProjectType; source: 'resident'|'broker'|'seller'|'news'|'official'|'other'; location_text?: string|null; distance_m?: number|null; expected_date?: string|null; evidence_url?: string|null; checked_on?: string|null }
+export interface DevelopmentClaim extends DevelopmentClaimInput { id: number; recorded_at: string; verification: 'user_provided'|'link_provided'|'official_link_provided'; effect: string }
+export function listClaims(parcelId: string) { return request<{ claims: DevelopmentClaim[] }>(`/api/v1/parcels/${encodeURIComponent(parcelId)}/claims`).then(r => r.claims) }
+export function addClaim(parcelId: string, claim: DevelopmentClaimInput) { return request<DevelopmentClaim>(`/api/v1/parcels/${encodeURIComponent(parcelId)}/claims`, { method: 'POST', body: JSON.stringify(claim) }) }
+export function deleteClaim(parcelId: string, id: number) { return request<{ deleted: number }>(`/api/v1/parcels/${encodeURIComponent(parcelId)}/claims/${id}`, { method: 'DELETE' }) }

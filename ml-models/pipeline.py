@@ -232,6 +232,7 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         "citations": [],
         "red_flags": result["red_flags"],
         "pre_purchase_checks": result["pre_purchase_checks"],
+        "would_change": result["would_change"],
         "findings": build_findings(evaluated, result["factors"]),
     }
     # Every figure the assessment relies on, cited to the evidence row that holds it. No LLM needed.
@@ -270,6 +271,7 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         "citations": citations,
         "red_flags": result["red_flags"],
         "pre_purchase_checks": result["pre_purchase_checks"],
+        "would_change": result["would_change"],
         "findings": evaluated["verdict"]["findings"],
     }
     _validate_snapshot(evaluated)

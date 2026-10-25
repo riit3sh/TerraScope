@@ -1565,3 +1565,66 @@ the reason the approach changed.
   Whether a BUY should need at least two scored location factors or full flood coverage is a product decision, not
   made here.
 - **Status:** fixed and verified.
+
+## J-61 BUY needs due diligence; plain-language charts; satellite basemap; local news; claims; measured speed-ups
+
+- **Date / problem:** 2026-10-26.
+  - A strong location gave BUY although title, encumbrance, zoning and approvals were unverified (Vijayawada BUY 96).
+  - An unmapped school scored 0, as if confirmed absent (Senjeri: accessibility 32).
+  - The charts assumed the reader knew NDVI and NDBI.
+  - There was no satellite view, no local news, and no way to record a resident's information.
+  - The report list parsed every snapshot (N+1), and the first analysis after a restart waited 5 s for the India boundary.
+- **Changes:**
+  - **Decision** (`_verdict.py`): BUY only with location score ≥ 75 AND verified legal checks (matched land records).
+    Otherwise a strong location is WAIT, naming the pending checks. Every answer lists `verdict.would_change`. The
+    score is labelled "location score, rule-based, not a probability". Past development is labelled 2017-2023 history.
+  - **Unmapped is not absent** (`scoring.py`, `findings.py`): a road or school OpenStreetMap has not mapped is left out
+    of the score; the report says "not confirmed absent" and asks for a local check. If nothing is mapped,
+    accessibility is unknown and the answer is INSUFFICIENT DATA.
+  - **Charts** (`Report.tsx`): titles, plain subtitles, axis labels and units, a one-sentence finding (inconclusive
+    spelled out), "What does this graph mean?" explainers (NDVI, NDBI, land cover, change detection, cloud, season,
+    resolution, mixed pixels), and a too-few-images note.
+  - **Satellite basemap** (`ParcelWorkspace.tsx`): "Map" or "Satellite (2023)" from EOxCloudless 2023 (Sentinel-2
+    composite, 10 m, CC BY-NC-SA 4.0), with attribution. A note says it is 2023 imagery, not today's and not analysis
+    data, and failed tiles show a message with no substitute imagery. Esri World Imagery was not used: its licence
+    terms for this use are unclear.
+  - **Local news** (`backend-api/routers/area_intel.py`): a provider interface with GDELT DOC 2.0 (free, no key) as
+    the only provider.
+    - Three searches (hazards, legal/planning, development), each requiring the locality (with spelling variants) and
+      the district.
+    - Duplicates and syndicated copies are merged. Each event is labelled official source, 2+ outlets or single
+      report, with speculative and older-than-2-years flags.
+    - Searches are spaced at 6 s, with a 15 s back-off after HTTP 429. A per-locality lock means concurrent requests
+      search once.
+    - Results are cached 24 h with their retrieval time; failures are never cached. News never changes the decision.
+  - **Development claims:** a per-parcel table and form (claim, type, source, distance, expected date as claimed,
+    evidence link, date checked). Claims stay "not verified", with an effect sentence that assumes nothing is
+    completed.
+  - **Performance:** the report list is one SQL query reading only the fields shown, with indexes on per-parcel
+    lookups. The India state polygons get a WKB sidecar tied to the source's size and modification time, preloaded in
+    the background at start-up. Geocoding is kept on disk (30 days, successes only).
+- **Measurements (same machine):**
+  - Report list (95 reports): 149 ms → 24 ms median.
+  - India boundary load: 4.8 s → 0.31 s.
+  - First analysis after a restart: 8.8 s → 2.4 s. A warm re-analysis is 1.4 s.
+  - Report reopen: 12-22 ms (unchanged).
+- **Verification (2026-10-26, audit copy `backend-audit-2026-10-26.sqlite3`):**
+  - Senjeri re-evaluated: WAIT, location score 90 ("location strong, legal checks pending"; the school is unmapped,
+    not absent; satellite signal inconclusive, explained).
+  - Browser: decision, would-change list, both charts with titles, axes, findings and explainers, the score label,
+    news (no indexed results, cached) and a recorded resident claim. The satellite basemap loads 2023 tiles with the
+    drawn boundary kept and the attribution shown. No sideways page scroll at 375 px.
+  - **Live news:** one successful search (Senjeri + Coimbatore: no indexed results). All other live attempts returned
+    GDELT HTTP 429 and were shown as "unavailable". The results path is verified with a fake provider only.
+  - **Tests:** ml-models 67, data-pipeline 84, backend-api 25, valuation 52, integration 13; frontend type-check and
+    build pass. There is no frontend unit-test runner (none added); tile failure was checked by code only.
+  - **User store:** byte-identical before the normal start. A new backup `backup-2026-10-26` was taken first; the
+    start added the empty `development_claims` and `news_cache` tables and four indexes; all existing rows are
+    identical to the backup.
+- **Limits:**
+  - BUY is unreachable until a land-records source exists (by design).
+  - GDELT is headline-level, rate-limited and has no stated licence page; conflicting reports cannot be detected from
+    headlines.
+  - The 2023 basemap is 10 m; there is no historical imagery picker.
+  - The parcel-result cache is one JSON file (fine at 48 entries, linear in size).
+- **Status:** fixed and verified, except a live news "results" case (blocked by provider rate limiting).

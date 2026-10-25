@@ -53,6 +53,14 @@ explanation. `SATELLITE_DEMO_FALLBACK=false`, so no synthetic imagery is ever su
 | Annual land cover 2017-2023 | yes | 88.2% (2017) to 88.6% (2023) built within 1 km; all 7 years used |
 | Sentinel-2 | yes | 8 observations, no material change |
 
+## Online services used for viewing and discovery (not analysis)
+
+| Service | Used for | Licence / terms | Notes |
+|---|---|---|---|
+| EOxCloudless 2023 (EOX, Sentinel-2 composite) | "Satellite (2023)" basemap in the workspace | CC BY-NC-SA 4.0, free for non-commercial use with attribution; commercial use needs an EOX licence | 10 m, one cloud-free composite for 2023; not today's image; not the analysis data |
+| OpenStreetMap tiles | "Map" basemap | ODbL; OSM tile usage policy (light use) | Heavy or commercial use needs another tile host |
+| GDELT DOC 2.0 | Local news search | Free, no key; no licence page found; asks for at most one request per 5 s | Headline-level metadata; frequently rate-limited (HTTP 429) during testing |
+
 ## Candidate sources for flood, rainfall, terrain and drainage (researched 2026-10-25; none integrated)
 
 | Source | What | Resolution / period | Licence (as found) | Notes |

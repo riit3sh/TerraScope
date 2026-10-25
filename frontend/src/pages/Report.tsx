@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowLeft, FileText, FlaskConical, History, Printer, RefreshCw, Sparkles, TriangleAlert, Upload, X } from 'lucide-react'
-import { DOC_TYPE_LABEL, DocType, evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, uploadEvidence } from '../lib/api'
+import { DOC_TYPE_LABEL, DocType, evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, uploadEvidence, AreaNews, NewsItem, getAreaNews, DevelopmentClaim, DevelopmentClaimInput, ProjectType, listClaims, addClaim, deleteClaim } from '../lib/api'
 
 type EvidenceTab = 'Satellite' | 'Infrastructure' | 'Flood indicators' | 'RERA' | 'Uploaded Documents' | 'Derived Scores'
 
@@ -115,19 +115,22 @@ function DecisionPanel({ record, growth }: { record: ParcelRecord; growth?: Fact
   const headline = growth && ['indicative', 'built_out', 'established'].includes(growth.status) ? growth.basis.split(':')[0] : 'No area history in this report'
   return <section className="decision-section">
     <div>
-      <div className="section-label">AREA HISTORY · WHAT THE BUY / WAIT CALL RESTS ON</div>
+      <div className="section-label">PAST DEVELOPMENT AROUND THE PLOT · 2017-2023 · HISTORICAL, NOT A FORECAST</div>
       <h2>{headline}</h2>
+      {data.length > 1 && <p className="chart-subtitle">Share of land mapped as built-up each year, within 1 km of the plot and 1–3 km away. Each point is one annual map (2017–2023). This is past development; it does not predict future building or prices.</p>}
       {flags.length > 0 && <div className="red-flags" role="alert"><strong><TriangleAlert size={14} /> Red flags: don’t buy unless these are explained</strong><ul>{flags.map(flag => <li key={flag}>{flag}</li>)}</ul></div>}
-      {data.length > 1 ? <div className="chart-wrap history-chart"><ResponsiveContainer width="100%" height={210}><LineChart data={data}><CartesianGrid stroke="#25313a" vertical={false} /><XAxis dataKey="year" stroke="#71808b" tickLine={false} axisLine={false} /><YAxis domain={[0, 100]} stroke="#71808b" tickLine={false} axisLine={false} unit="%" width={44} /><Tooltip contentStyle={{ background: '#11191d', border: '1px solid #2d3b42' }} formatter={value => `${value}%`} /><Line type="monotone" dataKey="near" stroke="#b8f36a" strokeWidth={2} dot={{ r: 3 }} name="Built up within 1 km" connectNulls={false} /><Line type="monotone" dataKey="far" stroke="#77d8ff" strokeWidth={2} dot={{ r: 3 }} name="Built up 1–3 km away" connectNulls={false} /></LineChart></ResponsiveContainer></div>
+      {data.length > 1 ? <div className="chart-wrap history-chart"><ResponsiveContainer width="100%" height={210}><LineChart data={data}><CartesianGrid stroke="#25313a" vertical={false} /><XAxis dataKey="year" stroke="#71808b" tickLine={false} axisLine={false} /><YAxis domain={[0, 100]} stroke="#71808b" tickLine={false} axisLine={false} unit="%" width={52} label={{ value: 'Built-up land (%)', angle: -90, position: 'insideLeft', fill: '#71808b', fontSize: 11 }} /><Tooltip contentStyle={{ background: '#11191d', border: '1px solid #2d3b42' }} formatter={value => `${value}%`} /><Line type="monotone" dataKey="near" stroke="#b8f36a" strokeWidth={2} dot={{ r: 3 }} name="Built up within 1 km" connectNulls={false} /><Line type="monotone" dataKey="far" stroke="#77d8ff" strokeWidth={2} dot={{ r: 3 }} name="Built up 1–3 km away" connectNulls={false} /></LineChart></ResponsiveContainer></div>
         : <p className="muted">{history ? `Area history unavailable: ${history.error || 'too few years were classified around the plot.'}` : 'This report was made before TerraScope read the area history. Analyse the same boundary again to add it.'}</p>}
       {data.length > 1 && <p className="history-legend"><span><i className="dot near" /> built up within 1 km of the plot</span><span><i className="dot far" /> 1–3 km away</span></p>}
       {history?.parcel?.length ? <p className="muted window-note"><strong>The plot itself:</strong> {plotStory(history.parcel)}.</p> : null}
       {data.length > 1 && <p className="muted window-note">{history?.dataset || 'Annual land cover'}, 10 m, one map a year. A modelled classification: a single year can be off, so the decision uses the trend over every year. It shows building on the ground, not prices or approvals.</p>}
+      {data.length > 1 && <details className="explain"><summary>What does this graph mean?</summary><p><strong>Land-cover map:</strong> a computer model looks at each year's satellite images and labels every 10 m square of ground as built-up, crops, trees, water and so on. The graph shows what share of the land around the plot was labelled built-up each year.</p><p><strong>Reading it:</strong> a rising line means more land around the plot was built on over 2017–2023; a flat line high up means an already developed neighbourhood; a flat line near the bottom means little building nearby. Example: 63% → 73% within 1 km means roughly one more tenth of the surrounding land was built on.</p><p><strong>Limits:</strong> it is a model's estimate, not a survey or a land record. Small buildings, roads under trees and mixed squares (half house, half field) can be mislabelled, and single years can wobble, so TerraScope uses the trend across all years. It is history: it does not show approved future projects or prices.</p></details>}
     </div>
     <div>
       <div className="section-label">BEFORE YOU PAY</div>
       {checks == null ? <p className="muted">This evaluation predates the checklist. Re-evaluate the report to list it.</p> : checks.length ? <ul className="checklist">{checks.map(check => <li key={check}>{check}</li>)}</ul> : <p className="muted">Nothing outstanding.</p>}
       <p className="field-hint">TerraScope cannot read land records, so title, encumbrance and approvals are never verified here. Get them from the sub-registrar office and the seller.</p>
+      {record.verdict?.would_change?.length ? <><div className="section-label would-change-label">WHAT WOULD CHANGE THIS RECOMMENDATION</div><ul className="checklist">{record.verdict.would_change.map(item => <li key={item}>{item}</li>)}</ul></> : null}
     </div>
   </section>
 }
@@ -183,6 +186,81 @@ function Highlights({ findings }: { findings?: Finding[] | null }) {
   </section>
 }
 
+const NEWS_STATUS: Record<NewsItem['verification'], string> = { official_source: 'Official source', corroborated: 'Reported by 2+ outlets', single_report: 'Single news report' }
+const NEWS_WHY: Record<NewsItem['topic'], string> = {
+  hazards: 'A reported flood, waterlogging or road closure in this locality. Ask neighbours and the local body whether this plot or its access road was affected.',
+  legal_planning: 'A reported dispute, encroachment, demolition or planning action in this locality. Check whether it involves this survey number before paying.',
+  development: 'A reported project near this locality. Confirm its sanction and status with the authority; it is not assumed to happen.',
+}
+
+/** Local news, searched on demand and cached for a day. Discovery evidence: it never changes the decision or verifies title. */
+function LocalNews({ parcelId }: { parcelId: string }) {
+  const [news, setNews] = useState<AreaNews | null>(null)
+  const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [error, setError] = useState('')
+  async function load(refresh = false) {
+    setState('loading'); setError('')
+    try { setNews(await getAreaNews(parcelId, refresh)); setState('idle') }
+    catch (e) { setState('error'); setError(e instanceof Error ? e.message : 'The news search could not be run.') }
+  }
+  useEffect(() => { load() }, [parcelId])
+  const place = news?.place
+  return <section className="news-section"><div className="section-head"><div><div className="section-label">LOCAL NEWS AND DEVELOPMENT · DISCOVERY EVIDENCE, NOT VERIFICATION</div>
+    <h2>{state === 'loading' ? 'Searching local news…' : !news ? 'Local news not searched' : news.status === 'results' ? `${news.items.length} reported item${news.items.length === 1 ? '' : 's'} for ${place?.locality}` : news.status === 'no_results' ? `No indexed news found for ${place?.locality}` : news.status === 'unavailable' ? 'News search unavailable right now' : 'Not searched'}</h2></div>
+    <button className="quiet-button" disabled={state === 'loading'} onClick={() => load(true)}><RefreshCw size={14} /> {state === 'loading' ? 'Searching (up to a minute)…' : 'Search again'}</button></div>
+    {state === 'error' && <p className="form-error" role="alert">{error}</p>}
+    {news && <p className="field-hint">Searched {news.provider} for “{place?.variants.join('”, “')}” together with “{place?.district}”, {news.searched_from} to {news.retrieved_at.slice(0, 10)}{news.cached ? ` · cached result from ${news.retrieved_at.replace('T', ' ').slice(0, 16)} UTC` : ' · searched just now'}.</p>}
+    {news?.status === 'unavailable' && <p className="muted">{news.reason} Nothing is assumed from a failed search: try again in a minute.</p>}
+    {news?.status === 'no_results' && <p className="muted">Nothing indexed mentions this locality and district with flooding, disputes, demolition or development words. That is not evidence that nothing happened: small local reports are often not indexed.</p>}
+    {news?.status === 'not_searched' && <p className="muted">{news.reason}</p>}
+    {news && news.items.length > 0 && <div className="news-list">{news.items.slice(0, 12).map(item => <div className={`news-item ${item.topic}`} key={item.url}>
+      <div className="news-meta"><span className={`finding-badge ${item.verification === 'single_report' ? 'unknown' : 'caution'}`}>{NEWS_STATUS[item.verification]}</span><span>{item.topic_label}</span>{item.speculative && <span className="news-flag">proposal or speculation</span>}{item.stale && <span className="news-flag">older than 2 years</span>}</div>
+      <a href={item.url} target="_blank" rel="noreferrer">{item.title}</a>
+      <small>{item.publisher} · {item.published || 'date unknown'}{item.language && item.language !== 'English' ? ` · ${item.language}` : ''}{item.outlets > 1 ? ` · ${item.outlets} outlets` : ''}</small>
+      <p>{NEWS_WHY[item.topic]}</p>
+    </div>)}</div>}
+    {news && <details className="flood-details"><summary>What was searched, and the limits</summary><p className="muted">{news.coverage}</p><p className="muted">{news.limitations}</p><ul className="method-notes">{news.queries.map(q => <li key={q.topic}><code>{q.query}</code></li>)}</ul></details>}
+  </section>
+}
+
+const CLAIM_STATUS: Record<DevelopmentClaim['verification'], string> = { user_provided: 'Your information · not verified', link_provided: 'Link provided · not verified by TerraScope', official_link_provided: 'Official link provided · not read or verified by TerraScope' }
+const PROJECT_LABEL: Record<ProjectType, string> = { road: 'Road', transport: 'Public transport', industrial: 'Industrial', residential_layout: 'Residential layout', school: 'School', hospital: 'Hospital', commercial: 'Shops / commercial', other: 'Other' }
+
+/** What a resident, broker or the buyer has heard about upcoming projects: kept as claims, never scored. */
+function FutureDevelopment({ parcelId }: { parcelId: string }) {
+  const [claims, setClaims] = useState<DevelopmentClaim[]>([])
+  const [form, setForm] = useState<DevelopmentClaimInput>({ claim: '', project_type: 'road', source: 'resident', checked_on: new Date().toISOString().slice(0, 10) })
+  const [message, setMessage] = useState('')
+  useEffect(() => { listClaims(parcelId).then(setClaims).catch(() => setMessage('Could not load recorded claims.')) }, [parcelId])
+  async function save() {
+    setMessage('')
+    try {
+      const clean = Object.fromEntries(Object.entries(form).filter(([, v]) => v !== '' && v != null)) as unknown as DevelopmentClaimInput
+      const saved = await addClaim(parcelId, clean); setClaims(c => [...c, saved]); setForm(f => ({ ...f, claim: '', evidence_url: '', location_text: '', distance_m: null, expected_date: '' }))
+    } catch (e) { setMessage(e instanceof Error ? e.message : 'Could not save.') }
+  }
+  return <section className="claims-section"><div className="section-label">FUTURE DEVELOPMENT · YOUR INFORMATION, KEPT SEPARATE FROM THE EVIDENCE</div>
+    <h2>{claims.length ? `${claims.length} recorded claim${claims.length === 1 ? '' : 's'}` : 'Heard about an upcoming project?'}</h2>
+    <p className="field-hint">Record what a resident, broker or seller told you. It stays “not verified” until official evidence (a sanction order or notification) is checked, it never changes the recommendation, and no completion is assumed.</p>
+    {claims.length > 0 && <div className="news-list">{claims.map(c => <div className="news-item development" key={c.id}><div className="news-meta"><span className="finding-badge unknown">{CLAIM_STATUS[c.verification]}</span><span>{PROJECT_LABEL[c.project_type]}</span><span>source: {c.source}</span></div>
+      <strong>{c.claim}</strong><small>{[c.location_text, c.distance_m != null ? `about ${m(c.distance_m)} away` : null, c.expected_date ? `expected ${c.expected_date} (as claimed)` : null, c.checked_on ? `checked ${c.checked_on}` : null].filter(Boolean).join(' · ')}{c.evidence_url ? <> · <a href={c.evidence_url} target="_blank" rel="noreferrer">evidence link</a></> : null}</small>
+      <p>{c.effect}</p><button className="quiet-button" onClick={() => deleteClaim(parcelId, c.id).then(() => setClaims(x => x.filter(y => y.id !== c.id)))}>Remove</button></div>)}</div>}
+    <div className="claim-form">
+      <label className="stacked-field">What did you hear?<input value={form.claim} placeholder="e.g. A ring road will pass about 1 km north" onChange={e => setForm(f => ({ ...f, claim: e.target.value }))} /></label>
+      <div className="land-grid">
+        <label className="stacked-field">Project type<select value={form.project_type} onChange={e => setForm(f => ({ ...f, project_type: e.target.value as ProjectType }))}>{(Object.keys(PROJECT_LABEL) as ProjectType[]).map(t => <option key={t} value={t}>{PROJECT_LABEL[t]}</option>)}</select></label>
+        <label className="stacked-field">Source<select value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value as DevelopmentClaimInput['source'] }))}>{['resident', 'broker', 'seller', 'news', 'official', 'other'].map(s => <option key={s}>{s}</option>)}</select></label>
+        <label className="stacked-field">Where (optional)<input value={form.location_text || ''} onChange={e => setForm(f => ({ ...f, location_text: e.target.value }))} /></label>
+        <label className="stacked-field">Distance in metres (optional)<input type="number" min="0" value={form.distance_m ?? ''} onChange={e => setForm(f => ({ ...f, distance_m: e.target.value === '' ? null : Number(e.target.value) }))} /></label>
+        <label className="stacked-field">Expected date, as claimed (optional)<input value={form.expected_date || ''} onChange={e => setForm(f => ({ ...f, expected_date: e.target.value }))} /></label>
+        <label className="stacked-field">Evidence link (optional)<input type="url" value={form.evidence_url || ''} onChange={e => setForm(f => ({ ...f, evidence_url: e.target.value }))} /></label>
+      </div>
+      <button className="quiet-button" disabled={form.claim.trim().length < 5} onClick={save}>Record claim</button>
+      {message && <p className="form-error" role="alert">{message}</p>}
+    </div>
+  </section>
+}
+
 function Bar({ label, value, color, status }: { label: string; value: number | null; color: string; status?: string }) {
   const available = typeof value === 'number'
   return <div className={`score-line${available ? '' : ' unassessed'}`}>
@@ -227,6 +305,20 @@ function LegalEvidence({ record, onChanged }: { record: ParcelRecord; onChanged:
     <p className="field-hint">State, district and village are needed: survey numbers repeat across villages. TerraScope shows where your survey number and village appear in your documents (by page). That is never title verification.</p>
     {status && <p className="muted" role="status">{status}</p>}
   </div>
+}
+
+/** One or two sentences on what the Sentinel-2 comparison found, in plain words. */
+function changeFinding(record: ParcelRecord) {
+  const sat = record.satellite
+  if (!sat?.change_type || sat.change_type === 'insufficient_evidence') return 'Too few clear images to say anything about change on the plot.'
+  if (!sat.change_method) return 'This older report used a superseded method; analyse again for the same-season comparison.'
+  return ({
+    no_change: 'Same-season images a year apart agree: no material change on the plot over this period.',
+    inconclusive: 'Inconclusive: the same-season comparisons disagree, so TerraScope draws no conclusion about change on the plot. This is not evidence of construction or of no change.',
+    construction_growth: 'The same-season comparisons agree on a shift consistent with construction or clearing on the plot. Visit the plot to see what changed.',
+    vegetation_loss: 'The same-season comparisons agree on vegetation loss on the plot (clearing, harvest pattern change or construction).',
+    vegetation_gain: 'The same-season comparisons agree on vegetation gain on the plot.',
+  } as Record<string, string>)[sat.change_type] || sat.change_type
 }
 
 function ChangeSummary({ record, observations }: { record: ParcelRecord; observations: number }) {
@@ -306,6 +398,8 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
       <DecisionPanel record={record} growth={factorOf('growth')} />
       <FacilitiesTable record={record} />
       <FindingsTable findings={record.verdict?.findings} />
+      {record.parcel_id && <LocalNews parcelId={record.parcel_id} />}
+      {record.parcel_id && <FutureDevelopment parcelId={record.parcel_id} />}
       <div className="section-label suitability-divider">SUITABILITY FOR YOU — scored from your weights</div>
       <section className="score-strip"><Bar label="Legal Safety" value={breakdown?.legal_safety_score ?? null} color="#77d8ff" status={factorOf('legal_safety')?.status} /><Bar label="Accessibility" value={breakdown?.accessibility_score ?? null} color="#f8c15c" status={factorOf('accessibility')?.status} /><Bar label="Flood Safety" value={breakdown?.flood_safety_score ?? null} color="#d49aff" status={factorOf('flood_safety')?.status} /><Bar label="Area growth" value={breakdown?.growth_score ?? null} color="#b8f36a" status={factorOf('growth')?.status} /></section>
       <section className="evidence-status"><div className="section-head"><div><div className="section-label">EVIDENCE BEHIND EACH FACTOR</div><h2>What is measured, and what is scored</h2></div></div>
@@ -320,12 +414,21 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
         </div>)}</div>
       </section>
       <FloodPanel indicators={record.flood_indicators} latitude={record.location?.latitude} />
-      <section className="why-grid"><div><div className="section-label">WHY THIS RECOMMENDATION?</div><h2>Scored contributions</h2><div className="contribution-list">{(breakdown?.weighted_contributions || []).map((item, index) => <div key={index}><span>{FACTOR_LABEL[item.factor || ''] || item.factor || 'Unnamed factor'}</span><strong className={(item.contribution || 0) < 0 ? 'negative' : ''}>{(item.contribution || 0) > 0 ? '+' : ''}{item.contribution ?? '—'}</strong></div>)}{unscored.map(f => <div key={f.factor} className="unscored-row"><span>{FACTOR_LABEL[f.factor] || f.factor}</span><strong>no score · {f.weight_pct}%</strong></div>)}</div>{breakdown?.composite_score != null && <div className="final-verdict"><span>COMPOSITE</span><b>{breakdown.composite_score}</b></div>}</div>
+      <section className="why-grid"><div><div className="section-label">WHY THIS RECOMMENDATION?</div><h2>Scored contributions</h2><div className="contribution-list">{(breakdown?.weighted_contributions || []).map((item, index) => <div key={index}><span>{FACTOR_LABEL[item.factor || ''] || item.factor || 'Unnamed factor'}</span><strong className={(item.contribution || 0) < 0 ? 'negative' : ''}>{(item.contribution || 0) > 0 ? '+' : ''}{item.contribution ?? '—'}</strong></div>)}{unscored.map(f => <div key={f.factor} className="unscored-row"><span>{FACTOR_LABEL[f.factor] || f.factor}</span><strong>no score · {f.weight_pct}%</strong></div>)}</div>{breakdown?.composite_score != null && <div className="final-verdict"><span>LOCATION SCORE · RULE-BASED, NOT A PROBABILITY</span><b>{breakdown.composite_score}</b></div>}</div>
         <div className="grounded-box"><div className="section-label">{isAi ? <><Sparkles size={13} /> AI EXPLANATION</> : 'ASSESSMENT SUMMARY · RULE-BASED, NOT AI'}</div><p>{record.verdict?.reasoning_summary || 'No summary was returned for this evaluation.'}</p>
           <div className="citation-row"><span>{citations.length ? `${citations.length} evidence reference${citations.length === 1 ? '' : 's'}` : olderEvaluation ? 'No evidence references in this older evaluation; re-evaluate to add them' : 'No figure here needs a reference'}</span></div>
           {citations.length > 0 && <div className="citation-list">{citations.map((citation, index) => <div key={index}><strong>{citation.claim}</strong><small>{citation.source_type === 'user_upload' ? 'your document' : citation.source_type} · {citation.source_reference}{citation.location ? ` · ${citation.location}` : ''}</small></div>)}</div>}
         </div></section>
-      <section className={`satellite-section${satelliteIsDemo ? ' synthetic' : ''}`}>{satelliteIsDemo && <div className="demo-banner"><TriangleAlert size={15} /> <strong>DEMO DATA.</strong> This curve is invented to exercise the chart. It is not imagery and shows nothing about real vegetation or construction.</div>}<div className="section-head"><div><div className="section-label">SATELLITE SIGNAL · LAND COVER, NOT INVESTMENT GROWTH</div><h2>Change over time</h2></div>{satelliteIsDemo ? <div className="signal-summary"><strong>demo series</strong><span>no figure: series is invented</span></div> : <ChangeSummary record={record} observations={chart.length} />}</div>{chart.length ? <div className="chart-wrap"><ResponsiveContainer width="100%" height={250}><LineChart data={chart}><CartesianGrid stroke="#25313a" vertical={false} /><XAxis dataKey="date" stroke="#71808b" tickLine={false} axisLine={false} tickFormatter={(value: string) => value.slice(0, 7)} /><YAxis stroke="#71808b" tickLine={false} axisLine={false} /><Tooltip contentStyle={{ background: '#11191d', border: '1px solid #2d3b42' }} /><Line type="monotone" dataKey="ndvi" stroke="#b8f36a" strokeWidth={2} dot={{ r: 3 }} name="NDVI" connectNulls={false} /><Line type="monotone" dataKey="ndbi" stroke="#f8c15c" strokeWidth={2} dot={{ r: 3 }} name="NDBI" connectNulls={false} /></LineChart></ResponsiveContainer></div> : <div className="chart-empty">{record.satellite?.collection?.status === 'timed_out' ? `Satellite collection did not finish within the ${record.satellite.collection.deadline_s ?? 35} s evidence deadline. The scene reads continue in the background and are cached: analyse this boundary again in a minute or two to reuse them.` : 'No usable satellite observations were found for this parcel and date range.'}</div>}
+      <section className={`satellite-section${satelliteIsDemo ? ' synthetic' : ''}`}>{satelliteIsDemo && <div className="demo-banner"><TriangleAlert size={15} /> <strong>DEMO DATA.</strong> This curve is invented to exercise the chart. It is not imagery and shows nothing about real vegetation or construction.</div>}<div className="section-head"><div><div className="section-label">THE PLOT ITSELF IN RECENT SATELLITE IMAGES · OBSERVED MEASUREMENTS</div><h2>Greenness and built-up signals on the plot</h2><p className="chart-subtitle">Sentinel-2 satellite (10 m), average over the drawn plot on each clear date, {record.metadata.analysis_date_from || '—'} to {record.metadata.analysis_date_to || '—'}. Index values have no unit and run from −1 to +1.</p><p className="chart-finding">{changeFinding(record)}</p></div>{satelliteIsDemo ? <div className="signal-summary"><strong>demo series</strong><span>no figure: series is invented</span></div> : <ChangeSummary record={record} observations={chart.length} />}</div>{chart.length ? <div className="chart-wrap"><ResponsiveContainer width="100%" height={250}><LineChart data={chart}><CartesianGrid stroke="#25313a" vertical={false} /><XAxis dataKey="date" stroke="#71808b" tickLine={false} axisLine={false} tickFormatter={(value: string) => value.slice(0, 7)} /><YAxis stroke="#71808b" tickLine={false} axisLine={false} width={52} label={{ value: 'Index (−1 to +1)', angle: -90, position: 'insideLeft', fill: '#71808b', fontSize: 11 }} /><Tooltip contentStyle={{ background: '#11191d', border: '1px solid #2d3b42' }} /><Line type="monotone" dataKey="ndvi" stroke="#b8f36a" strokeWidth={2} dot={{ r: 3 }} name="NDVI (greenness)" connectNulls={false} /><Line type="monotone" dataKey="ndbi" stroke="#f8c15c" strokeWidth={2} dot={{ r: 3 }} name="NDBI (built-up / bare surface signal)" connectNulls={false} /></LineChart></ResponsiveContainer></div> : <div className="chart-empty">{record.satellite?.collection?.status === 'timed_out' ? `Satellite collection did not finish within the ${record.satellite.collection.deadline_s ?? 35} s evidence deadline. The scene reads continue in the background and are cached: analyse this boundary again in a minute or two to reuse them.` : 'No usable satellite observations were found for this parcel and date range.'}</div>}
+        {chart.length > 0 && <p className="history-legend"><span><i className="dot near" /> NDVI: greenness</span><span><i className="dot ndbi" /> NDBI: built-up or bare surface signal</span><span>Image date on the horizontal axis</span></p>}
+        <details className="explain"><summary>What do these graphs mean?</summary>
+          <p><strong>NDVI (greenness):</strong> calculated from how strongly the ground reflects red and near-infrared light. Healthy plants reflect a lot of near-infrared, so crops and trees give high values (about 0.5 and above), bare soil and roofs low values (around 0.1–0.2), and water is negative. It is an indicator of greenness, not a measurement of plant health or land value.</p>
+          <p><strong>NDBI (built-up / bare surface signal):</strong> calculated from short-wave infrared and near-infrared light. Roofs, concrete and also bare dry soil push it up; vegetation and water push it down. It is not a building detector: a ploughed field can look similar to a new building. NDVI and NDBI measure different things and are not interchangeable.</p>
+          <p><strong>Change detection:</strong> TerraScope compares images from the same season a year apart (so monsoon green is not mistaken for a change). <em>No material change</em> means the same-season pairs agree within a small margin. A <em>change class</em> (for example consistent with construction or vegetation loss) means they agree on a direction. <em>Inconclusive</em> means the pairs disagree or too few clear images exist, so no conclusion is drawn either way.</p>
+          <p><strong>Past development vs this chart:</strong> the 2017–2023 built-up graph above is history of the surroundings; this chart is the plot itself over the analysis window. Neither is a forecast, and neither says anything about future prices.</p>
+          <p><strong>What can mislead it:</strong> cloud and haze (cloudy pixels are removed, which can leave few dates), seasons (crops green up and are harvested), the 10 m pixel size (a small plot is only a few pixels), and mixed pixels at the plot edge that include a road or a neighbour's roof.</p>
+        </details>
+        {chart.length > 0 && chart.length < 4 && <p className="muted window-note">Only {chart.length} clear image date{chart.length === 1 ? '' : 's'}: too few to draw a conclusion about change on the plot.</p>}
         <div className="signal-foot"><span>{record.satellite?.change_method ? record.satellite.change_method.reason : record.satellite?.change_type ? 'Classified by the superseded v1 method, which fitted one straight line through all seasons and filed unclear movement under “no change”. Re-run the analysis for the seasonal comparison.' : 'Satellite signal unavailable.'}</span><span>Analysis period · {record.metadata.analysis_date_from || '—'} to {record.metadata.analysis_date_to || '—'}</span></div>
         {lateStart ? <p className="muted window-note">The first usable image is {imagery[0]}, months after the window starts ({windowStart}): the scene search used for this report stopped at the newest 100 catalogue entries. New analyses read the whole catalogue.</p> : null}
         {record.satellite?.collection?.selection && <p className="muted window-note">{record.satellite.collection.selection}; {record.satellite.collection.scenes_matched} scenes matched under {record.satellite.collection.max_cloud_cover_pct ?? 35}% cloud, {record.satellite.collection.observations_rejected ?? 0} read but rejected (under {Math.round((record.satellite.collection.min_clear_fraction ?? 0.5) * 100)}% of the parcel cloud-free){record.satellite.collection.anchors_without_observation?.length ? `; no usable scene near ${record.satellite.collection.anchors_without_observation.length} season anchor(s)` : ''}. Method {record.satellite.collection.algorithm_version}.</p>}

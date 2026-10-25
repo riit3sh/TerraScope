@@ -70,13 +70,18 @@ def test_parcel_edge_distance_is_preferred_when_recorded() -> None:
     assert parts["road"]["centroid_distance_m"] == 125.15
 
 
-def test_nothing_found_scores_zero_only_when_the_search_covered_the_limit() -> None:
+def test_an_unmapped_feature_is_unknown_never_scored_as_confirmed_absence() -> None:
+    """Regression (Senjeri, 2026-10-26): no school in OpenStreetMap within 5 km scored 0, as if confirmed absent."""
     record = copy.deepcopy(VIT)
-    record["infrastructure"]["nearest_school_distance_m"] = None  # none within the 5 km search
-    covered = accessibility_components(record, {"max_school_distance_m": 3000})["school"]
-    assert covered["sub_score"] == 0.0 and "none mapped within 5,000 m" in covered["measured_from"]
-    beyond = accessibility_components(record, {"max_school_distance_m": 8000})["school"]
-    assert beyond["sub_score"] is None  # unknown beyond the search radius, so left out
+    record["infrastructure"]["nearest_school_distance_m"] = None  # none mapped within the 5 km search
+    parts = accessibility_components(record, {"max_school_distance_m": 3000})
+    assert parts["school"]["sub_score"] is None and "not confirmed absent" in parts["school"]["measured_from"]
+    assert parts["score"] == parts["road"]["sub_score"], "the score rests on what is mapped"
+    record["infrastructure"]["nearest_road_distance_m"] = None
+    assert accessibility_components(record, {})["score"] is None, "nothing mapped: unknown, not zero"
+    findings = evaluate_snapshot(copy.deepcopy(record), SETTINGS)["verdict"]["findings"]
+    access = next(f for f in findings if f["area"] == "Road and school access")
+    assert access["assessment"] != "ok"
 
 
 def test_rule_based_summary_is_labelled_and_cites_collected_evidence() -> None:

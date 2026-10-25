@@ -557,6 +557,13 @@ def build_evidence_snapshot(
         key = ("search", address) if address else ("reverse", round(latitude, 5), round(longitude, 5))
         if key in _GEOCODE_CACHE:
             return _GEOCODE_CACHE[key]
+        # Also kept on disk (30 days, successes only), so a restart does not re-ask Nominatim: measured 2026-10-25,
+        # the first analysis after a restart spent 0.86 s geocoding an already-known point.
+        disk_key = flood_indicators._result_cache_key("geocode", {"key": list(key)})
+        stored = flood_indicators._cached_result(disk_key)
+        if stored is not None:
+            _GEOCODE_CACHE[key] = stored.get("result")
+            return _GEOCODE_CACHE[key]
         try:
             if address:
                 geocoded = infrastructure_client.geocode_address(address)
@@ -567,6 +574,8 @@ def build_evidence_snapshot(
             LOGGER.warning("Geocoding unavailable; falling back to coordinates only: %s", error)
             return None
         _GEOCODE_CACHE[key] = result
+        if result is not None:
+            flood_indicators._cache_result(disk_key, {"result": result})
         return result
 
     def collect_terrain() -> tuple[float | None, dict[str, Any]]:

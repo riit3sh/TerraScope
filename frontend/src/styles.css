@@ -242,3 +242,11 @@
 .evidence-meter strong{display:block;margin-top:10px;font:30px 'DM Mono';color:#77d8ff}.evidence-meter small{color:#72817c;font-size:11px;line-height:1.5}
 .facilities-section{padding:38px 0;border-bottom:1px solid #2a3738}.facilities-section .flood-table-wrap{margin:14px 0 10px}
 @media(max-width:900px){.highlights{grid-template-columns:minmax(0,1fr);gap:22px}}
+.chart-subtitle{margin:-10px 0 14px;color:#9fb0a9;font-size:13px;line-height:1.6;max-width:820px}.chart-finding{margin:0 0 16px;color:#e5efe8;font-size:14px;line-height:1.6;max-width:820px}
+.explain{margin:14px 0 0;border:1px solid #2d3b3c;background:#111a1b;padding:10px 14px}.explain summary{cursor:pointer;color:#b8f36a;font-size:13px}.explain p{color:#c0cdc7;font-size:13px;line-height:1.7;margin:10px 0 0}
+.history-legend .dot.ndbi{background:#f8c15c}.would-change-label{margin-top:22px}
+.news-section,.claims-section{padding:40px 0;border-bottom:1px solid #2a3738}.news-section h2,.claims-section h2{font-size:26px;letter-spacing:-.04em;margin:12px 0 10px}
+.news-list{display:grid;gap:8px;grid-template-columns:minmax(0,1fr);margin:14px 0}.news-item{padding:14px 16px;background:#111a1b;border:1px solid #2d3b3c;border-left:3px solid #4a5a5b}.news-item.hazards{border-left-color:#77d8ff}.news-item.legal_planning{border-left-color:#f8c15c}.news-item.development{border-left-color:#b8f36a}
+.news-item a{color:#e5efe8;font-size:14px}.news-item small{display:block;margin-top:5px;color:#72817c;font:10px 'DM Mono'}.news-item p{margin:8px 0 0;color:#9fb0a9;font-size:12px;line-height:1.6}.news-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;color:#8b9a94;font:10px 'DM Mono';text-transform:uppercase}.news-flag{color:#f8c15c}
+.claim-form{margin-top:16px;display:grid;gap:12px}.claim-form .quiet-button{justify-self:start}
+.basemap-toggle{position:absolute;top:14px;right:14px;z-index:500;display:flex;gap:4px}.basemap-note{position:absolute;top:56px;right:14px;z-index:500;max-width:340px;padding:8px 10px;background:rgba(13,19,21,.92);border:1px solid #2d3b3c;color:#c0cdc7;font-size:11px;line-height:1.5}

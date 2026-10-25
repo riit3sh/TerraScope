@@ -251,10 +251,14 @@ def _decide(history: dict, **changes):
     return compute_evaluation(_with(land_cover_history=history, **changes), evaluation)
 
 
-def test_fast_development_around_the_plot_is_a_buy_with_title_checks() -> None:
+def test_strong_historical_growth_with_unknown_legal_status_is_wait_not_buy() -> None:
+    """History alone never makes a BUY: unknown title, encumbrance, zoning and approvals are never treated as safe."""
     result = _decide(_history(0.63, 0.73, 1.92))
-    assert result["growth_score"] == 96.0
-    assert result["recommendation"] == "BUY"
+    assert result["growth_score"] == 96.0 and result["composite_score"] >= 75
+    assert result["recommendation"] == "WAIT"
+    assert "location evidence is strong, but the required legal checks are not done" in result["reasoning_summary"]
+    assert any(item.startswith("Completed legal checks") for item in result["would_change"])
+    assert "past development, 2017-2023" in result["reasoning_summary"]
     assert "63.0% (2017) to 73.0% (2023) built within 1 km, trend +1.9 points a year" in result["reasoning_summary"]
     assert any("Ownership record" in check for check in result["pre_purchase_checks"]), "legal is a check, never verified"
     assert result["legal_safety_score"] is None
@@ -341,5 +345,17 @@ def test_wait_names_what_holds_it_back_and_buy_lists_unverified_legal_checks() -
     wait = _decide(_history(0.01, 0.02, 0.11))
     assert wait["reasoning_summary"].startswith("WAIT: there is potential")
     assert "Holding it back: area growth 6 of 100" in wait["reasoning_summary"]
-    buy = _decide(_history(0.63, 0.73, 1.92))
-    assert "Title, encumbrance, approvals and RERA are not verified" in buy["reasoning_summary"]
+    assert any(item.startswith("Stronger area growth") for item in wait["would_change"])
+
+
+def test_score_recommendation_and_explanation_agree_when_critical_evidence_is_missing() -> None:
+    result = _decide({}, infrastructure={})
+    assert result["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert result["composite_score"] is None, "no score is shown when no decision can be made"
+    assert result["reasoning_summary"].startswith("INSUFFICIENT DATA")
+    assert result["would_change"], "the report must say what evidence is missing"
+
+
+def test_the_location_score_is_never_called_a_probability() -> None:
+    summary = _decide(_history(0.63, 0.73, 1.92))["reasoning_summary"]
+    assert "not a probability of appreciation" in summary

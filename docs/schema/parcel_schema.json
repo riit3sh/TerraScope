@@ -1192,6 +1192,16 @@
               }
             }
           }
+        },
+        "would_change": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "The specific evidence that would change the recommendation."
         }
       }
     },

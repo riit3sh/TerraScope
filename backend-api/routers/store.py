@@ -56,6 +56,22 @@ def init_store() -> None:
                 details_json TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS development_claims (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                parcel_id TEXT NOT NULL,
+                claim_json TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS news_cache (
+                cache_key TEXT PRIMARY KEY,
+                payload_json TEXT NOT NULL,
+                fetched_at TEXT NOT NULL
+            );
+            -- Additive indexes for the per-parcel lookups the report list and reopen make.
+            CREATE INDEX IF NOT EXISTS idx_snapshots_parcel_created ON snapshots(parcel_id, created_at);
+            CREATE INDEX IF NOT EXISTS idx_evaluations_parcel ON evaluation_history(parcel_id, id);
+            CREATE INDEX IF NOT EXISTS idx_documents_parcel ON documents(parcel_id);
+            CREATE INDEX IF NOT EXISTS idx_claims_parcel ON development_claims(parcel_id);
             """
         )
         # Additive migration: existing rows keep doc_type NULL ("type not given").
@@ -94,8 +110,14 @@ def list_saved_reports(limit: int = 50) -> list[dict[str, Any]]:
     with _connect() as connection:
         rows = connection.execute(
             """
-            SELECT s.parcel_id, s.snapshot_id, s.snapshot_json, s.created_at,
-                   (SELECT COUNT(*) FROM documents d WHERE d.parcel_id = s.parcel_id) AS document_count
+            SELECT s.parcel_id, s.snapshot_id, s.created_at,
+                   json_extract(s.snapshot_json, '$.location.address') AS address,
+                   json_extract(s.snapshot_json, '$.location.district') AS district,
+                   json_extract(s.snapshot_json, '$.geometry_metadata.area_acres') AS area_acres,
+                   json_extract(s.snapshot_json, '$.metadata.analysis_date_from') AS date_from,
+                   json_extract(s.snapshot_json, '$.metadata.analysis_date_to') AS date_to,
+                   (SELECT COUNT(*) FROM documents d WHERE d.parcel_id = s.parcel_id) AS document_count,
+                   EXISTS (SELECT 1 FROM evaluation_history e WHERE e.parcel_id = s.parcel_id) AS has_evaluation
             FROM snapshots s
             JOIN (SELECT parcel_id, MAX(created_at) AS newest FROM snapshots GROUP BY parcel_id) latest
               ON latest.parcel_id = s.parcel_id AND latest.newest = s.created_at
@@ -103,25 +125,20 @@ def list_saved_reports(limit: int = 50) -> list[dict[str, Any]]:
             """,
             (int(limit),),
         ).fetchall()
-    reports = []
-    for row in rows:
-        snapshot = json.loads(row["snapshot_json"])
-        location = snapshot.get("location") or {}
-        metadata = snapshot.get("metadata") or {}
-        geometry = snapshot.get("geometry_metadata") or {}
-        reports.append({
-            "parcel_id": row["parcel_id"],
-            "analysis_snapshot_id": row["snapshot_id"],
-            "created_at": row["created_at"],
-            "address": location.get("address"),
-            "district": location.get("district"),
-            "area_acres": geometry.get("area_acres"),
-            "analysis_date_from": metadata.get("analysis_date_from"),
-            "analysis_date_to": metadata.get("analysis_date_to"),
-            "document_count": int(row["document_count"] or 0),
-            "has_evaluation": get_latest_evaluation(row["parcel_id"]) is not None,
-        })
-    return reports
+    # One query, reading only the fields the list shows: it used to parse every full snapshot and run a
+    # separate query plus a full JSON parse of the latest evaluation for each report (N+1).
+    return [{
+        "parcel_id": row["parcel_id"],
+        "analysis_snapshot_id": row["snapshot_id"],
+        "created_at": row["created_at"],
+        "address": row["address"],
+        "district": row["district"],
+        "area_acres": row["area_acres"],
+        "analysis_date_from": row["date_from"],
+        "analysis_date_to": row["date_to"],
+        "document_count": int(row["document_count"] or 0),
+        "has_evaluation": bool(row["has_evaluation"]),
+    } for row in rows]
 
 
 def save_evaluation(parcel_id: str, snapshot_id: str, evaluation: dict[str, Any]) -> None:
@@ -199,3 +216,44 @@ def get_land_details(parcel_id: str) -> dict[str, Any] | None:
     with _connect() as connection:
         row = connection.execute("SELECT details_json FROM land_details WHERE parcel_id = ?", (parcel_id,)).fetchone()
     return json.loads(row["details_json"]) if row else None
+
+
+def save_claim(parcel_id: str, claim: dict[str, Any]) -> int:
+    with _connect() as connection:
+        cursor = connection.execute(
+            "INSERT INTO development_claims(parcel_id, claim_json, created_at) VALUES (?, ?, ?)",
+            (parcel_id, json.dumps(claim), datetime.now(timezone.utc).isoformat()),
+        )
+        return int(cursor.lastrowid)
+
+
+def list_claims(parcel_id: str) -> list[dict[str, Any]]:
+    with _connect() as connection:
+        rows = connection.execute(
+            "SELECT id, claim_json, created_at FROM development_claims WHERE parcel_id = ? ORDER BY id", (parcel_id,)
+        ).fetchall()
+    return [{"id": row["id"], "recorded_at": row["created_at"], **json.loads(row["claim_json"])} for row in rows]
+
+
+def delete_claim(parcel_id: str, claim_id: int) -> bool:
+    with _connect() as connection:
+        return connection.execute(
+            "DELETE FROM development_claims WHERE parcel_id = ? AND id = ?", (parcel_id, claim_id)
+        ).rowcount > 0
+
+
+def get_cached_news(cache_key: str, max_age_s: float) -> dict[str, Any] | None:
+    with _connect() as connection:
+        row = connection.execute("SELECT payload_json, fetched_at FROM news_cache WHERE cache_key = ?", (cache_key,)).fetchone()
+    if not row:
+        return None
+    age = (datetime.now(timezone.utc) - datetime.fromisoformat(row["fetched_at"])).total_seconds()
+    return {**json.loads(row["payload_json"]), "cache_age_s": round(age)} if age < max_age_s else None
+
+
+def put_cached_news(cache_key: str, payload: dict[str, Any]) -> None:
+    with _connect() as connection:
+        connection.execute(
+            "INSERT OR REPLACE INTO news_cache(cache_key, payload_json, fetched_at) VALUES (?, ?, ?)",
+            (cache_key, json.dumps(payload), datetime.now(timezone.utc).isoformat()),
+        )

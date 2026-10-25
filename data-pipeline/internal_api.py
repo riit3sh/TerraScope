@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
@@ -10,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from db.repository import SnapshotAlreadyExistsError, get_analysis_snapshot, init_db, save_analysis_snapshot
 from connectors.local_osm import LocalDataMissing
+from connectors.regions import india_coverage
 from etl_pipeline import EvidenceSnapshotValidationError, OutsideCoverage, build_evidence_snapshot
 
 
@@ -27,6 +29,13 @@ class AnalysisBuildRequest(BaseModel):
 @app.on_event("startup")
 def startup() -> None:
     init_db()
+    # Load the India boundary in the background, so the first analysis after a restart does not wait for it.
+    def warm() -> None:
+        try:
+            india_coverage()
+        except Exception as error:  # noqa: BLE001 - a missing boundary is reported by the first analysis instead
+            logging.getLogger(__name__).warning("India coverage not preloaded: %s", error)
+    threading.Thread(target=warm, daemon=True).start()
 
 
 @app.get("/health")

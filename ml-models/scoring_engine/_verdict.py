@@ -55,45 +55,65 @@ def build_verdict(
     checks = (legal["checklist"] if legal["score"] is None else []) + plot_history_checks(record)
     composite = round(sum(c["contribution"] for c in contributions), 2) if scored and not blocking else None
 
+    due_diligence_done = legal["score"] is not None  # only matched land records can verify it
+    legal_pending = "a lawyer's check of title, a 30-year encumbrance certificate, zoning and approvals against official records"
     if legal["score"] is not None and (100.0 - legal["score"]) > hard_legal_risk_threshold:
         # Proven disqualifying evidence decides on its own.
         recommendation = "AVOID"
         summary = (f"WALK AWAY: the matched land records give an effective legal risk of {100.0 - legal['score']:.0f}/100, "
                    f"above the {hard_legal_risk_threshold:.0f} limit.")
+        would_change = ["Corrected land records showing clear title and no encumbrance"]
         composite = None
     elif flags:
         # A verified, serious risk is never cancelled out by good access or growth.
         recommendation = "AVOID"
         summary = "WALK AWAY: " + " ".join(flags) + " Do not proceed unless this is explained."
+        would_change = ["Official records (local body, revenue department) showing the red flag does not apply to this plot"]
     elif blocking or composite is None:
         recommendation = "INSUFFICIENT_EVIDENCE"
         missing = blocking or [f for f in factors if f["factor"] in LOCATION_FACTORS]
         summary = "INSUFFICIENT DATA: no responsible recommendation yet. " + " ".join(
             f"{LABEL[f['factor']].capitalize()}: {f['basis']}" for f in missing)
+        would_change = [f"Evidence for {LABEL[f['factor']]}: {f['checklist'][0] if f.get('checklist') else 'analyse again'}"
+                        for f in missing]
     else:
-        recommendation = "BUY" if composite >= buy_threshold else "WAIT"
         growth, access = factors[3], factors[1]
-        parts = [f"{recommendation}: " + ("the evidence TerraScope can check supports proceeding." if recommendation == "BUY"
-                                          else "there is potential, but the evidence does not support buying yet.")]
+        strong = composite >= buy_threshold
+        # BUY means strong location evidence AND completed due diligence. Unknown title is never treated as safe,
+        # and history alone never makes a BUY: without verified legal checks the answer is WAIT, naming them.
+        recommendation = "BUY" if strong and due_diligence_done else "WAIT"
+        if recommendation == "BUY":
+            lead = "the location evidence is strong and the legal checks are verified from matched land records."
+        elif strong:
+            lead = "the location evidence is strong, but the required legal checks are not done: " + legal_pending + "."
+        else:
+            lead = "there is potential, but the location evidence is not strong enough yet."
+        parts = [f"{recommendation}: {lead}"]
         trend = (growth.get("details") or {}).get("trend")
         if trend and growth["status"] in ("indicative", "established"):
             level = (f"{trend['first_share']:.1%} ({trend['first_year']}) to {trend['last_share']:.1%} ({trend['last_year']}) "
                      f"built within 1 km, trend {points_a_year(trend['slope_pts_per_year'])} points a year")
             parts.append(("An established, densely built area" if growth["status"] == "established"
-                          else growth["basis"].split(":")[0]) + f": {level}.")
+                          else growth["basis"].split(":")[0]) + f" (past development, 2017-2023): {level}.")
         road, school = ((access.get("details") or {}).get(k) or {} for k in ("road", "school"))
         if access["score"] is not None:
             def dist(part, name):
-                return f"{name} {part['distance_m']:,.0f} m" if part.get("distance_m") is not None else f"no {name} found"
+                return (f"{name} {part['distance_m']:,.0f} m" if part.get("distance_m") is not None
+                        else f"no {name} mapped nearby (not confirmed absent)")
             parts.append(f"Nearest mapped {dist(road, 'road')}, {dist(school, 'school')} (straight line).")
-        if recommendation == "WAIT":
-            weakest = min(scored, key=lambda f: f["score"])
+        weakest = min(scored, key=lambda f: f["score"])
+        if not strong:
             parts.append(f"Holding it back: {LABEL[weakest['factor']]} {weakest['score']:.0f} of 100.")
-        parts.append(f"Composite {composite:.0f} of 100 (BUY from {buy_threshold:.0f}) from "
-                     + ", ".join(f"{LABEL[f['factor']]} {f['score']:.0f}" for f in scored) + ".")
-        if legal["score"] is None:
-            parts.append("Title, encumbrance, approvals and RERA are not verified: confirm them before paying.")
+        parts.append(f"Location score {composite:.0f} of 100 (strong from {buy_threshold:.0f}; a rule-based score, not a "
+                     "probability of appreciation), from " + ", ".join(f"{LABEL[f['factor']]} {f['score']:.0f}" for f in scored) + ".")
         summary = " ".join(parts)
+        would_change = []
+        if not due_diligence_done:
+            would_change.append("Completed legal checks: " + legal_pending)
+        if not strong:
+            would_change.append(
+                f"Stronger {LABEL[weakest['factor']]}: for example an officially sanctioned road, school or other facility "
+                "near the plot, with its sanction order (a resident's or broker's claim alone is not enough)")
 
     return {
         "legal_safety_score": factors[0]["score"],
@@ -111,4 +131,5 @@ def build_verdict(
         "reasoning_summary": summary[:500],
         "red_flags": flags,
         "pre_purchase_checks": checks,
+        "would_change": would_change,
     }

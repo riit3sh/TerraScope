@@ -192,12 +192,16 @@ def _access(rows: dict[str, dict[str, Any]], factors: dict[str, dict[str, Any]],
                     else "Analyse the boundary again; if this persists, check the data-pipeline log.",
                     evidence)
     def where(part: dict[str, Any], label: str) -> str:
-        return f"{label} {part['distance_m']:,.0f} m" if part.get("distance_m") is not None else f"no {label} found"
+        return (f"{label} {part['distance_m']:,.0f} m" if part.get("distance_m") is not None
+                else f"no {label} mapped within {(part.get('measured_from') or '').split('within ')[-1].split(' (')[0] or 'the search radius'}")
     finding = f"{where(details['road'], 'road')}, {where(details['school'], 'school')} (straight line, OpenStreetMap)."
+    unmapped = [name for name in ("road", "school") if (details.get(name) or {}).get("distance_m") is None]
+    step = "Confirm there is a legal, usable access road to the plot itself; a nearby road is not proof of access."
+    if unmapped:
+        step = (f"No {' or '.join(unmapped)} is mapped nearby, which may only mean OpenStreetMap is incomplete here: "
+                f"check locally. {step}")
     return _row("Road and school access", finding[0].upper() + finding[1:],
-                "ok" if access["score"] >= ACCESS_OK_SCORE else "caution", "measured",
-                "Confirm there is a legal, usable access road to the plot itself; a nearby road is not proof of access.",
-                evidence)
+                "ok" if access["score"] >= ACCESS_OK_SCORE and not unmapped else "caution", "measured", step, evidence)
 
 
 def build_findings(record: dict[str, Any], factors: list[dict[str, Any]]) -> list[dict[str, Any]]:

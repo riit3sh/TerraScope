@@ -96,15 +96,16 @@ def _feature_component(infrastructure: dict[str, Any], feature: str, cap: float,
 
     The parcel-edge distance is what "how far is the road" means for a drawn parcel; snapshots
     made before it was recorded only have the centroid distance, which is used and labelled.
-    A feature not found inside the search radius scores 0 only when that radius reaches the cap.
+    A feature not found is unknown, not absent: OpenStreetMap often misses rural schools and lanes, so an unmapped
+    feature is left out of the score (it used to score 0 when the search covered the limit) and the report says so.
     """
     edge = infrastructure.get(f"nearest_{feature}_distance_from_boundary_m")
     centroid = infrastructure.get(f"nearest_{feature}_distance_m")
     distance, measured_from = (edge, "parcel boundary") if isinstance(edge, (int, float)) else (centroid, "parcel centroid")
     radius = infrastructure.get("search_radius_m")
     sub_score = _distance_score(distance, cap)
-    if sub_score is None and isinstance(radius, (int, float)) and radius >= cap:
-        sub_score, measured_from = 0.0, f"none mapped within {radius:,.0f} m"
+    if sub_score is None and isinstance(radius, (int, float)):
+        measured_from = f"none mapped within {radius:,.0f} m (OpenStreetMap can miss it; not confirmed absent)"
     return {
         "distance_m": distance if isinstance(distance, (int, float)) else None,
         "centroid_distance_m": centroid if isinstance(centroid, (int, float)) else None,
