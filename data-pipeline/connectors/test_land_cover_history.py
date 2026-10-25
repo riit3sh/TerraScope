@@ -42,3 +42,13 @@ def test_a_mostly_clouded_year_is_dropped_not_read_from_a_sliver() -> None:
 def test_too_few_years_give_no_trend() -> None:
     result = summarise({2022: year(10), 2023: year(12)}, EXPECTED)
     assert result["status"] == "insufficient" and result["trend_within_1km"] is None
+
+
+def test_a_flat_series_is_stored_as_zero_not_negative_zero() -> None:
+    """The Vijayawada series: a dip in 2020-2022 makes the fit ~-3e-15, which rounded to -0.0."""
+    import math
+    near = [0.8822, 0.8817, 0.8822, 0.8803, 0.8782, 0.8783, 0.8858]
+    counts = {2017 + i: {"parcel": histogram(built=10), "near": histogram(built=round(v * 10000), crops=10000 - round(v * 10000)),
+                         "far": histogram(built=20, crops=80)} for i, v in enumerate(near)}
+    slope = summarise(counts, {"parcel": 10, "near": 10000, "far": 100})["trend_within_1km"]["slope_pts_per_year"]
+    assert slope == 0.0 and math.copysign(1.0, slope) == 1.0

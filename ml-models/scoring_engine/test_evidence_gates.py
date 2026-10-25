@@ -255,7 +255,7 @@ def test_fast_development_around_the_plot_is_a_buy_with_title_checks() -> None:
     result = _decide(_history(0.63, 0.73, 1.92))
     assert result["growth_score"] == 96.0
     assert result["recommendation"] == "BUY"
-    assert "from 63% in 2017 to 73% in 2023" in result["reasoning_summary"]
+    assert "was 63.0% in 2017 and 73.0% in 2023" in result["reasoning_summary"]
     assert any("Ownership record" in check for check in result["pre_purchase_checks"]), "legal is a check, never verified"
     assert result["legal_safety_score"] is None
 
@@ -292,3 +292,29 @@ def test_a_likely_water_bed_is_a_red_flag() -> None:
 def test_a_change_on_the_plot_itself_becomes_a_check() -> None:
     result = _decide(_history(0.63, 0.73, 1.92, plot=("crops", "built")))
     assert any("changed from crops (2017) to built area (2023)" in c for c in result["pre_purchase_checks"])
+
+
+def test_a_flat_trend_never_prints_as_minus_zero_and_a_dense_area_is_not_called_empty() -> None:
+    """Regression (Vijayawada, 2026-10-25): 88.2% -> 88.6% built read "88% to 89% (-0.0 points a year)" under
+    "Little or no development". The all-years fit was float noise (~-3e-15) rounded to -0.0."""
+    result = _decide(_history(0.8822, 0.8858, -0.0, far_first=0.80))
+    growth = next(f for f in result["factors"] if f["factor"] == "growth")
+    assert "-0.0" not in growth["basis"]
+    assert "was 88.2% in 2017 and 88.6% in 2023; the trend across all 7 years is 0.0 points a year" in growth["basis"]
+    assert growth["basis"].startswith("Little new building in an already dense area")
+    assert growth["score"] == 0.0  # wording only: the score rule is unchanged
+
+
+def test_missing_regional_data_names_the_exact_install_command() -> None:
+    """Regression (Vijayawada, 2026-10-25): the report said only "no infrastructure was retrieved"."""
+    record = _with(
+        infrastructure={},
+        location={"state": "Andhra Pradesh"},
+        evidence=[{"source_type": "openstreetmap", "summary": "OpenStreetMap infrastructure is unavailable for this "
+                   "parcel: No regional OpenStreetMap data is installed for Andhra Pradesh. Install it with: "
+                   "terrascope.cmd fetch-data andhra-pradesh The Overpass fallback is off."}],
+    )
+    result = compute_evaluation(record, EVALUATION)
+    access = next(f for f in result["factors"] if f["factor"] == "accessibility")
+    assert access["score"] is None and "terrascope.cmd fetch-data andhra-pradesh" in access["basis"]
+    assert "Andhra Pradesh" in access["basis"]

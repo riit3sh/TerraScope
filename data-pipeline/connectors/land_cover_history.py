@@ -96,7 +96,8 @@ def _trend(points: list[tuple[int, float]]) -> float | None:
     if len(points) < MIN_TREND_YEARS:
         return None
     years, shares = zip(*points)
-    return round(float(np.polyfit(years, [100 * share for share in shares], 1)[0]), 2)
+    # + 0.0 turns the -0.0 that rounding leaves from float noise (a flat series gives ~-3e-15) into 0.0.
+    return round(float(np.polyfit(years, [100 * share for share in shares], 1)[0]), 2) + 0.0
 
 
 def summarise(counts: dict[int, dict[str, np.ndarray]], expected: dict[str, float]) -> dict[str, Any]:

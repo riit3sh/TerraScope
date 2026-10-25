@@ -275,8 +275,10 @@ def _land_cover_summary(history: dict[str, Any]) -> str:
     if not near:
         return f"Land-cover history unavailable: {history.get('error') or 'too few years were classified around the parcel.'}"
     def change(trend: dict[str, Any], where: str) -> str:
-        return (f"{where}: built area {trend['first_share']:.0%} ({trend['first_year']}) to {trend['last_share']:.0%} "
-                f"({trend['last_year']}), trend {trend['slope_pts_per_year']:+.1f} points a year")
+        slope = round(trend["slope_pts_per_year"], 1) + 0.0  # never "-0.0"
+        return (f"{where}: built area {trend['first_share']:.1%} ({trend['first_year']}) and {trend['last_share']:.1%} "
+                f"({trend['last_year']}); trend across all {trend['years_used']} years {f'{slope:+.1f}' if slope else '0.0'} "
+                "points a year")
     plot = history.get("parcel") or []
     classes = ", ".join(f"{p['year']} {p['dominant'].replace('_', ' ')}" for p in plot)
     return (f"{change(near, 'Within 1 km')}. " + (f"{change(far, '1-3 km away')}. " if far else "")

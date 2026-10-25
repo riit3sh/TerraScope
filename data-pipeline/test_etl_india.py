@@ -86,7 +86,7 @@ def test_indian_parcel_without_regional_data_still_collects_india_wide_evidence(
     # The area's development history is India-wide too.
     assert snapshot["land_cover_history"]["trend_within_1km"]["slope_pts_per_year"] == 1.6
     land_row = next(e for e in snapshot["evidence"] if e["source_type"] == "land_cover")
-    assert "Within 1 km: built area 20% (2017) to 30% (2023)" in land_row["summary"]
+    assert "Within 1 km: built area 20.0% (2017) and 30.0% (2023); trend across all 7 years +1.6 points a year" in land_row["summary"]
 
 
 def test_provider_failure_is_unavailable_not_safe(offline, monkeypatch) -> None:

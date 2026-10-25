@@ -1,6 +1,6 @@
 # TerraScope project checklist
 
-The single current progress checklist. Last updated 2026-10-25 (land prices removed, J-58; completion pass, J-57; buy/wait decision, J-56).
+The single current progress checklist. Last updated 2026-10-25 (area-development display fix and dataset audit, J-59; land prices removed, J-58; completion pass, J-57; buy/wait decision, J-56).
 
 Rules: an item is "verified" only when a recorded check exercised the real behaviour (real services, real
 data, or the browser), not because code exists, a mocked test passes or a page loads. "Implemented" without
@@ -13,6 +13,9 @@ only read.
 
 ## 1. Fixed and verified
 
+- [x] **Area-development display (J-59)**: no "-0.0"; shares to one decimal; the trend is named as the all-years fit;
+  dense areas are not called empty; missing regional data names the exact install command. Dataset audit in
+  [DATASETS.md](DATASETS.md).
 - [x] **Land prices removed from this version (J-58)**: no price section, price finding, price import page,
   workspace property box or valuation API. Price never affected BUY / WAIT / AVOID. The module stays unused in
   `valuation/`.

@@ -7,6 +7,7 @@ so that the surviving factors renormalise into a better-looking result.
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from typing import Any
 
@@ -208,6 +209,7 @@ def assess_flood(record: dict[str, Any]) -> dict[str, Any]:
 # that was already this built in the first year has no open land left to show a trend.
 GROWTH_FULL_SCORE_PTS_PER_YEAR = 2.0
 BUILT_OUT_SHARE = 0.9
+DENSE_SHARE = 0.75  # wording only: does not change the score
 # Red flags that stop a purchase whatever the other factors say.
 RIVER_FLAG_MAX_RETURN_PERIOD = 100
 RIVER_FLAG_PARCEL_SHARE = 0.25
@@ -220,9 +222,18 @@ AREA_HISTORY_LIMITS = (
 )
 
 
+def points_a_year(slope: float) -> str:
+    """'+1.9', '-0.3' or '0.0': rounded first, so a -0.04 or float-noise slope never prints as '-0.0'."""
+    value = round(slope, 1) + 0.0
+    return f"{value:+.1f}" if value else "0.0"
+
+
 def _built_change(trend: dict[str, Any], where: str) -> str:
-    return (f"built-up land {where} went from {trend['first_share']:.0%} in {trend['first_year']} to "
-            f"{trend['last_share']:.0%} in {trend['last_year']} ({trend['slope_pts_per_year']:+.1f} points a year)")
+    # The endpoints and the trend answer different questions: the trend is a least-squares fit through every
+    # year, so a dip in the middle years can make it flat even when the last year is higher than the first.
+    return (f"built-up land {where} was {trend['first_share']:.1%} in {trend['first_year']} and "
+            f"{trend['last_share']:.1%} in {trend['last_year']}; the trend across all {trend['years_used']} years is "
+            f"{points_a_year(trend['slope_pts_per_year'])} points a year")
 
 
 def assess_growth(record: dict[str, Any], growth_opportunity_score) -> dict[str, Any]:
@@ -268,13 +279,17 @@ def assess_growth(record: dict[str, Any], growth_opportunity_score) -> dict[str,
     # Next to a built-out core, the frontier is further out.
     trend, where = (near, "within 1 km") if near["first_share"] < BUILT_OUT_SHARE else (far, "1-3 km away")
     slope = trend["slope_pts_per_year"]
-    pace = "Fast" if slope >= 1.5 else "Steady" if slope >= 0.5 else "Little or no"
+    # "Little or no development" describes an empty area; a ring that is already three-quarters built has
+    # little open land left, so say that instead.
+    pace = ("Fast development" if slope >= 1.5 else "Steady development" if slope >= 0.5
+            else "Little new building in an already dense area" if trend["last_share"] >= DENSE_SHARE
+            else "Little or no development")
     other = far if trend is near else None
     return {
         "factor": "growth",
         "score": round(max(0.0, min(100.0, 100.0 * slope / GROWTH_FULL_SCORE_PTS_PER_YEAR)), 2),
         "status": "indicative",
-        "basis": f"{pace} development around the plot: {_built_change(trend, where)}."
+        "basis": f"{pace} around the plot: {_built_change(trend, where)}."
                  + (f" Further out, {_built_change(other, '1-3 km away')}." if other else ""),
         "limitations": AREA_HISTORY_LIMITS,
         "checklist": [],
@@ -318,6 +333,16 @@ def _metres(value: Any) -> str:
     return f"{value:,.0f} m" if isinstance(value, (int, float)) else "not found"
 
 
+def regional_install_hint(record: dict[str, Any]) -> str | None:
+    """The exact `terrascope.cmd fetch-data <region>` the collector recorded when no regional store was installed."""
+    for row in record.get("evidence") or []:
+        if isinstance(row, dict) and row.get("source_type") == "openstreetmap":
+            match = re.search(r"terrascope\.cmd fetch-data [a-z0-9-]+", row.get("summary") or "")
+            if match:
+                return match.group(0)
+    return None
+
+
 def assess_accessibility(
     record: dict[str, Any],
     evaluation: dict[str, Any],
@@ -330,7 +355,10 @@ def assess_accessibility(
             "factor": "accessibility",
             "score": None,
             "status": "unavailable",
-            "basis": "Accessibility unavailable: no infrastructure was retrieved for this parcel.",
+            "basis": (f"Accessibility unavailable: no regional OpenStreetMap data is installed for "
+                      f"{parcel_state(record) or 'this state'}. Install it with {hint} and analyse again."
+                      if (hint := regional_install_hint(record)) else
+                      "Accessibility unavailable: no infrastructure was retrieved for this parcel."),
             "limitations": "The OpenStreetMap lookup returned nothing usable, or failed.",
             "checklist": ["Regional OpenStreetMap data covering this parcel"],
             "details": None,

@@ -21,6 +21,7 @@ from scoring_engine._assessment import (
     RIVER_FLAG_PARCEL_SHARE,
     WATER_BED_MEAN_OCCURRENCE_PCT,
     parcel_state,
+    regional_install_hint,
 )
 
 ACCESS_OK_SCORE = 60  # rule, not calibrated: below this the accessibility sub-scores are mostly spent
@@ -157,6 +158,8 @@ def _growth(rows: dict[str, dict[str, Any]], factors: dict[str, dict[str, Any]])
                 "ok" if growth["score"] >= 50 else "caution", "measured",
                 "Building around the plot is increasing; on a site visit, see what is being built nearby."
                 if growth["score"] >= 50 else
+                "An established, dense area with little open land left: expect little new development nearby."
+                if growth["basis"].startswith("Little new building in an already dense area") else
                 "Little building nearby: no sign yet of development reaching this area, so there is no hurry.",
                 evidence)
 
@@ -180,13 +183,15 @@ def _plot_history(rows: dict[str, dict[str, Any]], record: dict[str, Any]) -> di
     return _row("The plot itself", finding, assessment, "measured", step, rows.get("land-cover"))
 
 
-def _access(rows: dict[str, dict[str, Any]], factors: dict[str, dict[str, Any]]) -> dict[str, Any]:
+def _access(rows: dict[str, dict[str, Any]], factors: dict[str, dict[str, Any]], record: dict[str, Any]) -> dict[str, Any]:
     access = factors.get("accessibility") or {}
     evidence = rows.get("osm")
     details = access.get("details") or {}
     if access.get("score") is None:
         return _row("Road and school access", access.get("basis") or "No infrastructure data for this parcel.",
-                    "unknown", "unavailable", "Install the regional data (terrascope.cmd fetch-data <state>) and analyse again.",
+                    "unknown", "unavailable",
+                    f"Run {regional_install_hint(record)} and analyse the boundary again." if regional_install_hint(record)
+                    else "Analyse the boundary again; if this persists, check the data-pipeline log.",
                     evidence)
     def where(part: dict[str, Any], label: str) -> str:
         return f"{label} {part['distance_m']:,.0f} m" if part.get("distance_m") is not None else f"no {label} found"
@@ -212,7 +217,7 @@ def build_findings(record: dict[str, Any], factors: list[dict[str, Any]]) -> lis
              "Ask neighbours whether the plot or its road floods after heavy rain."),
         _growth(rows, by_factor),
         _plot_history(rows, record),
-        _access(rows, by_factor),
+        _access(rows, by_factor, record),
     ]
     order = {"red_flag": 0, "caution": 1, "unknown": 2, "ok": 3}
     return sorted((f for f in findings if f), key=lambda f: order[f["assessment"]])

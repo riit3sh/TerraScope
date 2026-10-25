@@ -1492,3 +1492,35 @@ the reason the approach changed.
   pass. Browser, read-only views on the user's store: start page, a saved report and the workspace show no price
   wording (whole-word check) and no console errors.
 - **Status:** done and verified.
+
+## J-59 Area development read "88% to 89% (-0.0 points a year)"; dataset audit
+
+- **Date / problem:** 2026-10-25. A Vijayawada report (VJ Polytechnic, Krishna district) said built-up land within 1 km
+  went from 88% in 2017 to 89% in 2023 at "-0.0 points a year", under "Little or no development". It also gave no
+  decision with only "no infrastructure was retrieved".
+- **Root cause (confirmed from the stored values):**
+  - Shares were correct (0.8822 to 0.8858, i.e. 88.2% to 88.6%). Whole-percent rounding printed them as 88% and 89%.
+  - The trend is a least-squares fit across all seven years. The series dipped in 2020-2022 (0.8803, 0.8782, 0.8783), so
+    the fit was ~-3e-15, float noise. `round(..., 2)` kept it as -0.0, which printed as "-0.0". Any slope between -0.05
+    and 0 would also have printed "-0.0".
+  - "Little or no development" described an 88%-built ring as if it were empty.
+  - No decision was correct: Andhra Pradesh has no regional OpenStreetMap data, so accessibility was unscored. The
+    message did not say that, although the snapshot held the exact install command.
+- **Changes:**
+  - `connectors/land_cover_history.py`: the stored slope adds `+ 0.0`, so it can never be -0.0.
+  - `scoring_engine/_assessment.py`: one formatter (`points_a_year`) rounds before formatting. Shares print to one
+    decimal. The text names the all-years trend separately from the first and last year. A ring at least 75% built
+    reads "Little new building in an already dense area" (wording only: the score rule is unchanged). Missing regional
+    data names the state and the exact `terrascope.cmd fetch-data <region>` command.
+  - `findings.py`: the dense-area next step and the exact install command.
+  - `etl_pipeline.py`: the land-cover ledger line uses the same format for new snapshots. Existing snapshots keep their
+    saved line until the boundary is analysed again (snapshots are immutable).
+  - `docs/DATASETS.md`: the dataset audit, gaps, download plan with measured sizes, and researched sources.
+- **Verification (2026-10-25):** the Vijayawada snapshot re-evaluated on an audit copy now reads "88.2% in 2017 and 88.6%
+  in 2023; the trend across all 7 years is 0.0 points a year" under "Little new building in an already dense area", and
+  "Install it with terrascope.cmd fetch-data andhra-pradesh". Regression tests for the -0.0 slope (connector and
+  assessment) and the install command. ml-models 62, data-pipeline 81, backend-api 13; integration 13 passed.
+  Dry run of `fetch-data andhra-pradesh` (metadata only): OSM and surface-water tiles reused, 37 DEM tiles = 1.41 GB.
+- **Open:** a flat trend in a dense area still scores 0 for area growth; whether an established area should count
+  against BUY is a product decision, not a bug. Nothing was downloaded; Andhra Pradesh needs the user's go-ahead.
+- **Status:** fixed and verified.
