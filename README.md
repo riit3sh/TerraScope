@@ -102,7 +102,8 @@ cache is versioned and retained for 30 days; failed provider reads are never cac
 - elevation relative to the nearest mapped water
 
 Without a regional cache, those layers say so and give the install command. What is installed, what is missing and
-the measured download sizes are in [docs/DATASETS.md](docs/DATASETS.md). The other
+the measured download sizes are in [docs/DATASETS.md](docs/DATASETS.md). How the BUY / WAIT / WALK AWAY /
+INSUFFICIENT DATA decision is made, rule by rule, is in [docs/DECISION_RULES.md](docs/DECISION_RULES.md). The other
 collectors still run. Nothing India-wide is downloaded automatically. A region build checks
 disk space and reuses any extract and tiles already on disk.
 

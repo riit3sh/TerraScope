@@ -10,6 +10,7 @@ from ._assessment import (
     assess_growth,
     assess_legal,
     plot_history_checks,
+    points_a_year,
     red_flags,
 )
 
@@ -49,7 +50,7 @@ def build_verdict(
     contributions = [{"factor": f["factor"], "contribution": round(f["score"] * f["weight_pct"] / scored_weight, 2)}
                      for f in scored]
     blocking = [f for f in factors if f["factor"] in LOCATION_FACTORS and f["score"] is None
-                and f["weight_pct"] > 0 and f["status"] != "built_out"]
+                and f["weight_pct"] > 0 and f["status"] != "established"]
     flags = red_flags(record)
     checks = (legal["checklist"] if legal["score"] is None else []) + plot_history_checks(record)
     composite = round(sum(c["contribution"] for c in contributions), 2) if scored and not blocking else None
@@ -57,28 +58,41 @@ def build_verdict(
     if legal["score"] is not None and (100.0 - legal["score"]) > hard_legal_risk_threshold:
         # Proven disqualifying evidence decides on its own.
         recommendation = "AVOID"
-        summary = (f"AVOID on legal risk alone: effective legal risk {100.0 - legal['score']:.0f}/100 exceeds the "
-                   f"{hard_legal_risk_threshold:.0f} threshold.")
+        summary = (f"WALK AWAY: the matched land records give an effective legal risk of {100.0 - legal['score']:.0f}/100, "
+                   f"above the {hard_legal_risk_threshold:.0f} limit.")
         composite = None
     elif flags:
+        # A verified, serious risk is never cancelled out by good access or growth.
         recommendation = "AVOID"
-        summary = "AVOID: " + " ".join(flags)
+        summary = "WALK AWAY: " + " ".join(flags) + " Do not proceed unless this is explained."
     elif blocking or composite is None:
         recommendation = "INSUFFICIENT_EVIDENCE"
         missing = blocking or [f for f in factors if f["factor"] in LOCATION_FACTORS]
-        summary = "No buy/wait decision yet. " + " ".join(f"{LABEL[f['factor']].capitalize()}: {f['basis']}" for f in missing)
+        summary = "INSUFFICIENT DATA: no responsible recommendation yet. " + " ".join(
+            f"{LABEL[f['factor']].capitalize()}: {f['basis']}" for f in missing)
     else:
         recommendation = "BUY" if composite >= buy_threshold else "WAIT"
-        growth = factors[3]
-        parts = [f"{recommendation}: composite {composite:.0f} of 100 (BUY from {buy_threshold:.0f}) from "
-                 + ", ".join(f"{LABEL[f['factor']]} {f['score']:.0f}" for f in scored) + "."]
-        if growth["status"] in ("indicative", "built_out"):
-            parts.append(growth["basis"].split(". Further out")[0].rstrip(".") + ".")
+        growth, access = factors[3], factors[1]
+        parts = [f"{recommendation}: " + ("the evidence TerraScope can check supports proceeding." if recommendation == "BUY"
+                                          else "there is potential, but the evidence does not support buying yet.")]
+        trend = (growth.get("details") or {}).get("trend")
+        if trend and growth["status"] in ("indicative", "established"):
+            level = (f"{trend['first_share']:.1%} ({trend['first_year']}) to {trend['last_share']:.1%} ({trend['last_year']}) "
+                     f"built within 1 km, trend {points_a_year(trend['slope_pts_per_year'])} points a year")
+            parts.append(("An established, densely built area" if growth["status"] == "established"
+                          else growth["basis"].split(":")[0]) + f": {level}.")
+        road, school = ((access.get("details") or {}).get(k) or {} for k in ("road", "school"))
+        if access["score"] is not None:
+            def dist(part, name):
+                return f"{name} {part['distance_m']:,.0f} m" if part.get("distance_m") is not None else f"no {name} found"
+            parts.append(f"Nearest mapped {dist(road, 'road')}, {dist(school, 'school')} (straight line).")
         if recommendation == "WAIT":
             weakest = min(scored, key=lambda f: f["score"])
-            parts.append(f"Holding it back: {LABEL[weakest['factor']]} {weakest['score']:.0f}.")
+            parts.append(f"Holding it back: {LABEL[weakest['factor']]} {weakest['score']:.0f} of 100.")
+        parts.append(f"Composite {composite:.0f} of 100 (BUY from {buy_threshold:.0f}) from "
+                     + ", ".join(f"{LABEL[f['factor']]} {f['score']:.0f}" for f in scored) + ".")
         if legal["score"] is None:
-            parts.append("Before paying, check title, encumbrance and approvals: TerraScope cannot verify them.")
+            parts.append("Title, encumbrance, approvals and RERA are not verified: confirm them before paying.")
         summary = " ".join(parts)
 
     return {

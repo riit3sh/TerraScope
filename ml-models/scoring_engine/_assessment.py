@@ -208,8 +208,11 @@ def assess_flood(record: dict[str, Any]) -> dict[str, Any]:
 # Rules, not calibrated against prices: +2 points of built land a year within 1 km scores 100, and a ring
 # that was already this built in the first year has no open land left to show a trend.
 GROWTH_FULL_SCORE_PTS_PER_YEAR = 2.0
-BUILT_OUT_SHARE = 0.9
-DENSE_SHARE = 0.75  # wording only: does not change the score
+# Provisional, not validated: a 1 km ring at least this built, gaining under STEADY points a year, is an
+# established area (not scored). FAST / STEADY only name the pace in the text.
+DENSE_SHARE = 0.75
+FAST_PTS_PER_YEAR = 1.5
+STEADY_PTS_PER_YEAR = 0.5
 # Red flags that stop a purchase whatever the other factors say.
 RIVER_FLAG_MAX_RETURN_PERIOD = 100
 RIVER_FLAG_PARCEL_SHARE = 0.25
@@ -265,35 +268,32 @@ def assess_growth(record: dict[str, Any], growth_opportunity_score) -> dict[str,
             "limitations": AREA_HISTORY_LIMITS,
             "checklist": ["Area development history: analyse the boundary again"],
         }
-    if near["first_share"] >= BUILT_OUT_SHARE and (not far or far["first_share"] >= BUILT_OUT_SHARE):
+    slope = near["slope_pts_per_year"]
+    further = f" Further out, {_built_change(far, '1-3 km away')}." if far else ""
+    # Level and rate answer different questions. A ring that is already dense, with little new building, is an
+    # established area: its low rate is not a weakness of the plot, so it is described but neither scored nor
+    # penalised, and the decision rests on access and risks. A dense ring still building fast is scored normally.
+    if near["last_share"] >= DENSE_SHARE and slope < STEADY_PTS_PER_YEAR:
         return {
             "factor": "growth",
             "score": None,
-            "status": "built_out",
-            "basis": f"Already built out: {_built_change(near, 'within 1 km')}. With no open land left there is no "
-                     "development trend to measure, so the decision rests on the other factors.",
+            "status": "established",
+            "basis": f"Established, densely built area: {_built_change(near, 'within 1 km')}.{further} The level of "
+                     "development is neither scored for nor against the decision; it rests on access and risks.",
             "limitations": AREA_HISTORY_LIMITS,
             "checklist": [],
-            "details": {"trend": near},
+            "details": {"trend": near, "ring": "within 1 km"},
         }
-    # Next to a built-out core, the frontier is further out.
-    trend, where = (near, "within 1 km") if near["first_share"] < BUILT_OUT_SHARE else (far, "1-3 km away")
-    slope = trend["slope_pts_per_year"]
-    # "Little or no development" describes an empty area; a ring that is already three-quarters built has
-    # little open land left, so say that instead.
-    pace = ("Fast development" if slope >= 1.5 else "Steady development" if slope >= 0.5
-            else "Little new building in an already dense area" if trend["last_share"] >= DENSE_SHARE
+    pace = ("Fast development" if slope >= FAST_PTS_PER_YEAR else "Steady development" if slope >= STEADY_PTS_PER_YEAR
             else "Little or no development")
-    other = far if trend is near else None
     return {
         "factor": "growth",
         "score": round(max(0.0, min(100.0, 100.0 * slope / GROWTH_FULL_SCORE_PTS_PER_YEAR)), 2),
         "status": "indicative",
-        "basis": f"{pace} around the plot: {_built_change(trend, where)}."
-                 + (f" Further out, {_built_change(other, '1-3 km away')}." if other else ""),
+        "basis": f"{pace} around the plot: {_built_change(near, 'within 1 km')}.{further}",
         "limitations": AREA_HISTORY_LIMITS,
         "checklist": [],
-        "details": {"trend": trend, "ring": where},
+        "details": {"trend": near, "ring": "within 1 km"},
     }
 
 

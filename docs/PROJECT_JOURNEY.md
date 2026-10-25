@@ -1524,3 +1524,44 @@ the reason the approach changed.
 - **Open:** a flat trend in a dense area still scores 0 for area growth; whether an established area should count
   against BUY is a product decision, not a bug. Nothing was downloaded; Andhra Pradesh needs the user's go-ahead.
 - **Status:** fixed and verified.
+
+## J-60 Decision clarity, level vs rate, and Andhra Pradesh regional data
+
+- **Date / problem:** 2026-10-25.
+  - The decision was not stated in buyer words (AVOID, INSUFFICIENT EVIDENCE), and the summary opened with a composite
+    figure.
+  - An already-dense area with little new building scored 0 for area growth, as if it were empty land. Level of
+    development and rate of new development were conflated.
+  - Andhra Pradesh had no regional data, so the Vijayawada plot had no decision.
+- **Changes:**
+  - **Level vs rate** (`_assessment.py`): a 1 km ring at least 75% built gaining under 0.5 points a year is an
+    *established* area. It is described, not scored for or against, and does not block. A dense area still building
+    fast is scored as before. Both thresholds are provisional and disclosed. This was not tuned toward BUY.
+  - **Wording** (`_verdict.py`, report): BUY / WAIT / WALK AWAY / INSUFFICIENT DATA (stored codes unchanged). The
+    summary starts with a plain sentence built from the findings, then the development figures, the road and school
+    distances, what holds a WAIT back, the composite, and the unverified legal checks.
+  - **Report:** the explanation first; strongest positives and negatives and an evidence-completeness count (from the
+    findings); a nearby-facilities table (road, school, hospital, bus, rail) with distances, names, source and data
+    date. Colleges, markets and shops are stated as not collected.
+  - **`docs/DECISION_RULES.md`:** every rule with its evidence, reason, effect, missing-evidence behaviour and
+    validation status.
+  - **Andhra Pradesh:** `terrascope.cmd fetch-data andhra-pradesh` reused the OSM extract and the surface-water tiles.
+    It downloaded the DEM tiles: the build's own list needed 54 (11 already on disk); 11 were downloaded by the build and 32 by a parallel helper
+    using the same source and file names, with sizes checked. The store took 329 s to build (204 MB). Throughput was
+    about 0.1-0.35 MB/s per connection; one HTTP 504 on signing was retried.
+- **Verification (2026-10-25, audit copy `backend-audit-2026-10-25c.sqlite3`):**
+  - **Vijayawada,** the exact saved boundary re-analysed in 8 s with regional data `andhra-pradesh`. Road 1 m, school
+    326 m, hospital 309 m, bus 408 m, rail 2.1 km, canal 1.4 km, elevation +7.1 m above water, no surface water, no
+    modelled river flooding. Land cover was 88.2% to 88.6% (all 7 years); the area is established.
+  - **Decision: BUY, composite 96.** It rests on accessibility alone, because the established area is not scored and
+    legal and flood have no score. Title, RERA, rainfall waterlogging and coastal flooding remain Unknown.
+  - **Tamil Nadu:** VIT BUY 94 (fast growth); Kelambakkam WALK AWAY (91% flooded at 1-in-10, despite growth 90).
+  - **Tests:** ml-models 65, data-pipeline 81, backend-api 13, valuation 52, integration 13; frontend type-check and
+    build pass.
+  - **Browser:** the new report has the badge, explanation, highlights, five facility distances and no "-0.0"; no
+    console errors in a fresh tab; no sideways scroll at 375 px.
+  - **User store:** byte-identical before and after (`8e84f611…`); backups intact.
+- **Open:** a BUY can rest on a single scored factor when the others are established or unscored, as for Vijayawada.
+  Whether a BUY should need at least two scored location factors or full flood coverage is a product decision, not
+  made here.
+- **Status:** fixed and verified.

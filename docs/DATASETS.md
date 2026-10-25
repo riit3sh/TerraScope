@@ -10,8 +10,9 @@ Audited 2026-10-25 on the development machine (`data-cache\`). Sizes are measure
 | Place search (GeoNames gazetteer and postal codes) | `places\places.sqlite`, `downloads\geonames\` | 191 MB + 19 MB | CC BY 4.0 (credit GeoNames) | Search suggestions while typing |
 | OpenStreetMap southern-zone extract (Geofabrik), dated 2026-10-04 | `downloads\southern-zone-261004.osm.pbf` | 532 MB | ODbL 1.0 | Source for building regions in Andhra Pradesh, Karnataka, Kerala, Tamil Nadu, Telangana, Puducherry |
 | Region `tamil-nadu` (Tamil Nadu and Puducherry) | `regions\tamil-nadu\osm.sqlite` | 279 MB | ODbL 1.0 | Road, school, hospital, bus and rail distances (accessibility); rivers, canals and tanks |
+| Region `andhra-pradesh` (built 2026-10-25 from the same extract) | `regions\andhra-pradesh\osm.sqlite` | 204 MB | ODbL 1.0 | 572,665 road segments, 1,803 schools, 4,532 hospitals, 3,528 bus stops/stations, 565 railway stations, 32,399 water bodies, 11,473 waterways |
 | Previous Tamil Nadu build (backup, unused) | `regions\tamil-nadu\previous-build-2026-10-06\` | 276 MB | ODbL 1.0 | Nothing; can be deleted |
-| Copernicus DEM GLO-30, 37 tiles (Tamil Nadu, Puducherry, one Andhra tile) | `rasters\dem\` | 1.2 GB | Copernicus DEM licence (free use) | Elevation; height relative to mapped water. Elsewhere read remotely |
+| Copernicus DEM GLO-30, 75 tiles (Tamil Nadu, Puducherry, Andhra Pradesh) | `rasters\dem\` | 2.5 GB | Copernicus DEM licence (free use) | Elevation; height relative to mapped water. Elsewhere read remotely |
 | JRC Global Surface Water v1.4, 8 tiles (70-90°E, 0-20°N) | `rasters\gsw\` | 180 MB | Copernicus, free without restriction ("Source: EC JRC/Google") | Water seen on and around the plot, 1984-2021 |
 | JRC river flood hazard maps v2.1.2 (tile index and cached parcel results) | `flood-hazard\` | <1 MB | CC BY 4.0 | River flooding by return period (tiles read remotely) |
 | Caches | `satellite\sentinel2-cache.sqlite`, `flood-indicators-cache.json` | 7 MB | derived | Faster repeat analyses (Sentinel-2 measurements; surface-water, DEM and land-cover parcel results, 30 days) |
@@ -26,7 +27,7 @@ explanation. `SATELLITE_DEMO_FALLBACK=false`, so no synthetic imagery is ever su
 
 | Gap | Effect in the report | Fix |
 |---|---|---|
-| Regional OpenStreetMap for any state except Tamil Nadu and Puducherry | Road and school access "Unknown"; **no BUY / WAIT decision** (an unscored location factor withholds it) | `terrascope.cmd fetch-data <state>` (below) |
+| Regional OpenStreetMap for any state except Tamil Nadu, Puducherry and Andhra Pradesh | Road and school access "Unknown"; **no BUY / WAIT decision** (an unscored location factor withholds it) | `terrascope.cmd fetch-data <state>` (below) |
 | State RERA data (only a MahaRERA seed format is supported; none configured) | RERA "Unknown" | Manual check on the state portal: rera.tn.gov.in, rera.ap.gov.in. No public API was found, and portals are not scraped |
 | Land records and encumbrance | Title "Unknown"; always on the "before you pay" list | Manual: Tamil Nadu eservices.tn.gov.in (patta/chitta) and tnreginet.gov.in (EC); Andhra Pradesh meebhoomi.ap.gov.in (Adangal, 1B). Web lookups for individuals; not integrated, never automated, never treated as verification |
 | Rainfall waterlogging, coastal flooding, observed flood footprints | Those mechanisms "Unknown" | See candidate sources below |
@@ -34,22 +35,23 @@ explanation. `SATELLITE_DEMO_FALLBACK=false`, so no synthetic imagery is ever su
 
 ## Download plan
 
-1. **Andhra Pradesh** (needed for the Vijayawada plot):
+1. **Andhra Pradesh**: done 2026-10-25 (see the verification below).
 
-   ```bat
-   terrascope.cmd fetch-data andhra-pradesh
-   ```
-
-   - Downloads 37 Copernicus DEM tiles, **1.41 GB**, into `data-cache\rasters\dem\`.
-   - Reuses the southern-zone OSM extract (covers 100% of the state) and the surface-water tiles already on disk:
-     0 MB for those.
-   - Builds `data-cache\regions\andhra-pradesh\osm.sqlite` (about 250-300 MB; the Tamil Nadu build took 9 minutes).
-   - Needs about 1.7 GB plus 2 GB spare (the command checks). Free on 2026-10-25: 9.0 GB.
-   - Enables road and school access (so a BUY / WAIT decision), distances to rivers, canals and tanks, and local DEM and
-     surface-water reads.
 2. **Karnataka, Kerala or Telangana**: the same command with that state's slug (`terrascope.cmd fetch-data --list`),
    only when you analyse plots there. The OSM extract is reused; DEM tile sizes have not been measured yet.
 3. **Optional cleanup**: the unused previous Tamil Nadu build frees 276 MB. Delete it only on purpose.
+
+## Verified in the pipeline (2026-10-25, Vijayawada plot, re-analysed on an audit copy)
+
+| Layer | Loaded and used | Result for the plot |
+|---|---|---|
+| Regional OSM (andhra-pradesh) | yes | road 1 m from the boundary (residential), school 326 m, hospital 309 m, bus stop 408 m, railway halt 2.1 km |
+| OSM water features | yes | canal 1.4 km; nearest mapped "water" 2.2 km (a fountain tagged as water: an OSM quirk) |
+| Copernicus DEM | yes | 22.6 m; +7.1 m above the nearest mapped water |
+| JRC Global Surface Water | yes | no water seen on the plot or within 500 m, 1984-2021 |
+| JRC river flood maps | yes | 7 scenarios; no modelled river flooding up to 1-in-500 years |
+| Annual land cover 2017-2023 | yes | 88.2% (2017) to 88.6% (2023) built within 1 km; all 7 years used |
+| Sentinel-2 | yes | 8 observations, no material change |
 
 ## Candidate sources for flood, rainfall, terrain and drainage (researched 2026-10-25; none integrated)
 

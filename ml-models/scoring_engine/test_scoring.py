@@ -43,7 +43,7 @@ def test_clean_parcel_is_buy_with_high_explainable_scores():
     assert result["recommendation"] == "BUY"
     assert result["growth_score"] is None, "growth is not derivable from spectral indices"
     assert sum(item["contribution"] for item in result["weighted_contributions"]) == result["composite_score"]
-    assert "composite" in result["reasoning_summary"] and "legal safety" in result["reasoning_summary"]
+    assert "Composite" in result["reasoning_summary"] and "legal safety" in result["reasoning_summary"]
 
 
 def test_flood_prone_parcel_passes_through_risk_as_low_flood_safety():

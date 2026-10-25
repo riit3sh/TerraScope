@@ -255,7 +255,7 @@ def test_fast_development_around_the_plot_is_a_buy_with_title_checks() -> None:
     result = _decide(_history(0.63, 0.73, 1.92))
     assert result["growth_score"] == 96.0
     assert result["recommendation"] == "BUY"
-    assert "was 63.0% in 2017 and 73.0% in 2023" in result["reasoning_summary"]
+    assert "63.0% (2017) to 73.0% (2023) built within 1 km, trend +1.9 points a year" in result["reasoning_summary"]
     assert any("Ownership record" in check for check in result["pre_purchase_checks"]), "legal is a check, never verified"
     assert result["legal_safety_score"] is None
 
@@ -269,7 +269,7 @@ def test_little_development_is_a_wait_that_names_what_holds_it_back() -> None:
 def test_built_out_area_does_not_block_and_is_not_scored() -> None:
     result = _decide(_history(1.0, 1.0, 0.0, far_first=0.97))
     growth = next(f for f in result["factors"] if f["factor"] == "growth")
-    assert growth["status"] == "built_out" and growth["score"] is None
+    assert growth["status"] == "established" and growth["score"] is None
     assert result["recommendation"] in {"BUY", "WAIT"}
     assert {c["factor"] for c in result["weighted_contributions"]} == {"accessibility"}
 
@@ -301,8 +301,10 @@ def test_a_flat_trend_never_prints_as_minus_zero_and_a_dense_area_is_not_called_
     growth = next(f for f in result["factors"] if f["factor"] == "growth")
     assert "-0.0" not in growth["basis"]
     assert "was 88.2% in 2017 and 88.6% in 2023; the trend across all 7 years is 0.0 points a year" in growth["basis"]
-    assert growth["basis"].startswith("Little new building in an already dense area")
-    assert growth["score"] == 0.0  # wording only: the score rule is unchanged
+    assert growth["basis"].startswith("Established, densely built area")
+    # Level is not rate: an established area is neither scored nor penalised; the decision rests on access.
+    assert growth["status"] == "established" and growth["score"] is None
+    assert {c["factor"] for c in result["weighted_contributions"]} == {"accessibility"}
 
 
 def test_missing_regional_data_names_the_exact_install_command() -> None:
@@ -318,3 +320,26 @@ def test_missing_regional_data_names_the_exact_install_command() -> None:
     access = next(f for f in result["factors"] if f["factor"] == "accessibility")
     assert access["score"] is None and "terrascope.cmd fetch-data andhra-pradesh" in access["basis"]
     assert "Andhra Pradesh" in access["basis"]
+
+
+def test_a_dense_area_that_is_still_building_fast_is_scored_not_exempted() -> None:
+    result = _decide(_history(0.80, 0.92, 2.0, far_first=0.6))
+    growth = next(f for f in result["factors"] if f["factor"] == "growth")
+    assert growth["status"] == "indicative" and growth["score"] == 100.0
+
+
+def test_decisions_use_buyer_words_walk_away_and_insufficient_data() -> None:
+    flood = {"river_flood": {"scenarios": [{"return_period_years": 20, "flooded_share_of_parcel": 0.5}]}}
+    walk = _decide(_history(0.63, 0.73, 1.92), flood_indicators=flood)
+    assert walk["recommendation"] == "AVOID" and walk["reasoning_summary"].startswith("WALK AWAY:")
+    unknown = _decide({}, infrastructure={})  # no area history and no infrastructure
+    assert unknown["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert unknown["reasoning_summary"].startswith("INSUFFICIENT DATA:")
+
+
+def test_wait_names_what_holds_it_back_and_buy_lists_unverified_legal_checks() -> None:
+    wait = _decide(_history(0.01, 0.02, 0.11))
+    assert wait["reasoning_summary"].startswith("WAIT: there is potential")
+    assert "Holding it back: area growth 6 of 100" in wait["reasoning_summary"]
+    buy = _decide(_history(0.63, 0.73, 1.92))
+    assert "Title, encumbrance, approvals and RERA are not verified" in buy["reasoning_summary"]

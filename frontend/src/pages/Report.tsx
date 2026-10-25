@@ -112,7 +112,7 @@ function DecisionPanel({ record, growth }: { record: ParcelRecord; growth?: Fact
   const checks = record.verdict?.pre_purchase_checks
   const share = (value: number | null) => value == null ? null : Number((value * 100).toFixed(1))
   const data = (history?.surroundings || []).map(r => ({ year: String(r.year), near: share(r.built_share_within_1km), far: share(r.built_share_1_to_3km) }))
-  const headline = growth && ['indicative', 'built_out'].includes(growth.status) ? growth.basis.split(':')[0] : 'No area history in this report'
+  const headline = growth && ['indicative', 'built_out', 'established'].includes(growth.status) ? growth.basis.split(':')[0] : 'No area history in this report'
   return <section className="decision-section">
     <div>
       <div className="section-label">AREA HISTORY · WHAT THE BUY / WAIT CALL RESTS ON</div>
@@ -149,12 +149,46 @@ function FindingsTable({ findings }: { findings?: Finding[] | null }) {
   </section>
 }
 
+/** The four answers in buyer words. The stored codes (AVOID, INSUFFICIENT_EVIDENCE) are unchanged so saved reports still read. */
+const VERDICT_LABEL: Record<string, string> = { BUY: 'BUY', WAIT: 'WAIT', AVOID: 'WALK AWAY', INSUFFICIENT_EVIDENCE: 'INSUFFICIENT DATA', UNAVAILABLE: 'NOT EVALUATED' }
+
+/** Nearby facilities, exactly as the regional OpenStreetMap store returned them: distance, name, nothing inferred. */
+function FacilitiesTable({ record }: { record: ParcelRecord }) {
+  const i: NonNullable<ParcelRecord['infrastructure']> = record.infrastructure || { nearest_road_distance_m: null, nearest_road_type: null, nearest_school_distance_m: null }
+  const osm = (record.evidence || []).find(e => e.source_type === 'openstreetmap')
+  const rows: [string, number | null | undefined, string | null | undefined, string][] = [
+    ['Road', i.nearest_road_distance_from_boundary_m ?? i.nearest_road_distance_m, [i.nearest_road_name, i.nearest_road_type].filter(Boolean).join(' · '), i.nearest_road_distance_from_boundary_m != null ? 'from the boundary' : 'from the centre'],
+    ['School', i.nearest_school_distance_from_boundary_m ?? i.nearest_school_distance_m, i.nearest_school_name, i.nearest_school_distance_from_boundary_m != null ? 'from the boundary' : 'from the centre'],
+    ['Hospital', i.nearest_hospital_distance_m, i.nearest_hospital_name, 'from the centre'],
+    ['Bus stop or station', i.nearest_bus_distance_m, [i.nearest_bus_name, i.nearest_bus_type?.replace('_', ' ')].filter(Boolean).join(' · '), 'from the centre'],
+    ['Railway station', i.nearest_rail_station_distance_m, [i.nearest_rail_station_name, i.nearest_rail_station_type].filter(Boolean).join(' · '), 'from the centre'],
+  ]
+  const collected = i.search_radius_m != null
+  return <section className="facilities-section"><div className="section-label">NEARBY FACILITIES · STRAIGHT-LINE DISTANCES FROM OPENSTREETMAP</div>
+    {collected ? <div className="flood-table-wrap"><table className="flood-table"><thead><tr><th>Facility</th><th>Distance</th><th>Name / type</th><th>Measured</th></tr></thead><tbody>{rows.map(([name, d, label, from]) => <tr key={name}><td>{name}</td><td>{d == null ? `none mapped within ${m(i.search_radius_m)}` : m(d)}</td><td>{d == null ? '—' : label || 'unnamed'}</td><td>{d == null ? '—' : from}</td></tr>)}</tbody></table></div>
+      : <p className="muted">{osm?.summary || 'No facility data was collected for this parcel.'}</p>}
+    <p className="field-hint">{osm ? `${osm.source_reference} · data as of ${(osm.observed_at || '').slice(0, 10)}. ` : ''}Straight lines, not travel routes; a mapped road is not proof of legal access. Colleges, markets and shops are not collected in this version.</p>
+  </section>
+}
+
+/** The strongest points each way, taken from the findings (nothing new is computed here). */
+function Highlights({ findings }: { findings?: Finding[] | null }) {
+  if (!findings?.length) return null
+  const good = findings.filter(f => f.assessment === 'ok' && f.next_step !== 'No action from this source.').slice(0, 3)
+  const bad = findings.filter(f => f.assessment === 'red_flag' || f.assessment === 'caution').slice(0, 3)
+  const known = findings.filter(f => f.assessment !== 'unknown').length
+  return <section className="highlights"><div><div className="section-label">STRONGEST POSITIVES</div>{good.length ? <ul>{good.map(f => <li key={f.area}><strong>{f.area}:</strong> {f.finding}</li>)}</ul> : <p className="muted">None the evidence supports.</p>}</div>
+    <div><div className="section-label">STRONGEST NEGATIVES</div>{bad.length ? <ul>{bad.map(f => <li key={f.area} className={f.assessment}><strong>{f.area}:</strong> {f.finding}</li>)}</ul> : <p className="muted">No red flag or caution in the evidence.</p>}</div>
+    <div className="evidence-meter"><div className="section-label">EVIDENCE COMPLETENESS</div><strong>{known} of {findings.length}</strong><small>checks have evidence; the rest are Unknown (not verified), never assumed safe.</small></div>
+  </section>
+}
+
 function Bar({ label, value, color, status }: { label: string; value: number | null; color: string; status?: string }) {
   const available = typeof value === 'number'
   return <div className={`score-line${available ? '' : ' unassessed'}`}>
     <div><span>{label}</span><strong>{available ? value : status === 'partial' ? 'Partly assessed' : 'Not scored'}</strong></div>
     <div className="bar"><i style={{ width: available ? `${Math.max(0, Math.min(100, value))}%` : '0%', background: color }} /></div>
-    {status && status !== 'assessed' && <small className="score-status">{status === 'indicative' ? 'indicative only' : status === 'partial' ? 'evidence shown · not scored' : status === 'built_out' ? 'already built out · not scored' : 'no supporting evidence'}</small>}
+    {status && status !== 'assessed' && <small className="score-status">{status === 'indicative' ? 'indicative only' : status === 'partial' ? 'evidence shown · not scored' : status === 'built_out' || status === 'established' ? 'established area · not scored' : 'no supporting evidence'}</small>}
   </div>
 }
 
@@ -264,10 +298,13 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
   return <main className="report-shell">
     <header className="report-topbar"><button className="back-button" onClick={onBack}><ArrowLeft size={16} /> Workspace</button><div className="wordmark"><span className="mark"><Sparkles size={14} /></span> TERRASCOPE</div><div className="report-tools"><button className="quiet-button" onClick={() => setHistoryOpen(true)}><History size={15} /> Scenario history</button><button className="quiet-button" onClick={() => setScenario(true)}><FlaskConical size={15} /> Explore scenarios</button><button className="quiet-button" onClick={() => window.print()}><Printer size={15} /> Print</button></div></header>
     <div className="report-content">
-      <section className="report-heading"><div><div className="eyebrow"><span className="pulse" /> ANALYSIS SNAPSHOT · {(record.metadata.analysis_snapshot_id || '—').slice(0, 8)}</div><h1>{placeName(address)}</h1>{address && <p className="full-address">{address}</p>}<p>{record.geometry_metadata?.area_acres == null ? 'Area unavailable' : `${record.geometry_metadata.area_acres.toFixed(2)} acres`} <span>·</span> {record.metadata.analysis_date_from || '—'} — {record.metadata.analysis_date_to || '—'}</p></div><div className={`verdict-badge ${verdict.toLowerCase()}`}><span>BUY NOW OR WAIT?</span><strong>{insufficient ? 'NO DECISION YET' : verdict}</strong><small>{!record.verdict ? 'not evaluated yet' : insufficient ? 'see what is missing below' : record.verdict.red_flags?.length ? 'red flags in the plot’s history' : 'rule-based · check title before paying'}</small></div></section>
+      <section className="report-heading"><div><div className="eyebrow"><span className="pulse" /> ANALYSIS SNAPSHOT · {(record.metadata.analysis_snapshot_id || '—').slice(0, 8)}</div><h1>{placeName(address)}</h1>{address && <p className="full-address">{address}</p>}<p>{record.geometry_metadata?.area_acres == null ? 'Area unavailable' : `${record.geometry_metadata.area_acres.toFixed(2)} acres`} <span>·</span> {record.metadata.analysis_date_from || '—'} — {record.metadata.analysis_date_to || '—'}</p></div><div className={`verdict-badge ${verdict.toLowerCase()}`}><span>BUY, WAIT OR WALK AWAY?</span><strong>{VERDICT_LABEL[verdict] || verdict}</strong><small>{!record.verdict ? 'not evaluated yet' : insufficient ? 'see what is missing below' : record.verdict.red_flags?.length ? 'red flags in the plot’s history' : 'rule-based · check title before paying'}</small></div></section>
       {olderEvaluation && <div className="older-note" role="note"><TriangleAlert size={15} /><span>This saved evaluation was made with an earlier version of TerraScope, so it lacks the current checks (the findings list and the buy / wait rules). Re-evaluating uses the same evidence; nothing is collected again.</span><button className="quiet-button" disabled={busy} onClick={() => rerun(settings).catch(() => undefined)}><RefreshCw size={14} /> {busy ? 'Re-evaluating…' : 'Re-evaluate with current methods'}</button></div>}
       {scenarioError && !scenario && <div className="older-note error-note" role="alert"><TriangleAlert size={15} /><span>{scenarioError}</span></div>}
+      {record.verdict?.reasoning_summary && <p className="decision-lede">{record.verdict.reasoning_summary}</p>}
+      <Highlights findings={record.verdict?.findings} />
       <DecisionPanel record={record} growth={factorOf('growth')} />
+      <FacilitiesTable record={record} />
       <FindingsTable findings={record.verdict?.findings} />
       <div className="section-label suitability-divider">SUITABILITY FOR YOU — scored from your weights</div>
       <section className="score-strip"><Bar label="Legal Safety" value={breakdown?.legal_safety_score ?? null} color="#77d8ff" status={factorOf('legal_safety')?.status} /><Bar label="Accessibility" value={breakdown?.accessibility_score ?? null} color="#f8c15c" status={factorOf('accessibility')?.status} /><Bar label="Flood Safety" value={breakdown?.flood_safety_score ?? null} color="#d49aff" status={factorOf('flood_safety')?.status} /><Bar label="Area growth" value={breakdown?.growth_score ?? null} color="#b8f36a" status={factorOf('growth')?.status} /></section>
@@ -296,7 +333,7 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
       <section className="evidence-section"><div className="section-head"><div><div className="section-label">EVIDENCE LEDGER</div><h2>Sources behind the findings</h2></div></div><div className="tabs">{(['Satellite', 'Infrastructure', 'Flood indicators', 'RERA', 'Uploaded Documents', 'Derived Scores'] as EvidenceTab[]).map(tab => <button className={tab === activeEvidenceTab ? 'active' : ''} key={tab} onClick={() => setActiveEvidenceTab(tab)}>{tab}</button>)}</div><div className="source-legend ledger-legend"><span><i className="dot live" /> LIVE</span><span><i className="dot cached" /> CACHED</span><span><i className="dot user_upload" /> YOUR UPLOAD</span><span><i className="dot derived" /> DERIVED</span><span><i className="dot seed" /> SEED DATA</span></div>{visibleEvidence.length ? visibleEvidence.map(item => <EvidenceRow key={item.evidence_id || item.title} title={item.title || item.source_type || 'Evidence'} refName={item.source_reference || 'TerraScope'} freshness={item.freshness || 'derived'} summary={item.summary || 'Collected evidence used in the evaluation.'} observedAt={item.observed_at} details={[item.observation_period && `observed ${item.observation_period}`, item.resolution, item.licence].filter(Boolean).join(' · ')} />) : <p className="muted evidence-empty">No {activeEvidenceTab.toLowerCase()} evidence is available for this parcel.</p>}</section>
     </div>
     {scenario && <Scenario settings={settings} verdict={verdict} before={breakdown?.composite_score ?? null} accessibility={breakdown?.accessibility_score ?? null} busy={busy} error={scenarioError} onClose={() => setScenario(false)} onRun={(next, changed) => rerun(next, changed).catch(() => undefined)} />}
-    {historyOpen && <div className="drawer-backdrop" onClick={() => setHistoryOpen(false)}><aside className="history-drawer" onClick={event => event.stopPropagation()}><div className="drawer-header"><div><div className="panel-kicker">DECISION TRAIL</div><h2>Scenario history</h2></div><button className="icon-button" aria-label="Close" onClick={() => setHistoryOpen(false)}><X size={18} /></button></div><div className="history-list">{history.length ? history.map((item, index) => <div className="history-item" key={index}><div><strong>{item.profile}</strong><span>{item.changed}</span></div><b>{item.verdict}</b></div>) : <p className="muted">No alternate lenses explored yet. The immutable evidence stays fixed while you test assumptions.</p>}</div></aside></div>}
+    {historyOpen && <div className="drawer-backdrop" onClick={() => setHistoryOpen(false)}><aside className="history-drawer" onClick={event => event.stopPropagation()}><div className="drawer-header"><div><div className="panel-kicker">DECISION TRAIL</div><h2>Scenario history</h2></div><button className="icon-button" aria-label="Close" onClick={() => setHistoryOpen(false)}><X size={18} /></button></div><div className="history-list">{history.length ? history.map((item, index) => <div className="history-item" key={index}><div><strong>{item.profile}</strong><span>{item.changed}</span></div><b>{VERDICT_LABEL[item.verdict] || item.verdict}</b></div>) : <p className="muted">No alternate lenses explored yet. The immutable evidence stays fixed while you test assumptions.</p>}</div></aside></div>}
   </main>
 }
 
@@ -314,7 +351,7 @@ function Scenario({ settings, verdict, before, accessibility, onClose, onRun, bu
     p.road_importance !== s.road_importance && `road importance ${p.road_importance}`,
     p.school_importance !== s.school_importance && `school importance ${p.school_importance}`,
   ].filter(Boolean).join(', ') || 'no change'
-  return <div className="drawer-backdrop" onClick={onClose}><aside className="scenario-drawer" onClick={event => event.stopPropagation()}><div className="drawer-header"><div><div className="panel-kicker">SCENARIO MODE</div><h2>Explore scenarios</h2></div><button className="icon-button" aria-label="Close" onClick={onClose}><X size={18} /></button></div><div className="drawer-scroll"><p className="drawer-intro flush">Change an assumption and re-evaluate the same evidence. Nothing is collected again.</p><div className="scenario-score flush"><div><span>BEFORE</span><strong>{verdict === 'INSUFFICIENT_EVIDENCE' ? 'INSUFFICIENT EVIDENCE' : verdict} · {before ?? '—'}</strong></div><div><span>ACCESSIBILITY</span><strong>{accessibility ?? '—'}</strong></div></div>
+  return <div className="drawer-backdrop" onClick={onClose}><aside className="scenario-drawer" onClick={event => event.stopPropagation()}><div className="drawer-header"><div><div className="panel-kicker">SCENARIO MODE</div><h2>Explore scenarios</h2></div><button className="icon-button" aria-label="Close" onClick={onClose}><X size={18} /></button></div><div className="drawer-scroll"><p className="drawer-intro flush">Change an assumption and re-evaluate the same evidence. Nothing is collected again.</p><div className="scenario-score flush"><div><span>BEFORE</span><strong>{VERDICT_LABEL[verdict] || verdict} · {before ?? '—'}</strong></div><div><span>ACCESSIBILITY</span><strong>{accessibility ?? '—'}</strong></div></div>
     <label className="field-label">FLOOD SAFETY WEIGHT <strong>{flood}%</strong></label><input className="scenario-range flush" aria-label="Flood safety weight (percent)" type="range" min="0" max={maxFlood} value={Math.min(flood, maxFlood)} onChange={event => change(Number(event.target.value))} />
     <label className="field-label">ACCESSIBILITY LIMITS <span>score reaches 0 at the limit</span></label>
     <div className="slider-row"><span>Road within</span><strong>{p.max_road_distance_m.toLocaleString()} m</strong><input type="range" min="100" max="5000" step="100" value={p.max_road_distance_m} onChange={e => pref('max_road_distance_m', Number(e.target.value))} aria-label="Maximum road distance in metres" /></div>

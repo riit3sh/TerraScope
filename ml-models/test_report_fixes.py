@@ -135,7 +135,7 @@ def test_legal_names_the_state_from_the_boundary_when_geocoding_gave_none() -> N
     assert "(Tamil Nadu)" in legal["basis"] and "RERA authority for Tamil Nadu" in legal["limitations"]
 
 
-@pytest.mark.parametrize("first_share, status", [(0.63, "indicative"), (0.98, "built_out")])
+@pytest.mark.parametrize("first_share, status", [(0.63, "indicative"), (0.98, "established")])
 def test_every_area_growth_status_passes_schema_validation(first_share: float, status: str) -> None:
     """Regression: a built-out area (central Chennai) failed schema validation on every evaluation."""
     trend = {"first_year": 2017, "first_share": first_share, "last_year": 2023, "last_share": first_share,

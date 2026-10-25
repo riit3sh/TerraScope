@@ -147,9 +147,9 @@ def _surface_water(rows: dict[str, dict[str, Any]], flood: dict[str, Any]) -> di
 def _growth(rows: dict[str, dict[str, Any]], factors: dict[str, dict[str, Any]]) -> dict[str, Any]:
     growth = factors.get("growth") or {}
     evidence = rows.get("land-cover")
-    if growth.get("status") == "built_out":
-        return _row("Area development", growth["basis"].split(". With")[0] + ".", "ok", "measured",
-                    "An established, fully built area: little open land is left nearby for new development.",
+    if growth.get("status") == "established":
+        return _row("Area development", growth["basis"].split(". Further out")[0].split(" The level of")[0], "ok", "measured",
+                    "An established, densely built area: little open land is left nearby for new development.",
                     evidence)
     if growth.get("score") is None:
         return _row("Area development", growth.get("basis") or "Area history unavailable.", "unknown", "unavailable",
@@ -158,8 +158,6 @@ def _growth(rows: dict[str, dict[str, Any]], factors: dict[str, dict[str, Any]])
                 "ok" if growth["score"] >= 50 else "caution", "measured",
                 "Building around the plot is increasing; on a site visit, see what is being built nearby."
                 if growth["score"] >= 50 else
-                "An established, dense area with little open land left: expect little new development nearby."
-                if growth["basis"].startswith("Little new building in an already dense area") else
                 "Little building nearby: no sign yet of development reaching this area, so there is no hurry.",
                 evidence)
 
