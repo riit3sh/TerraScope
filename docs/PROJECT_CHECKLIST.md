@@ -1,6 +1,6 @@
 # TerraScope project checklist
 
-The single current progress checklist. Last updated 2026-10-20 on `main` (buy/wait decision, J-56).
+The single current progress checklist. Last updated 2026-10-25 (completion pass, J-57; buy/wait decision, J-56).
 
 Rules: an item is "verified" only when a recorded check exercised the real behaviour (real services, real
 data, or the browser), not because code exists, a mocked test passes or a page loads. "Implemented" without
@@ -13,6 +13,12 @@ only read.
 
 ## 1. Fixed and verified
 
+- [x] **Findings with sources and next steps (J-57)**
+  - One row per check (title, RERA, river flooding, water history, rainfall/coastal, area development, the plot
+    itself, access, price) with status, how it is known, source, date and next step. Missing evidence is "unknown".
+  - Evidence: full browser workflow on 2026-10-25 (search, draw, analyse, report, re-evaluate, scenario).
+- [x] **Failure handling (J-57)**: a stopped service is named with the fix ("terrascope.cmd start"); failed re-runs
+  can be retried; uploads refuse empty files and unknown parcels.
 - [x] **Buy or wait from the history of the plot and its surroundings (J-56)**
   - Behaviour:
     - Land cover 2017-2023 (10 m, India-wide, no account) for the plot, within 1 km and 1-3 km. The built-up

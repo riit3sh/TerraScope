@@ -1125,6 +1125,72 @@
             "type": "string"
           },
           "description": "What TerraScope could not check and the buyer must, before paying (title, encumbrance, approvals; changes on the plot)."
+        },
+        "findings": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "One row per thing a buyer needs to know, red flags first. Built from the snapshot; adds no new figures.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "area",
+              "finding",
+              "assessment",
+              "basis",
+              "next_step"
+            ],
+            "properties": {
+              "area": {
+                "type": "string"
+              },
+              "finding": {
+                "type": "string"
+              },
+              "assessment": {
+                "type": "string",
+                "enum": [
+                  "red_flag",
+                  "caution",
+                  "ok",
+                  "unknown"
+                ]
+              },
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "measured",
+                  "modelled",
+                  "user_provided",
+                  "not_verified",
+                  "unavailable"
+                ]
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "evidence_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "as_of": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "next_step": {
+                "type": "string"
+              }
+            }
+          }
         }
       }
     },

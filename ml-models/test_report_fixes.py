@@ -145,3 +145,18 @@ def test_every_area_growth_status_passes_schema_validation(first_share: float, s
     result = evaluate_snapshot(snapshot, SETTINGS)  # schema-validated inside
     assert _factor(result, "growth")["status"] == status
     assert result["verdict"]["recommendation"] in {"BUY", "WAIT"}
+
+
+def test_findings_put_red_flags_first_and_never_call_missing_evidence_ok() -> None:
+    snapshot = copy.deepcopy(VIT)
+    snapshot["flood_indicators"]["river_flood"]["scenarios"][1]["flooded_share_of_parcel"] = 0.6  # 1-in-20
+    snapshot["flood_indicators"]["river_flood"]["scenarios"][1]["flooded_area_m2"] = 6000.0
+    findings = evaluate_snapshot(snapshot, SETTINGS)["verdict"]["findings"]  # schema-validated inside
+    assert findings[0]["area"] == "River flooding" and findings[0]["assessment"] == "red_flag"
+    assert "1-in-20-year" in findings[0]["finding"] and findings[0]["basis"] == "modelled"
+    by_area = {f["area"]: f for f in findings}
+    assert by_area["Title and ownership"]["assessment"] == "unknown"  # no land-records source: never ok
+    assert by_area["RERA registration"]["assessment"] == "unknown"
+    assert by_area["Rainfall waterlogging and coastal flooding"]["assessment"] == "unknown"
+    assert all(f["next_step"] for f in findings)
+    assert by_area["River flooding"]["as_of"] == "2026-01-12"  # the model release, not today

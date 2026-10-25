@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowLeft, FileText, FlaskConical, History, IndianRupee, Printer, RefreshCw, Sparkles, TriangleAlert, Upload, X } from 'lucide-react'
-import { DOC_TYPE_LABEL, DocType, estimateValuation, evaluateParcel, PriceBasis, EvaluationSettings, FactorAssessment, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, PropertyDetails, saveLandDetails, uploadEvidence, Valuation } from '../lib/api'
+import { DOC_TYPE_LABEL, DocType, estimateValuation, evaluateParcel, PriceBasis, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, PropertyDetails, saveLandDetails, uploadEvidence, Valuation } from '../lib/api'
 
 type EvidenceTab = 'Satellite' | 'Infrastructure' | 'Flood indicators' | 'RERA' | 'Uploaded Documents' | 'Derived Scores'
 
@@ -129,6 +129,29 @@ function DecisionPanel({ record, growth }: { record: ParcelRecord; growth?: Fact
       {checks == null ? <p className="muted">This evaluation predates the checklist. Re-evaluate the report to list it.</p> : checks.length ? <ul className="checklist">{checks.map(check => <li key={check}>{check}</li>)}</ul> : <p className="muted">Nothing outstanding.</p>}
       <p className="field-hint">TerraScope cannot read land records, so title, encumbrance and approvals are never verified here. Get them from the sub-registrar office and the seller.</p>
     </div>
+  </section>
+}
+
+const ASSESSMENT_LABEL: Record<Finding['assessment'], string> = { red_flag: 'Red flag', caution: 'Caution', ok: 'OK', unknown: 'Unknown' }
+const BASIS_LABEL: Record<Finding['basis'], string> = { measured: 'measured', modelled: 'model scenario', user_provided: 'your claim, not verified', not_verified: 'not verified', unavailable: 'source unavailable' }
+
+/** The price result the report already holds, as one more row: shown, never computed here. */
+function priceFinding(valuation: Valuation | null): Finding {
+  if (valuation?.status === 'available') return { area: 'Land price', finding: `Typical ₹${inr(valuation.estimate_inr_per_sqft)} per sq ft from ${valuation.comparable_count} ${valuation.price_type_label}, ${valuation.observed_from} to ${valuation.observed_to}. ${valuation.validation.status === 'validated' ? '' : 'Accuracy not yet validated.'}`.trim(), assessment: 'ok', basis: 'measured', source: valuation.sources.join(', '), as_of: valuation.valuation_date, next_step: 'Compare the asking price with this range and with the government guideline value.' }
+  return { area: 'Land price', finding: valuation ? (NO_PRICE_REASON[valuation.reason] || valuation.detail) : 'No price estimate was run.', assessment: 'unknown', basis: 'unavailable', source: 'No permitted price data loaded', next_step: 'Check the government guideline value at the sub-registrar office (Tamil Nadu: tnreginet.gov.in) and ask the seller for recent sale deeds nearby.' }
+}
+
+function FindingsTable({ findings, valuation }: { findings?: Finding[] | null; valuation: Valuation | null }) {
+  if (!findings?.length) return <section className="findings-section"><div className="section-label">WHAT WE FOUND</div><p className="muted">This evaluation predates the findings list. Use “Re-evaluate with current methods” above to add it.</p></section>
+  const rows = [...findings, priceFinding(valuation)]
+  const counts = rows.reduce<Record<string, number>>((n, f) => ({ ...n, [f.assessment]: (n[f.assessment] || 0) + 1 }), {})
+  return <section className="findings-section">
+    <div className="section-head"><div><div className="section-label">WHAT WE FOUND · EVERY CHECK, ITS SOURCE AND YOUR NEXT STEP</div><h2>{counts.red_flag ? `${counts.red_flag} red flag${counts.red_flag > 1 ? 's' : ''}` : 'No red flags'}{counts.caution ? `, ${counts.caution} to check` : ''}{counts.unknown ? `, ${counts.unknown} not verifiable here` : ''}</h2></div></div>
+    <div className="finding-list">{rows.map(f => <div className={`finding ${f.assessment}`} key={f.area}>
+      <div className="finding-what"><strong>{f.area}</strong><span className={`finding-badge ${f.assessment}`}>{ASSESSMENT_LABEL[f.assessment]}</span></div>
+      <div className="finding-body"><p>{f.finding}</p><small>{BASIS_LABEL[f.basis]}{f.source ? ` · ${f.source}` : ''}{f.as_of ? ` · as of ${f.as_of}` : ''}</small></div>
+      <div className="finding-next"><span>NEXT STEP</span><p>{f.next_step}</p></div>
+    </div>)}</div>
   </section>
 }
 
@@ -287,7 +310,7 @@ export function Report({ initialSnapshot, initialSettings, valuation, property, 
   const fieldCount = fields ? Object.keys(fields).length : 12
   const collectedCount = fields ? Object.values(fields).filter(Boolean).length : Math.round(((record.metadata.data_completeness_pct ?? 0) / 100) * 12)
   const isAi = record.verdict?.explanation_source === 'ai'
-  const olderEvaluation = record.score_breakdown != null && record.verdict?.explanation_source == null
+  const olderEvaluation = record.score_breakdown != null && (record.verdict?.explanation_source == null || record.verdict?.findings == null)
   const citations = record.verdict?.citations || []
   const imagery = (record.satellite?.imagery_dates || []).filter(Boolean) as string[]
   const windowStart = record.metadata.analysis_date_from
@@ -295,12 +318,12 @@ export function Report({ initialSnapshot, initialSettings, valuation, property, 
   const address = record.location?.address
 
   async function rerun(next: EvaluationSettings, changed?: string) {
-    setSettings(next)
     setBusy(true)
     setScenarioError('')
     try {
       const result = await evaluateParcel(record.parcel_id || '', next, record.metadata.analysis_snapshot_id || '')
       setRecord(result)
+      setSettings(next)  // only once it worked: a failed run must leave the settings the report shows, so Apply can retry
       setHistory(items => [{ profile: next.profile, changed: changed || 'Re-evaluated with current methods', verdict: result.verdict?.recommendation || 'UNAVAILABLE' }, ...items])
       setScenario(false)
     } catch (error) {
@@ -315,8 +338,10 @@ export function Report({ initialSnapshot, initialSettings, valuation, property, 
     <header className="report-topbar"><button className="back-button" onClick={onBack}><ArrowLeft size={16} /> Workspace</button><div className="wordmark"><span className="mark"><Sparkles size={14} /></span> TERRASCOPE</div><div className="report-tools"><button className="quiet-button" onClick={() => setHistoryOpen(true)}><History size={15} /> Scenario history</button><button className="quiet-button" onClick={() => setScenario(true)}><FlaskConical size={15} /> Explore scenarios</button><button className="quiet-button" onClick={() => window.print()}><Printer size={15} /> Print</button></div></header>
     <div className="report-content">
       <section className="report-heading"><div><div className="eyebrow"><span className="pulse" /> ANALYSIS SNAPSHOT · {(record.metadata.analysis_snapshot_id || '—').slice(0, 8)}</div><h1>{placeName(address)}</h1>{address && <p className="full-address">{address}</p>}<p>{record.geometry_metadata?.area_acres == null ? 'Area unavailable' : `${record.geometry_metadata.area_acres.toFixed(2)} acres`} <span>·</span> {record.metadata.analysis_date_from || '—'} — {record.metadata.analysis_date_to || '—'}</p></div><div className={`verdict-badge ${verdict.toLowerCase()}`}><span>BUY NOW OR WAIT?</span><strong>{insufficient ? 'NO DECISION YET' : verdict}</strong><small>{!record.verdict ? 'not evaluated yet' : insufficient ? 'see what is missing below' : record.verdict.red_flags?.length ? 'red flags in the plot’s history' : 'rule-based · check title before paying'}</small></div></section>
+      {olderEvaluation && <div className="older-note" role="note"><TriangleAlert size={15} /><span>This saved evaluation was made with an earlier version of TerraScope, so it lacks the current checks (the findings list and the buy / wait rules). Re-evaluating uses the same evidence; nothing is collected again.</span><button className="quiet-button" disabled={busy} onClick={() => rerun(settings).catch(() => undefined)}><RefreshCw size={14} /> {busy ? 'Re-evaluating…' : 'Re-evaluate with current methods'}</button></div>}
+      {scenarioError && !scenario && <div className="older-note error-note" role="alert"><TriangleAlert size={15} /><span>{scenarioError}</span></div>}
       <DecisionPanel record={record} growth={factorOf('growth')} />
-      {olderEvaluation && <div className="older-note" role="note"><TriangleAlert size={15} /><span>This saved evaluation was made with an earlier version. Some of its wording was wrong (for example, it said your distance limits were ignored; they were applied). The evidence is unchanged.</span><button className="quiet-button" disabled={busy} onClick={() => rerun(settings).catch(() => undefined)}><RefreshCw size={14} /> {busy ? 'Re-evaluating…' : 'Re-evaluate with current methods'}</button></div>}
+      <FindingsTable findings={record.verdict?.findings} valuation={valuation} />
       <ValuationSection valuation={valuation} property={property} record={record} />
       <div className="section-label suitability-divider">SUITABILITY FOR YOU — scored from your weights, independent of the market price above</div>
       <section className="score-strip"><Bar label="Legal Safety" value={breakdown?.legal_safety_score ?? null} color="#77d8ff" status={factorOf('legal_safety')?.status} /><Bar label="Accessibility" value={breakdown?.accessibility_score ?? null} color="#f8c15c" status={factorOf('accessibility')?.status} /><Bar label="Flood Safety" value={breakdown?.flood_safety_score ?? null} color="#d49aff" status={factorOf('flood_safety')?.status} /><Bar label="Area growth" value={breakdown?.growth_score ?? null} color="#b8f36a" status={factorOf('growth')?.status} /></section>

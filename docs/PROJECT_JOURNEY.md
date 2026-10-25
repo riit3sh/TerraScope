@@ -1430,3 +1430,41 @@ the reason the approach changed.
 - **Status:** fixed and verified. This supersedes J-53's position that growth stays unscored: growth is now
   scored from the area's observed development, not from the plot's NDVI/NDBI. The thresholds are still open
   (checklist section 2).
+
+## J-57 Completion pass: findings with next steps, failure messages, upload validation
+
+- **Date / problem:** 2026-10-25, before the demo deadline.
+  - The answer and its reasons were spread over many sections. There was no single place listing each check with its
+    status, source, date and next step.
+  - With a service stopped, the report said "Evaluation timed out: " (504) with an empty reason. On Windows a refused
+    loopback connection arrives as a connect timeout after ~2 s.
+  - After a failed scenario re-run, Apply was greyed out (the settings were saved before the request succeeded), and
+    a failed "Re-evaluate with current methods" showed nothing (its error went to the closed scenario drawer).
+  - The upload endpoint stored empty files and files for parcels that do not exist.
+- **Changes:**
+  - **Findings** (`ml-models/findings.py`, `verdict.findings` in the schema): one row each for title, RERA, river
+    flooding, water on the plot 1984-2021, rainfall/coastal flooding, area development, the plot itself, and road and
+    school access. Each row has status `red_flag | caution | ok | unknown` and basis
+    `measured | modelled | user_provided | not_verified | unavailable`, plus source, date and next step. Rows are
+    sorted red flags first. Missing evidence is `unknown`, never `ok`. The report adds the existing price result as
+    a final row (shown, not computed). Re-evaluate shows on any evaluation without findings.
+  - **Errors** (`backend-api/routers/parcels.py`): a connect timeout goes to the existing unreachable-service message,
+    which now names the service and address and says to run `terrascope.cmd start` (502). Real read timeouts keep 504.
+  - **Report:** settings change only after a successful re-run; a failed banner re-evaluation shows an alert.
+  - **Uploads:** an empty file returns 400; an unknown parcel returns 404.
+  - **README:** a five-minute demo guide.
+- **Verification (2026-10-25, audit copy `backend-audit-2026-10-25.sqlite3`):**
+  - **API:** 30/30 checks of valid, invalid and missing inputs on every public endpoint (`scratch` script, not in the
+    repo). This covered bad polygons, reversed dates, outside India, bad preferences, unknown parcels, empty and wrong
+    file types, and the valuation refusal.
+  - **Browser, full workflow:** search "Katpadi", draw a 16 ha plot, analyse (about 20 s), open the report: WAIT,
+    steady development (2% to 9% built within 1 km), school 4.6 km. Re-evaluate added the findings: "No red flags,
+    1 to check, 4 not verifiable here". Desktop and 375 px, no sideways scroll; no console errors in a fresh tab (the
+    `createRoot` warnings seen earlier came from Vite hot reloads).
+  - **Service down:** with ml-models stopped, the API returned the new 502 message, the scenario drawer showed it,
+    Apply stayed enabled, and after restarting ml-models the same Apply succeeded (road limit 1,500 m applied).
+  - **Tests:** ml-models 60, data-pipeline 80, backend-api 13, valuation 52; integration 17 passed, 1 skipped (needs real
+    price data); frontend type-check and build pass.
+- **Limitations:** saved reports cannot be deleted from the app. The findings' assessment cut-offs (access 60/100,
+  growth 50/100) are rules, not calibrated.
+- **Status:** fixed and verified.

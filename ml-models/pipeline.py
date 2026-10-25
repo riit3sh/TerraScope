@@ -16,6 +16,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from pydantic import BaseModel
 
 from change_detection.statistical_change import detect_change_from_series
+from findings import build_findings
 from citations import PAGE_BREAK, evidence_citations, land_details
 from scoring_engine.scoring import compute_evaluation
 
@@ -231,6 +232,7 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         "citations": [],
         "red_flags": result["red_flags"],
         "pre_purchase_checks": result["pre_purchase_checks"],
+        "findings": build_findings(evaluated, result["factors"]),
     }
     # Every figure the assessment relies on, cited to the evidence row that holds it. No LLM needed.
     citations = evidence_citations(evaluated, result["factors"])
@@ -268,6 +270,7 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         "citations": citations,
         "red_flags": result["red_flags"],
         "pre_purchase_checks": result["pre_purchase_checks"],
+        "findings": evaluated["verdict"]["findings"],
     }
     _validate_snapshot(evaluated)
     return evaluated

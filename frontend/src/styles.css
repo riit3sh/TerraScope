@@ -231,3 +231,10 @@
 .verdict-badge.insufficient_evidence strong{color:#9aa8a2;font-size:34px;letter-spacing:-.05em}
 @media(max-width:900px){.decision-section{grid-template-columns:1fr;gap:30px}}
 .factor-list{grid-template-columns:minmax(0,1fr)}
+.findings-section{padding:42px 0;border-bottom:1px solid #2a3738}.findings-section h2{font-size:28px;letter-spacing:-.05em;line-height:1.12;margin:14px 0 22px}
+.finding-list{display:grid;gap:8px;grid-template-columns:minmax(0,1fr)}.finding{display:grid;grid-template-columns:200px minmax(0,1.4fr) minmax(0,1fr);gap:22px;padding:15px 18px;background:#111a1b;border:1px solid #2d3b3c;border-left:3px solid #4a5a5b}
+.finding.red_flag{border-left-color:#ff8f7f;background:#1d1514}.finding.caution{border-left-color:#f8c15c}.finding.ok{border-left-color:#b8f36a}.finding.unknown{border-left-color:#77d8ff}
+.finding-what{display:flex;flex-direction:column;gap:8px;align-items:flex-start}.finding-what strong{font-size:13px}.finding-badge{font:10px 'DM Mono';text-transform:uppercase;letter-spacing:.06em;padding:3px 7px;border:1px solid currentColor}.finding-badge.red_flag{color:#ff9b8e}.finding-badge.caution{color:#f8c15c}.finding-badge.ok{color:#b8f36a}.finding-badge.unknown{color:#77d8ff}
+.finding-body p,.finding-next p{margin:0;color:#c0cdc7;font-size:13px;line-height:1.6}.finding-body small{display:block;margin-top:6px;color:#72817c;font:10px 'DM Mono'}.finding-next span{color:#72817c;font:10px 'DM Mono'}
+@media(max-width:900px){.finding{grid-template-columns:minmax(0,1fr);gap:10px}.finding-what{flex-direction:row;align-items:center;justify-content:space-between}}
+.older-note.error-note{border-color:#6b2f2a;background:#1f1412;color:#ffb4a8}

@@ -4,6 +4,32 @@ TerraScope is a local-first geospatial intelligence platform for land due dilige
 
 Collection and evaluation are deliberately separate: moving a slider or switching profiles re-runs only the fast evaluation layer and never re-collects evidence. See [docs/architecture.md](docs/architecture.md).
 
+## Demo in five minutes
+
+From the project folder (`terrascope.cmd setup` and `terrascope.cmd fetch-data tamil-nadu` once, first):
+
+```bat
+terrascope.cmd start
+```
+
+It opens http://localhost:5173. Then:
+
+1. Type **Katpadi**, pick the suggestion and press the arrow.
+2. Click **Draw** on the map and click four corners, finishing on the first one.
+3. Press **Analyze This Parcel**. A first analysis takes 10-25 s (live satellite and flood data); a repeat takes 2-3 s.
+4. **Open evidence report**. Read it top to bottom:
+   - **Buy now or wait?** BUY, WAIT or AVOID, with the area's 2017-2023 development chart and the "before you pay" checklist.
+   - **What we found:** every check with its status (red flag, caution, OK, unknown), how it is known (measured, model
+     scenario, your claim, not verified), its source and date, and the next step.
+   - Then price, the factor scores, flood detail, satellite change and the evidence ledger.
+5. Try **Explore scenarios** (change the road limit) and **Saved reports** on the start page.
+
+Good contrasting plots: VIT Vellore (BUY: fast development, close to a road and a school), Kelambakkam on OMR
+(AVOID: the river flood model covers most of the plot in a 1-in-10-year flood) and farmland near Tiruvannamalai
+(WAIT: almost no development nearby).
+
+`terrascope.cmd stop` stops only TerraScope's own services. Saved reports stay in `.local-ui-check\backend.sqlite3`.
+
 ## Folder Structure
 
 ```text
