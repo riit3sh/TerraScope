@@ -34,7 +34,7 @@ VIT_ACCEPTANCE = {"type": "Polygon", "coordinates": [[
     [79.15536230217474, 12.969645765583497]]]}
 
 PARCELS = {
-    # name: (polygon, area basis for the price request, land use)
+    # name: polygon
     "VIT acceptance parcel (568d1f42 polygon)": VIT_ACCEPTANCE,
     "VIT Vellore campus (part)": box(79.1540, 12.9680, 79.1610, 12.9735),
     "Katpadi residential plot": box(79.14270, 12.95370, 79.14284, 12.95384),
@@ -87,13 +87,6 @@ def run_once(client: httpx.Client, name: str, polygon: dict) -> dict:
     out["change_type"] = (result.get("satellite") or {}).get("change_type")
     out["observations"] = len((result.get("satellite") or {}).get("imagery_dates") or [])
     began = time.perf_counter()
-    valuation = client.post(f"{API}/api/v1/valuation/estimate", json={
-        "latitude": snapshot["location"]["latitude"], "longitude": snapshot["location"]["longitude"],
-        "area_sqft": snapshot["geometry_metadata"]["area_m2"] * 10.763910416709722, "land_use": "residential",
-        "price_basis": "asking"}, timeout=60).json()
-    out["valuation_s"] = round(time.perf_counter() - began, 3)
-    out["valuation"] = valuation.get("status") if valuation.get("status") == "available" else valuation.get("reason")
-    began = time.perf_counter()
     client.get(f"{API}/api/v1/parcels/{snapshot['parcel_id']}", timeout=30).raise_for_status()
     out["reopen_s"] = round(time.perf_counter() - began, 3)
     out["area_ha"] = round(snapshot["geometry_metadata"]["area_m2"] / 10_000, 3)
@@ -122,7 +115,7 @@ def main() -> None:
                 print(json.dumps(result), flush=True)
                 results.append(result)
     summary = {}
-    for key in ("analyze_s", "evaluate_s", "valuation_s", "reopen_s"):
+    for key in ("analyze_s", "evaluate_s", "reopen_s"):
         values = [r[key] for r in results if key in r and r.get("analyze_status") == 200 and "collectors_ms" in r]
         if values:
             summary[key] = {"n": len(values), "p50": percentile(values, 0.5), "p95": percentile(values, 0.95),

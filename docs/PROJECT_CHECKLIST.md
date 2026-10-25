@@ -1,6 +1,6 @@
 # TerraScope project checklist
 
-The single current progress checklist. Last updated 2026-10-25 (completion pass, J-57; buy/wait decision, J-56).
+The single current progress checklist. Last updated 2026-10-25 (land prices removed, J-58; completion pass, J-57; buy/wait decision, J-56).
 
 Rules: an item is "verified" only when a recorded check exercised the real behaviour (real services, real
 data, or the browser), not because code exists, a mocked test passes or a page loads. "Implemented" without
@@ -13,9 +13,12 @@ only read.
 
 ## 1. Fixed and verified
 
+- [x] **Land prices removed from this version (J-58)**: no price section, price finding, price import page,
+  workspace property box or valuation API. Price never affected BUY / WAIT / AVOID. The module stays unused in
+  `valuation/`.
 - [x] **Findings with sources and next steps (J-57)**
   - One row per check (title, RERA, river flooding, water history, rainfall/coastal, area development, the plot
-    itself, access, price) with status, how it is known, source, date and next step. Missing evidence is "unknown".
+    itself, access) with status, how it is known, source, date and next step. Missing evidence is "unknown".
   - Evidence: full browser workflow on 2026-10-25 (search, draw, analyse, report, re-evaluate, scenario).
 - [x] **Failure handling (J-57)**: a stopped service is named with the fix ("terrascope.cmd start"); failed re-runs
   can be retried; uploads refuse empty files and unknown parcels.
@@ -72,7 +75,7 @@ only read.
   - "Scored: 25% of your weighting" vs "Measured: 9 of 12 evidence fields", with the denominators.
   - Short place-name heading; one price reason plus a next step; a price-basis selector.
   - A re-evaluation banner on older evaluations; reports reopen after a browser refresh.
-- [x] **Price import workflow (J-52)**
+- [x] **Price import workflow (J-52)**: removed from the app in J-58; history below
   - Preview with per-line reasons, duplicates, stale and coarse flags and groups; commit with backup and
     re-validation; a "Price data" page; comparables listed under estimates.
   - Verified with a synthetic CSV against an audit-only price file, which was then deleted.
@@ -105,7 +108,7 @@ only read.
   plot at 1-in-100, water bed at 10% occurrence. All are rules, not calibrated against sale prices.
 - [ ] **Change-test thresholds**: ±0.05 for stable and 0.10 for change are fixed rules, not calibrated against
   labelled change data.
-- [ ] **Prediction quality**: the evaluation harness exists; zero real observations, so no metric is quoted
+- [ ] **Prediction quality** (valuation module, unused since J-58): the evaluation harness exists; zero real observations, so no metric is quoted
   (J-42).
 - [ ] **Docker Compose path**: unverified (J-04, J-05).
 - [ ] **Screen-reader and contrast audit**: not done. Labels were added where checks found gaps.
@@ -115,7 +118,7 @@ only read.
 
 ## 3. Blocked by missing external data or access
 
-- [ ] **Live land prices: no permitted dataset.** The verified terms and the smallest input needed are in
+- [ ] **Land prices: out of scope for this version (J-58); no permitted dataset.** The verified terms and the smallest input needed are in
   [SETUP_VALUATION.md](SETUP_VALUATION.md).
   - **TNREGINET guideline values:** reproduction needs the Registration Department's permission (verified in
     its copyright policy).

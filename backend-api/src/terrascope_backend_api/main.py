@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
 from routers.parcels import router as parcels_router
-from routers.valuation_routes import router as valuation_router
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
@@ -18,7 +17,6 @@ app.add_middleware(
 )
 
 app.include_router(parcels_router)
-app.include_router(valuation_router)
 
 
 @app.get("/health")

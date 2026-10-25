@@ -1,5 +1,7 @@
 # TerraScope land valuation
 
+**Not used in this version.** Land prices were removed from TerraScope's report, analysis flow and API on 2026-10-25 (journey J-58): no permitted, verified price data exists. This is kept, unused, for a later version.
+
 A transparent, comparable-property price range for a drawn parcel, or an explicit refusal. It is independent of
 everything else: suitability weights, flood evidence and legal status never move a price, and a price never
 moves them.

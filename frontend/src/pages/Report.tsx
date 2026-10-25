@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { ArrowLeft, FileText, FlaskConical, History, IndianRupee, Printer, RefreshCw, Sparkles, TriangleAlert, Upload, X } from 'lucide-react'
-import { DOC_TYPE_LABEL, DocType, estimateValuation, evaluateParcel, PriceBasis, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, PropertyDetails, saveLandDetails, uploadEvidence, Valuation } from '../lib/api'
+import { ArrowLeft, FileText, FlaskConical, History, Printer, RefreshCw, Sparkles, TriangleAlert, Upload, X } from 'lucide-react'
+import { DOC_TYPE_LABEL, DocType, evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, uploadEvidence } from '../lib/api'
 
 type EvidenceTab = 'Satellite' | 'Infrastructure' | 'Flood indicators' | 'RERA' | 'Uploaded Documents' | 'Derived Scores'
 
@@ -78,7 +78,7 @@ function FloodPanel({ indicators, latitude }: { indicators?: FloodIndicators | n
   const cellArea = river?.model_cell_area_m2 ?? (latitude == null ? null : (3 / 3600) * 111320 * Math.cos(latitude * Math.PI / 180) * (3 / 3600) * 110574)
   const parcelArea = river?.parcel_area_m2
   const cells = river?.model_cells_overlapping_parcel
-  return <section className="flood-section"><div className="section-head"><div><div className="section-label">FLOOD EVIDENCE · RED FLAGS ONLY, NO FLOOD SCORE OR PRICE</div><h2>{floodHeadline(indicators)}</h2></div><span className="completeness">No overall flood score or safety percentage: mechanisms that are not assessed are unknown, not safe.</span></div>
+  return <section className="flood-section"><div className="section-head"><div><div className="section-label">FLOOD EVIDENCE · RED FLAGS ONLY, NO FLOOD SCORE</div><h2>{floodHeadline(indicators)}</h2></div><span className="completeness">No overall flood score or safety percentage: mechanisms that are not assessed are unknown, not safe.</span></div>
     <table className="flood-glance"><tbody>{floodGlance(indicators).map(line => <tr key={line.mechanism}><th>{MECHANISM_LABEL[line.mechanism] || line.mechanism}</th><td><span className={`factor-badge ${line.status}`}>{STATUS_LABEL[line.status] || line.status}</span></td><td>{line.text}</td></tr>)}</tbody></table>
     <details className="flood-details"><summary>Scenarios, sources and method</summary>
       {river && river.scenarios?.length > 0 && <div className="flood-table-wrap"><table className="flood-table"><caption>Modelled river flooding by return period · {river.dataset} · {river.resolution}</caption><thead><tr><th>Scenario</th><th>Annual exceedance probability</th><th>Parcel flooded</th><th>Max depth</th><th>Mean depth</th><th>Parcel + {river.surroundings_m || 500} m flooded</th></tr></thead><tbody>{river.scenarios.map(s => <tr key={s.return_period_years}><td>1-in-{s.return_period_years} years</td><td>{aep(s.return_period_years)}</td><td>{s.flooded_area_m2 > 0 ? `${pct(s.flooded_share_of_parcel)} (${Math.round(s.flooded_area_m2).toLocaleString()} m²)` : 'none modelled'}</td><td>{s.max_depth_m == null ? '—' : `${s.max_depth_m} m`}</td><td>{s.mean_depth_m == null ? '—' : `${s.mean_depth_m} m`}</td><td>{pct(s.surroundings_flooded_share)}</td></tr>)}</tbody></table></div>}
@@ -135,15 +135,9 @@ function DecisionPanel({ record, growth }: { record: ParcelRecord; growth?: Fact
 const ASSESSMENT_LABEL: Record<Finding['assessment'], string> = { red_flag: 'Red flag', caution: 'Caution', ok: 'OK', unknown: 'Unknown' }
 const BASIS_LABEL: Record<Finding['basis'], string> = { measured: 'measured', modelled: 'model scenario', user_provided: 'your claim, not verified', not_verified: 'not verified', unavailable: 'source unavailable' }
 
-/** The price result the report already holds, as one more row: shown, never computed here. */
-function priceFinding(valuation: Valuation | null): Finding {
-  if (valuation?.status === 'available') return { area: 'Land price', finding: `Typical ₹${inr(valuation.estimate_inr_per_sqft)} per sq ft from ${valuation.comparable_count} ${valuation.price_type_label}, ${valuation.observed_from} to ${valuation.observed_to}. ${valuation.validation.status === 'validated' ? '' : 'Accuracy not yet validated.'}`.trim(), assessment: 'ok', basis: 'measured', source: valuation.sources.join(', '), as_of: valuation.valuation_date, next_step: 'Compare the asking price with this range and with the government guideline value.' }
-  return { area: 'Land price', finding: valuation ? (NO_PRICE_REASON[valuation.reason] || valuation.detail) : 'No price estimate was run.', assessment: 'unknown', basis: 'unavailable', source: 'No permitted price data loaded', next_step: 'Check the government guideline value at the sub-registrar office (Tamil Nadu: tnreginet.gov.in) and ask the seller for recent sale deeds nearby.' }
-}
-
-function FindingsTable({ findings, valuation }: { findings?: Finding[] | null; valuation: Valuation | null }) {
+function FindingsTable({ findings }: { findings?: Finding[] | null }) {
   if (!findings?.length) return <section className="findings-section"><div className="section-label">WHAT WE FOUND</div><p className="muted">This evaluation predates the findings list. Use “Re-evaluate with current methods” above to add it.</p></section>
-  const rows = [...findings, priceFinding(valuation)]
+  const rows = findings
   const counts = rows.reduce<Record<string, number>>((n, f) => ({ ...n, [f.assessment]: (n[f.assessment] || 0) + 1 }), {})
   return <section className="findings-section">
     <div className="section-head"><div><div className="section-label">WHAT WE FOUND · EVERY CHECK, ITS SOURCE AND YOUR NEXT STEP</div><h2>{counts.red_flag ? `${counts.red_flag} red flag${counts.red_flag > 1 ? 's' : ''}` : 'No red flags'}{counts.caution ? `, ${counts.caution} to check` : ''}{counts.unknown ? `, ${counts.unknown} not verifiable here` : ''}</h2></div></div>
@@ -166,73 +160,6 @@ function Bar({ label, value, color, status }: { label: string; value: number | n
 
 function EvidenceRow({ title, refName, freshness, summary, observedAt, details }: { title: string; refName: string; freshness: string; summary: string; observedAt?: string | null; details?: string }) {
   return <div className="evidence-row"><div className="evidence-icon"><FileText size={16} /></div><div><strong>{title}</strong><p>{summary}{cutOff(summary) && <em className="cut-note"> … (cut off when this report was saved)</em>}</p><small>{refName} · {(observedAt || '').slice(0, 10) || 'date unavailable'}</small>{details && <small className="evidence-details">{details}</small>}</div><span className={`freshness ${freshness}`}>{freshness.replace('_', ' ')}</span></div>
-}
-
-const inr = (value: number) => new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(Math.round(value))
-function compactInr(value: number) {
-  // Indian scale: beyond a lakh crore, "13,684 Cr" stops being readable.
-  if (value >= 1e12) return `₹${(value / 1e12).toFixed(2)} Lakh Cr`
-  if (value >= 1e7) return `₹${(value / 1e7).toFixed(2)} Cr`
-  if (value >= 1e5) return `₹${(value / 1e5).toFixed(2)} L`
-  return `₹${inr(value)}`
-}
-
-/** One reason and one next step; the specific backend detail is used when it carries numbers. */
-const NO_PRICE_REASON: Record<string, string> = {
-  no_price_data: 'No permitted land-price observations are loaded yet, for this or any area.',
-  request_failed: 'The valuation service could not be reached.',
-}
-const NEXT_ACTION: Record<string, string> = {
-  no_price_data: 'Import an owner/broker or licensed price CSV from “Price data” on the start page. A sale-based range needs at least 5 vacant plots of similar size (one third to three times this parcel) within 10 km.',
-  insufficient_comparables: 'Import more vacant-plot prices of similar size near this parcel.',
-  area_outside_support: 'Prices of much smaller plots do not transfer to a parcel this size; it needs comparables of similar size.',
-  no_comparables_nearby: 'Import prices for plots within 10 km of this parcel.',
-  stale_data_only: 'Import recent prices for this area.',
-  price_type_not_covered: 'Choose a price basis that has data, or import that type.',
-  land_use_not_covered: 'Import prices for this land use, or choose the land use that matches the data.',
-}
-const PRICE_TITLE: Record<string, string> = { asking: 'Listing-based estimated price range', transaction: 'Sale-based estimated price range', guideline: 'Government guideline value (reference)' }
-
-function ValuationSection({ valuation, property, record }: { valuation: Valuation | null; property: PropertyDetails | null; record: ParcelRecord }) {
-  const [current, setCurrent] = useState(valuation)
-  const [basis, setBasis] = useState<PriceBasis>(property?.price_basis || 'asking')
-  async function switchBasis(next: PriceBasis) {
-    setBasis(next)
-    const area = property?.area_sqft_override ?? ((record.geometry_metadata?.area_m2 ?? 0) * 10.763910416709722)
-    if (record.location?.latitude == null || record.location?.longitude == null || !area) return
-    try { setCurrent(await estimateValuation({ latitude: record.location.latitude, longitude: record.location.longitude, area_sqft: area, land_use: property?.land_use || 'residential', price_basis: next })) }
-    catch (error) { setCurrent({ status: 'unavailable', reason: 'request_failed', detail: error instanceof Error ? error.message : 'The valuation service could not be reached.' }) }
-  }
-  const picker = <label className="basis-picker">Compare against <select value={basis} onChange={e => switchBasis(e.target.value as PriceBasis)}><option value="asking">asking prices (listings)</option><option value="transaction">registered sale prices</option><option value="guideline">government guideline values</option></select></label>
-  valuation = current
-  const label = <div className="section-label"><IndianRupee size={13} /> LAND PRICE · KEPT SEPARATE FROM LEGAL, FLOOD AND SUITABILITY</div>
-  if (!valuation) return <section className="valuation-section unavailable">{label}<h2>Not requested</h2><p className="muted">No price estimate was run: it needs a location and a plot area.</p></section>
-  if (valuation.status === 'unavailable') {
-    return <section className="valuation-section unavailable">{label}<h2>No price estimate</h2>{picker}<p className="valuation-reason">{NO_PRICE_REASON[valuation.reason] || valuation.detail}</p>{NEXT_ACTION[valuation.reason] && <p className="muted valuation-detail"><strong>Next:</strong> {NEXT_ACTION[valuation.reason]}</p>}</section>
-  }
-  const spread = valuation.spread_inr_per_sqft
-  const validated = valuation.validation.status === 'validated'
-  return <section className="valuation-section">
-    <div className="section-head"><div>{label}<h2>{PRICE_TITLE[valuation.price_type] || 'Estimated price range'}</h2></div><span className={`valuation-stamp${validated ? '' : ' unvalidated'}`}>{validated ? 'held-out accuracy measured' : 'NOT YET VALIDATED'} · data {valuation.data_version} · {valuation.valuation_date}</span></div>
-    {picker}<p className="valuation-basis">Based on <strong>{valuation.price_type_label}</strong>.{valuation.price_type === 'asking' ? ' These are not completed sale prices.' : ''}</p>
-    <div className="valuation-grid">
-      <div className="valuation-primary"><span>TYPICAL ({valuation.comparable_count} COMPARABLES)</span><strong>₹{inr(valuation.estimate_inr_per_sqft)}</strong><small>per sq ft · median</small></div>
-      <div className="valuation-primary"><span>MIDDLE HALF OF COMPARABLES</span><strong>₹{inr(spread.p25)} – ₹{inr(spread.p75)}</strong><small>per sq ft · full spread ₹{inr(spread.min)} – ₹{inr(spread.max)}</small></div>
-      <div className="valuation-range">{valuation.total_inr
-        ? <><span>TOTAL FOR {inr(valuation.area_sqft)} SQ FT</span><strong>{compactInr(valuation.total_inr.p25)} – {compactInr(valuation.total_inr.p75)}</strong><small>{property?.area_sqft_override ? 'area you entered' : 'area from your boundary'} × the middle-half rates</small></>
-        : <><span>TOTAL</span><strong className="muted-strong">Not shown</strong><small>The parcel is outside the size range of the comparables.</small></>}</div>
-    </div>
-    <p className="muted valuation-detail">{valuation.spread_basis}</p>
-    <div className="valuation-facts">
-      <div><span>COMPARABLES</span><strong>{valuation.comparable_count} within {valuation.radius_km} km</strong><small>{valuation.land_use.replace('_', ' ')} {valuation.property_category.replace('_', ' ')} only</small></div>
-      <div><span>DATES</span><strong>{valuation.observed_from} – {valuation.observed_to}</strong><small>not adjusted for price changes over time</small></div>
-      <div><span>SOURCES</span><strong>{valuation.sources.length}</strong><small>{valuation.sources.join(', ')}</small></div>
-      <div><span>PREDICTION QUALITY</span><strong>{validated ? 'Measured' : 'Not yet validated'}</strong><small>{validated ? Object.entries(valuation.validation.holdouts || {}).map(([name, h]) => h.baseline ? `${name}: median error ${h.baseline.median_ape_pct}% on ${h.estimates} held-out ${valuation.price_type} prices` : `${name}: not validated`).join(' · ') : valuation.validation.note || 'Too few held-out observations to measure accuracy.'}</small></div>
-    </div>
-    <div className="valuation-uncertainty"><strong>Why this is uncertain</strong><ul>{valuation.uncertainty.map(reason => <li key={reason}>{reason}</li>)}</ul></div>
-    <details className="valuation-comparables" open><summary>Comparable properties behind this estimate ({valuation.comparables.length} shown)</summary><table className="flood-table"><thead><tr><th>Source / record</th><th>Type</th><th>Observed</th><th>₹ / sq ft</th><th>Area (sq ft)</th><th>Distance</th><th>Location</th></tr></thead><tbody>{valuation.comparables.map(c => <tr key={`${c.source}-${c.source_record_id}`}><td>{c.source_url ? <a href={c.source_url} target="_blank" rel="noreferrer">{c.source} · {c.source_record_id}</a> : `${c.source} · ${c.source_record_id}`}{c.listed_by_sources > 1 ? ` (listed ${c.listed_by_sources}×, counted once)` : ''}<small className="comparable-basis">reuse: {c.reuse_basis} · retrieved {c.retrieved_date}</small></td><td>{c.price_type}</td><td>{c.observed_date}</td><td>₹{inr(c.price_inr_per_sqft)}</td><td>{c.area_sqft == null ? '—' : inr(c.area_sqft)}</td><td>{c.distance_km} km</td><td>{c.location_precision}{c.locality ? ` · ${c.locality}` : ''}</td></tr>)}</tbody></table></details>
-    <p className="valuation-foot">The price comes only from comparable prices and the property details you entered. It never uses your suitability weights, accessibility limits, flood evidence or legal status, and none of those use it.</p>
-  </section>
 }
 
 function AccessibilityDetails({ factor }: { factor: FactorAssessment }) {
@@ -279,7 +206,7 @@ function ChangeSummary({ record, observations }: { record: ParcelRecord; observa
   return <div className="signal-summary"><strong>{CHANGE_LABEL[sat.change_type] || sat.change_type}</strong><span>{method.pairs} same-season pair{method.pairs === 1 ? '' : 's'} a year apart · {observations} observations · no confidence % (rule thresholds, not calibrated)</span></div>
 }
 
-export function Report({ initialSnapshot, initialSettings, valuation, property, onBack }: { initialSnapshot: ParcelRecord; initialSettings: EvaluationSettings; valuation: Valuation | null; property: PropertyDetails | null; onBack: () => void }) {
+export function Report({ initialSnapshot, initialSettings, onBack }: { initialSnapshot: ParcelRecord; initialSettings: EvaluationSettings; onBack: () => void }) {
   const [record, setRecord] = useState(initialSnapshot)
   const [settings, setSettings] = useState(initialSettings)
   const [scenario, setScenario] = useState(false)
@@ -341,9 +268,8 @@ export function Report({ initialSnapshot, initialSettings, valuation, property, 
       {olderEvaluation && <div className="older-note" role="note"><TriangleAlert size={15} /><span>This saved evaluation was made with an earlier version of TerraScope, so it lacks the current checks (the findings list and the buy / wait rules). Re-evaluating uses the same evidence; nothing is collected again.</span><button className="quiet-button" disabled={busy} onClick={() => rerun(settings).catch(() => undefined)}><RefreshCw size={14} /> {busy ? 'Re-evaluating…' : 'Re-evaluate with current methods'}</button></div>}
       {scenarioError && !scenario && <div className="older-note error-note" role="alert"><TriangleAlert size={15} /><span>{scenarioError}</span></div>}
       <DecisionPanel record={record} growth={factorOf('growth')} />
-      <FindingsTable findings={record.verdict?.findings} valuation={valuation} />
-      <ValuationSection valuation={valuation} property={property} record={record} />
-      <div className="section-label suitability-divider">SUITABILITY FOR YOU — scored from your weights, independent of the market price above</div>
+      <FindingsTable findings={record.verdict?.findings} />
+      <div className="section-label suitability-divider">SUITABILITY FOR YOU — scored from your weights</div>
       <section className="score-strip"><Bar label="Legal Safety" value={breakdown?.legal_safety_score ?? null} color="#77d8ff" status={factorOf('legal_safety')?.status} /><Bar label="Accessibility" value={breakdown?.accessibility_score ?? null} color="#f8c15c" status={factorOf('accessibility')?.status} /><Bar label="Flood Safety" value={breakdown?.flood_safety_score ?? null} color="#d49aff" status={factorOf('flood_safety')?.status} /><Bar label="Area growth" value={breakdown?.growth_score ?? null} color="#b8f36a" status={factorOf('growth')?.status} /></section>
       <section className="evidence-status"><div className="section-head"><div><div className="section-label">EVIDENCE BEHIND EACH FACTOR</div><h2>What is measured, and what is scored</h2></div></div>
         <div className="coverage-figures"><div><span>SCORED</span><strong>{assessedWeight}%</strong><small>of your weighting has a score{scored.length ? ` (${scored.map(f => FACTOR_LABEL[f.factor] || f.factor).join(', ')})` : ''}</small></div><div><span>MEASURED</span><strong>{collectedCount} of {fieldCount}</strong><small>evidence fields collected for this parcel</small></div></div>
@@ -388,7 +314,7 @@ function Scenario({ settings, verdict, before, accessibility, onClose, onRun, bu
     p.road_importance !== s.road_importance && `road importance ${p.road_importance}`,
     p.school_importance !== s.school_importance && `school importance ${p.school_importance}`,
   ].filter(Boolean).join(', ') || 'no change'
-  return <div className="drawer-backdrop" onClick={onClose}><aside className="scenario-drawer" onClick={event => event.stopPropagation()}><div className="drawer-header"><div><div className="panel-kicker">SCENARIO MODE</div><h2>Explore scenarios</h2></div><button className="icon-button" aria-label="Close" onClick={onClose}><X size={18} /></button></div><div className="drawer-scroll"><p className="drawer-intro flush">Change an assumption and re-evaluate the same evidence. Nothing is collected again, and the land price does not change.</p><div className="scenario-score flush"><div><span>BEFORE</span><strong>{verdict === 'INSUFFICIENT_EVIDENCE' ? 'INSUFFICIENT EVIDENCE' : verdict} · {before ?? '—'}</strong></div><div><span>ACCESSIBILITY</span><strong>{accessibility ?? '—'}</strong></div></div>
+  return <div className="drawer-backdrop" onClick={onClose}><aside className="scenario-drawer" onClick={event => event.stopPropagation()}><div className="drawer-header"><div><div className="panel-kicker">SCENARIO MODE</div><h2>Explore scenarios</h2></div><button className="icon-button" aria-label="Close" onClick={onClose}><X size={18} /></button></div><div className="drawer-scroll"><p className="drawer-intro flush">Change an assumption and re-evaluate the same evidence. Nothing is collected again.</p><div className="scenario-score flush"><div><span>BEFORE</span><strong>{verdict === 'INSUFFICIENT_EVIDENCE' ? 'INSUFFICIENT EVIDENCE' : verdict} · {before ?? '—'}</strong></div><div><span>ACCESSIBILITY</span><strong>{accessibility ?? '—'}</strong></div></div>
     <label className="field-label">FLOOD SAFETY WEIGHT <strong>{flood}%</strong></label><input className="scenario-range flush" aria-label="Flood safety weight (percent)" type="range" min="0" max={maxFlood} value={Math.min(flood, maxFlood)} onChange={event => change(Number(event.target.value))} />
     <label className="field-label">ACCESSIBILITY LIMITS <span>score reaches 0 at the limit</span></label>
     <div className="slider-row"><span>Road within</span><strong>{p.max_road_distance_m.toLocaleString()} m</strong><input type="range" min="100" max="5000" step="100" value={p.max_road_distance_m} onChange={e => pref('max_road_distance_m', Number(e.target.value))} aria-label="Maximum road distance in metres" /></div>

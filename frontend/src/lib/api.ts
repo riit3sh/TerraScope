@@ -54,29 +54,9 @@ export function evaluateParcel(parcelId: string, settings: EvaluationSettings, s
 export async function uploadEvidence(parcelId: string, file: File, docType?: DocType|null) { const form = new FormData(); form.append('file', file); if (docType) form.append('doc_type', docType); const response = await fetch(`${API_URL}/api/v1/parcels/${encodeURIComponent(parcelId)}/documents`, { method: 'POST', body: form }); if (!response.ok) throw await failure(response, 'Upload failed'); return response.json() as Promise<{ document_id: number; filename: string; text_indexed: boolean; pages: number|null }> }
 export function saveLandDetails(parcelId: string, details: LandDetails) { return request<{ details: LandDetails|null; documents: DocumentInfo[] }>(`/api/v1/parcels/${encodeURIComponent(parcelId)}/land-details`, { method: 'PUT', body: JSON.stringify(details) }) }
 
-export type LandUse = 'residential' | 'commercial' | 'industrial' | 'agricultural' | 'mixed_use'
-export type PriceBasis = 'asking' | 'transaction' | 'guideline'
-/** Property facts the user supplies; they drive valuation, never the suitability weights. */
-export interface PropertyDetails { land_use: LandUse; price_basis: PriceBasis; area_sqft_override: number | null }
-export interface Comparable { source: string; source_record_id: string; source_url: string | null; reuse_basis: string; price_type: string; observed_date: string; retrieved_date: string; price_inr_per_sqft: number; area_sqft: number | null; distance_km: number; location_precision: string; locality: string | null; listed_by_sources: number }
-export interface HoldoutSummary { estimates: number; prediction_coverage_pct: number | null; status: string; baseline: Record<string, number> | null }
-/** Median of nearby, recent, similar-size comparables. The spread is theirs, not a validated interval. */
-export interface ValuationAvailable { status: 'available'; method: string; price_type: PriceBasis; price_type_label: string; land_use: string; property_category: string; area_sqft: number; valuation_date: string; estimate_inr_per_sqft: number; spread_inr_per_sqft: { p25: number; p75: number; min: number; max: number }; spread_basis: string; total_inr: { estimate: number; p25: number; p75: number } | null; comparable_count: number; radius_km: number; observed_from: string; observed_to: string; sources: string[]; uncertainty: string[]; comparables: Comparable[]; data_version: string; validation: { status: string; note?: string; holdouts?: Record<string, HoldoutSummary> } }
-export interface ValuationUnavailable { status: 'unavailable'; reason: string; detail: string }
-export type Valuation = ValuationAvailable | ValuationUnavailable
 export interface SavedReport { parcel_id: string; analysis_snapshot_id: string; created_at: string; address: string | null; district: string | null; area_acres: number | null; analysis_date_from: string | null; analysis_date_to: string | null; document_count: number; has_evaluation: boolean }
 
-export function estimateValuation(payload: { latitude: number; longitude: number; area_sqft: number; land_use: string; price_basis: string }) {
-  return request<Valuation>('/api/v1/valuation/estimate', { method: 'POST', body: JSON.stringify(payload) })
-}
 export function listSavedReports() { return request<{ reports: SavedReport[] }>('/api/v1/parcels?limit=1000').then(payload => payload.reports) }
 export function getSavedParcel(parcelId: string) {
   return request<{ parcel_id: string; analysis_snapshot_id: string; evidence_snapshot: ParcelRecord; uploaded_documents: { source_reference: string }[]; documents?: DocumentInfo[]; land_details?: LandDetails|null; latest_evaluation: ParcelRecord | null }>(`/api/v1/parcels/${encodeURIComponent(parcelId)}`)
 }
-
-/** Owner/broker or licensed price CSV: preview writes nothing; commit appends the valid rows. */
-export interface ImportPreview { ok: boolean; error?: string; rows_read: number; rows_valid?: number; rejected?: { row: number; reason: string; source: string; source_record_id: string }[]; duplicates?: { row: number; kind: string; kept_row: number }[]; stale_rows?: number[]; future_rows?: number[]; coarse_location_rows?: number[]; usable_as_comparables_today?: number; groups?: { price_type: string; land_use: string; property_category: string; rows: number; usable_now: number; median_inr_per_sqft: number; observed_from: string; observed_to: string }[]; sources?: { source: string; reuse_basis: string[]; rows: number }[]; location_precision?: Record<string, number>; rows?: { row: number; source: string; source_record_id: string; price_type: string; land_use: string; property_category: string; observed_date: string; price_inr_per_sqft: number; area_sqft: number|null; location_precision: string; locality: string|null; reuse_basis: string; flags: string[] }[] }
-async function upload<T>(path: string, form: FormData): Promise<T> { const response = await fetch(`${API_URL}${path}`, { method: 'POST', body: form }); if (!response.ok) throw await failure(response, 'Upload failed'); return response.json() as Promise<T> }
-export function previewPriceImport(file: File) { const form = new FormData(); form.append('file', file); return upload<ImportPreview>('/api/v1/valuation/import/preview', form) }
-export function commitPriceImport(file: File) { const form = new FormData(); form.append('file', file); form.append('permission_confirmed', 'true'); return upload<{ rows_added: number; rows_rejected: number; rows_in_file: number; backup: string|null }>('/api/v1/valuation/import/commit', form) }
-export function valuationDataStatus() { return request<{ available: boolean; reason?: string; detail?: string; data?: { rows: number; sources: string[]; observed_from: string; observed_to: string } }>('/api/v1/valuation/data') }

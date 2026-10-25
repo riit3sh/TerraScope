@@ -1468,3 +1468,27 @@ the reason the approach changed.
 - **Limitations:** saved reports cannot be deleted from the app. The findings' assessment cut-offs (access 60/100,
   growth 50/100) are rules, not calibrated.
 - **Status:** fixed and verified.
+
+## J-58 Land prices removed from this version
+
+- **Date / decision:** 2026-10-25, the user's decision. No reliable, permitted, verified price data exists (J-52), so
+  the report and the demo show no land price, range, placeholder or "No price estimate" message.
+- **Changes:**
+  - **Frontend:** removed the price section, the price row in "What we found", the "Price data" import page and its
+    start-page button, the workspace property box (land use, price basis, plot area: used only for prices), the
+    valuation call in the analysis flow and on reopening a report, and their styles and API client calls.
+  - **Backend:** the `/api/v1/valuation/*` routes are no longer served (`routers/valuation_routes.py` deleted).
+  - **Findings:** area-development next steps no longer mention prices.
+  - **Config and tooling:** `VALUATION_OBSERVATIONS_PATH` removed from `.env.example` and `docker-compose.yml`;
+    `scripts/benchmark.py` no longer times a valuation request.
+  - **Tests:** the six price integration tests are gone (one was always skipped); a new test checks the price
+    endpoints return 404. The file is renamed `test_evidence_and_reports.py`.
+  - **Docs:** README ("Land prices: not in this version"), the demo guide and the checklist. The `valuation/` package
+    and `docs/SETUP_VALUATION.md` stay, marked unused, for a later version.
+  - **Decision logic:** unchanged. Price never fed BUY / WAIT / AVOID (it was a separate service); nothing in
+    `ml-models/scoring_engine` referenced it.
+- **Verification (2026-10-25):** ml-models 60, data-pipeline 80, backend-api 13, valuation (unused module) 52;
+  integration 13 passed (was 17 + 1 skipped: minus 6 price tests, plus the 404 guard). Frontend type-check and build
+  pass. Browser, read-only views on the user's store: start page, a saved report and the workspace show no price
+  wording (whole-word check) and no console errors.
+- **Status:** done and verified.

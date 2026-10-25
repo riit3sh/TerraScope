@@ -148,16 +148,16 @@ def _growth(rows: dict[str, dict[str, Any]], factors: dict[str, dict[str, Any]])
     evidence = rows.get("land-cover")
     if growth.get("status") == "built_out":
         return _row("Area development", growth["basis"].split(". With")[0] + ".", "ok", "measured",
-                    "An established area: compare prices with nearby sales rather than expecting new development.",
+                    "An established, fully built area: little open land is left nearby for new development.",
                     evidence)
     if growth.get("score") is None:
         return _row("Area development", growth.get("basis") or "Area history unavailable.", "unknown", "unavailable",
                     "Analyse the boundary again to collect the 2017-2023 land-cover history.", evidence)
     return _row("Area development", growth["basis"].split(". Further out")[0] + ".",
                 "ok" if growth["score"] >= 50 else "caution", "measured",
-                "Fast-growing surroundings usually mean rising demand; confirm with recent sale prices nearby."
+                "Building around the plot is increasing; on a site visit, see what is being built nearby."
                 if growth["score"] >= 50 else
-                "Little building nearby: there is no sign of demand pushing prices up yet, so there is no hurry.",
+                "Little building nearby: no sign yet of development reaching this area, so there is no hurry.",
                 evidence)
 
 

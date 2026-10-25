@@ -1,5 +1,7 @@
 # Price data for TerraScope (operators)
 
+**Not used in this version.** Land prices were removed from TerraScope's report, analysis flow and API on 2026-10-25 (journey J-58): no permitted, verified price data exists. This is kept, unused, for a later version.
+
 Operator instructions live here, not in the report. A report says only whether a price is available, why, and
 the next step.
 

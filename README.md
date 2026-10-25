@@ -21,7 +21,7 @@ It opens http://localhost:5173. Then:
    - **Buy now or wait?** BUY, WAIT or AVOID, with the area's 2017-2023 development chart and the "before you pay" checklist.
    - **What we found:** every check with its status (red flag, caution, OK, unknown), how it is known (measured, model
      scenario, your claim, not verified), its source and date, and the next step.
-   - Then price, the factor scores, flood detail, satellite change and the evidence ledger.
+   - Then the factor scores, flood detail, satellite change and the evidence ledger.
 5. Try **Explore scenarios** (change the road limit) and **Saved reports** on the start page.
 
 Good contrasting plots: VIT Vellore (BUY: fast development, close to a road and a school), Kelambakkam on OMR
@@ -47,7 +47,7 @@ terrascope/
 ├── backend-api/                    # Public API package
 │   ├── routers/
 │   └── src/terrascope_backend_api/
-├── valuation/                      # Land-price import, training and prediction
+├── valuation/                      # Not used in this version (land prices removed)
 │   ├── fixtures/                   # SYNTHETIC demo data (never real evidence)
 │   └── artifacts/                  # Trained model + metadata
 ├── frontend/                       # Vite + React + TypeScript + Tailwind app
@@ -115,7 +115,6 @@ disk space and reuses any extract and tiles already on disk.
 | `flood-hazard\` | JRC global river flood hazard maps v2.1.2, CC BY 4.0 (doi:10.2905/JRC.VD32YWG) | tile index and cached per-parcel results |
 | `places\places.sqlite` | GeoNames gazetteer and postal codes for India, CC BY 4.0 (credit GeoNames) | search suggestions while typing (no web geocoder is called while typing) |
 | `satellite\sentinel2-cache.sqlite` | derived from Sentinel-2 L2A (Planetary Computer) | reused scene measurements (immutable) and catalogue searches (refreshed after 6 h for recent windows) |
-| `valuation\observations.csv` | yours: licensed or permitted price observations (none today) | comparable-based price ranges |
 
 **Flood evidence is reported per mechanism, with no overall score.** The mechanisms are:
 
@@ -154,7 +153,7 @@ is skipped, and the backend still stores every snapshot.
    Unit tests need no running stack:
 
    ```bash
-   pytest valuation/test_valuation.py ml-models/test_retrieval_cache.py -v
+   pytest ml-models/test_retrieval_cache.py -v
    ```
 
 The first build downloads a CPU build of PyTorch for the RAG embeddings, so
@@ -187,20 +186,13 @@ No live-data configuration can guarantee a few-second first run when public prov
 are still responding over the network.
 
 
-## Land valuation
+## Land prices: not in this version
 
-The report shows a **listing-based estimated price range** (or a sale-based one, or a government
-guideline value) computed only from comparable prices: nearby, recent, similar-size vacant land of the same
-use. Asking prices, sale prices and guideline values are never pooled, and the spread shown is the
-comparables' own spread, not a validated prediction interval. The price is independent of suitability
-weights, flood and legal evidence.
-
-**No permitted price data is loaded today, so every parcel gets "No price estimate".** Owner/broker-supplied or
-licensed rows can be imported from "Price data" on the start page (preview with per-row reasons, then commit).
-The sources checked, their verified reuse terms and the smallest input that would unlock a real estimate are in
-[docs/SETUP_VALUATION.md](docs/SETUP_VALUATION.md). The data contract, cleaning, estimator and the
-prediction-quality harness (`python -m valuation.evaluate`) are in [valuation/README.md](valuation/README.md).
-Prediction quality: **not yet validated**.
+TerraScope shows no land price, price range or placeholder value. No permitted, verified price dataset is available
+(Tamil Nadu guideline values need the Registration Department's permission to reproduce; listing portals need
+licences), and an unverified price would undermine every other check. Price never affects BUY / WAIT / AVOID. The
+earlier comparable-price module stays, unused, in `valuation/` for a later version; the sources checked are in
+[docs/SETUP_VALUATION.md](docs/SETUP_VALUATION.md).
 
 ## What the evidence does and does not claim
 

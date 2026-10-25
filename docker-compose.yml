@@ -82,7 +82,6 @@ services:
       FRONTEND_URL: http://localhost:5173
       BACKEND_STORE_PATH: /app/data/terrascope_backend.sqlite3
       EVALUATE_READ_TIMEOUT_SECONDS: ${EVALUATE_READ_TIMEOUT_SECONDS:-90}
-      VALUATION_OBSERVATIONS_PATH: ${VALUATION_OBSERVATIONS_PATH:-/app/data/valuation/observations.csv}
     ports:
       - "8000:8000"
     volumes:
