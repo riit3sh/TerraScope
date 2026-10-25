@@ -1628,3 +1628,46 @@ the reason the approach changed.
   - The 2023 basemap is 10 m; there is no historical imagery picker.
   - The parcel-result cache is one JSON file (fine at 48 entries, linear in size).
 - **Status:** fixed and verified, except a live news "results" case (blocked by provider rate limiting).
+
+## J-62 Review readiness: legal gate, stale-evaluation banner, news time budget, demo rehearsal
+
+- **Date / problem (2026-10-26):**
+  - A decision-engine scenario check found that a matched record showing an unclear title and an encumbrance summed
+    to exactly the 70-point limit and gave WAIT. It also found that any matched record (even a defective one) counted
+    as completed due diligence for BUY. Zoning and approvals could not be represented at all.
+  - Saved evaluations made under older rules (no `would_change`) showed no re-evaluate banner.
+  - A rate-limited news search kept the buyer waiting 189 s before "unavailable".
+  - A high location score could sit next to WAIT or WALK AWAY with no explanation.
+- **Changes:**
+  - `_verdict.py`: BUY only when title clear, no encumbrance, zoning verified and approvals verified are all positively
+    recorded; a missing value is pending. An unclear title or an encumbrance is WALK AWAY. WAIT names the specific
+    pending checks.
+  - Schema: `land_records.zoning_verified` and `approvals_verified` (additive, null by default).
+  - Report:
+    - a note under the location score ("describes the location only; never overrides red flags or pending legal
+      checks");
+    - the re-evaluate banner on any evaluation without `would_change`;
+    - "none mapped" explained as not confirmed absence;
+    - the news failure text says "temporarily unavailable".
+  - Satellite note: "It cannot show ownership, legal access, title, zoning or safety."
+  - `area_intel.py`: a 45 s budget for the whole news search; waits, timeouts and the 429 back-off are clipped to it.
+  - `DATASETS.md`: academic vs commercial licensing, and licensed alternatives.
+- **Verification (2026-10-26):**
+  - **Decision scenarios:** 8/8 through the full evaluation path on the VIT fixture: legal unknown → WAIT; all four
+    verified → BUY; defective title → WALK AWAY; flood red flag → WALK AWAY; no infrastructure → INSUFFICIENT DATA;
+    unmapped school left out; weak growth → WAIT naming the cause; no area history → INSUFFICIENT DATA. No price,
+    appreciation, guarantee or clearance wording in any output.
+  - **Tests:** ml-models 68, data-pipeline 84, backend-api 26, valuation 52, integration 13; frontend type-check and
+    production build pass.
+  - **Browser, disposable copy:** Senjeri re-evaluated (WAIT 90, legal pending). Both explainers cover every required
+    concept. Readable at 1366x768. Satellite toggle: 12 EOX tiles; boundary kept; attribution and date shown; forced
+    tile failures showed the fallback note and the map kept working; switching back to Map restored OSM tiles.
+  - **Fresh start on the user's store** with `terrascope.cmd start`: four services healthy; the saved Senjeri report
+    opened from the list with the stale-evaluation banner; news reported "unavailable" (GDELT 429) within about 25 s;
+    a browser refresh reopened the same snapshot; the satellite view loaded over Senjeri; no console errors; service
+    logs clean.
+  - **User store:** byte-identical to the pre-review baseline (`4590829b…`, 96/63/9) after the rehearsal; a verified
+    backup `backup-2026-10-26-review` was taken first.
+- **Limits:** no land-records, RERA, rainfall-flood or coastal source; GDELT is rate-limited from this network, so the
+  news results path is demonstrated with recorded test fixtures only; the basemaps are not licensed for commercial use.
+- **Status:** fixed and verified.

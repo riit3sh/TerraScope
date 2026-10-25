@@ -19,6 +19,9 @@ LABEL = {"legal_safety": "legal safety", "flood_safety": "flood safety", "growth
 # The location factors. A weighted one with no score withholds the decision; legal and flood never do,
 # because unscored they become, respectively, the checks before paying and the red flags.
 LOCATION_FACTORS = ("growth", "accessibility")
+# BUY needs every one of these positively verified in matched land records; a missing value is pending, never clean.
+LEGAL_REQUIREMENTS = (("title_clear", True, "title"), ("encumbrance_flag", False, "encumbrance"),
+                      ("zoning_verified", True, "zoning"), ("approvals_verified", True, "approvals"))
 
 
 def build_verdict(
@@ -55,9 +58,22 @@ def build_verdict(
     checks = (legal["checklist"] if legal["score"] is None else []) + plot_history_checks(record)
     composite = round(sum(c["contribution"] for c in contributions), 2) if scored and not blocking else None
 
-    due_diligence_done = legal["score"] is not None  # only matched land records can verify it
-    legal_pending = "a lawyer's check of title, a 30-year encumbrance certificate, zoning and approvals against official records"
-    if legal["score"] is not None and (100.0 - legal["score"]) > hard_legal_risk_threshold:
+    records = record.get("land_records") if isinstance(record.get("land_records"), dict) else {}
+    adverse = [text for present, text in ((records.get("title_clear") is False, "the title is not clear"),
+                                         (records.get("encumbrance_flag") is True, "an encumbrance is recorded"))
+               if present]
+    pending = [label for key, wanted, label in LEGAL_REQUIREMENTS if records.get(key) is not wanted]
+    due_diligence_done = bool(records) and not pending and not adverse
+    legal_pending = ("a lawyer's check of title, a 30-year encumbrance certificate, zoning and approvals against official records"
+                     if len(pending) == len(LEGAL_REQUIREMENTS) else
+                     "verification of " + ", ".join(pending) + " against official records")
+    if adverse:
+        # A matched record showing a defect is material adverse evidence, whatever the location looks like.
+        recommendation = "AVOID"
+        summary = "WALK AWAY: the matched land records show that " + " and ".join(adverse) + "."
+        would_change = ["Corrected official records showing clear title and no encumbrance"]
+        composite = None
+    elif legal["score"] is not None and (100.0 - legal["score"]) > hard_legal_risk_threshold:
         # Proven disqualifying evidence decides on its own.
         recommendation = "AVOID"
         summary = (f"WALK AWAY: the matched land records give an effective legal risk of {100.0 - legal['score']:.0f}/100, "

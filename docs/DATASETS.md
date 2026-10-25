@@ -61,6 +61,21 @@ explanation. `SATELLITE_DEMO_FALLBACK=false`, so no synthetic imagery is ever su
 | OpenStreetMap tiles | "Map" basemap | ODbL; OSM tile usage policy (light use) | Heavy or commercial use needs another tile host |
 | GDELT DOC 2.0 | Local news search | Free, no key; no licence page found; asks for at most one request per 5 s | Headline-level metadata; frequently rate-limited (HTTP 429) during testing |
 
+## Licensing: academic demo vs commercial deployment
+
+- **Academic / non-commercial demo:** the current setup is permitted.
+  - EOxCloudless 2023 is CC BY-NC-SA 4.0. Attribution is shown on the map.
+  - OpenStreetMap tiles are used at light, interactive volume.
+- **Commercial deployment is blocked until the basemaps are licensed.**
+  - EOxCloudless needs an EOX commercial licence (EOX Commercial Attribution-RestrictedUse licence; contact EOX).
+  - `tile.openstreetmap.org` must not carry production traffic (OSMF tile usage policy); use a commercial OSM tile host
+    instead.
+  - Licensed satellite alternatives to evaluate: an EOX commercial licence for the same layer; Esri World Imagery under
+    an ArcGIS Location Platform account; or a paid satellite basemap plan from a map-tile vendor. Each has its own
+    attribution and caching terms, to be read before switching. No provider has been switched.
+- **GDELT:** no licence or terms page was found. Treat it as a discovery aid for the demo, and confirm terms with the
+  GDELT Project before any commercial use.
+
 ## Candidate sources for flood, rainfall, terrain and drainage (researched 2026-10-25; none integrated)
 
 | Source | What | Resolution / period | Licence (as found) | Notes |

@@ -31,7 +31,7 @@ class Fake:
     def __init__(self, by_topic=None, fail=False):
         self.by_topic, self.fail, self.calls = by_topic or {}, fail, []
 
-    def search(self, query, since):
+    def search(self, query, since, deadline=None):
         self.calls.append(query)
         if self.fail:
             raise area_intel.NewsUnavailable("provider down")
@@ -166,7 +166,7 @@ def test_concurrent_requests_for_one_locality_search_once(client, monkeypatch) -
     fake = Fake({"hazards": [art("Senjeri flooded", "thehindu.com")]})
     slow_search = fake.search
 
-    def slow(query, since):
+    def slow(query, since, deadline=None):
         time.sleep(0.05)
         return slow_search(query, since)
 
@@ -179,3 +179,19 @@ def test_concurrent_requests_for_one_locality_search_once(client, monkeypatch) -
     [t.join() for t in threads]
     assert len(fake.calls) == 3, "one search (3 topic queries), not three"
     assert sorted(r["cached"] for r in results) == [False, True, True]
+
+
+def test_a_rate_limited_provider_gives_up_within_the_search_budget(monkeypatch) -> None:
+    """Regression (2026-10-26): repeated HTTP 429 back-offs kept the buyer waiting 189 s before "unavailable"."""
+    def always_429(url, params, timeout):
+        return type("R", (), {"status_code": 429, "text": "Please limit requests to one every 5 seconds"})()
+
+    class Quick(area_intel.GdeltProvider):
+        MIN_INTERVAL_S, BACKOFF_429_S = 0.01, 0.5
+
+    monkeypatch.setattr(area_intel.httpx, "get", always_429)
+    monkeypatch.setattr(area_intel, "SEARCH_BUDGET_S", 12.0)
+    began = time.monotonic()
+    result = area_intel.search_area_news(SNAPSHOT, Quick(), NOW)
+    assert result["status"] == "unavailable" and "429" in result["reason"]
+    assert time.monotonic() - began < 12.0, "the whole search stays within its budget"

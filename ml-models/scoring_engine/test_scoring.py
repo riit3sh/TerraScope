@@ -10,7 +10,7 @@ from scoring_engine.scoring import (
 
 def parcel(**overrides):
     record = {
-        "land_records": {"title_clear": True, "encumbrance_flag": False},
+        "land_records": {"title_clear": True, "encumbrance_flag": False, "zoning_verified": True, "approvals_verified": True},
         "rera": {"is_rera_project": True},
         "satellite": {"change_type": "construction_growth", "change_confidence": 0.95},
         "infrastructure": {
@@ -135,3 +135,19 @@ def test_missing_land_records_produce_no_legal_score_at_all() -> None:
     assert any("Ownership record" in check for check in unverified["pre_purchase_checks"])
     verified = compute_verdict({"land_records": {"title_clear": True, "encumbrance_flag": False}}, evaluation)
     assert "land records not provided" not in verified["reasoning_summary"]
+
+
+def test_buy_needs_all_four_legal_checks_and_a_defect_is_walk_away() -> None:
+    """Regression (2026-10-26): an unclear title plus an encumbrance summed to exactly the 70 limit and gave WAIT, and
+    any matched record (even a defective one) counted as completed due diligence."""
+    profile = _evidenced_profile("investor")
+    defective = compute_evaluation(parcel(land_records={"title_clear": False, "encumbrance_flag": True}), profile)
+    assert defective["recommendation"] == "AVOID" and "title is not clear and an encumbrance is recorded" in defective["reasoning_summary"]
+    unclear = compute_evaluation(parcel(land_records={"title_clear": False, "encumbrance_flag": False,
+                                                      "zoning_verified": True, "approvals_verified": True}), profile)
+    assert unclear["recommendation"] == "AVOID"
+    partial = compute_evaluation(parcel(land_records={"title_clear": True, "encumbrance_flag": False}), profile)
+    assert partial["recommendation"] == "WAIT", "zoning and approvals not verified: never BUY"
+    assert "verification of zoning, approvals" in partial["reasoning_summary"]
+    complete = compute_evaluation(parcel(), profile)
+    assert complete["recommendation"] == "BUY"

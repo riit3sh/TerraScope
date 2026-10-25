@@ -23,6 +23,9 @@ from urllib.parse import urlparse
 import httpx
 
 NEWS_TTL = timedelta(hours=24)
+# Whole search, all topics: past this the buyer sees "temporarily unavailable" instead of waiting minutes
+# (measured 2026-10-26: 189 s of rate-limit back-offs before a 429 was reported).
+SEARCH_BUDGET_S = 45.0
 SEARCH_YEARS = 3
 STALE_AFTER_DAYS = 730
 TOPICS = {
@@ -46,7 +49,7 @@ class NewsProvider(Protocol):
     name: str
     coverage: str
 
-    def search(self, query: str, since: datetime) -> list[dict[str, Any]]: ...
+    def search(self, query: str, since: datetime, deadline: float | None = None) -> list[dict[str, Any]]: ...
 
 
 class GdeltProvider:
@@ -60,17 +63,25 @@ class GdeltProvider:
     MIN_INTERVAL_S = 6.0  # GDELT asks for at most one request every 5 seconds
     BACKOFF_429_S = 15.0  # after a 429 it keeps refusing for a while; one longer pause, then report unavailable
 
-    def search(self, query: str, since: datetime) -> list[dict[str, Any]]:
+    def search(self, query: str, since: datetime, deadline: float | None = None) -> list[dict[str, Any]]:
+        def left() -> float:
+            return float("inf") if deadline is None else deadline - time.monotonic()
+
         params = {"query": query, "mode": "artlist", "format": "json", "maxrecords": 75, "sort": "datedesc",
                   "startdatetime": since.strftime("%Y%m%d%H%M%S")}
         for attempt in range(2):
             with GdeltProvider._lock:  # bounded: one request in flight, spaced out, across all parcels
                 wait = GdeltProvider._last + self.MIN_INTERVAL_S - time.monotonic()
                 if wait > 0:
+                    if wait > left() - 5:
+                        raise NewsUnavailable("the news search ran out of time (provider rate limit)")
                     time.sleep(wait)
+                budget = min(25.0, left())
+                if budget < 5:
+                    raise NewsUnavailable("the news search ran out of time")
                 try:
                     # GDELT's TLS handshake can take over 5 s from India; a timeout is retried once, then reported.
-                    response = httpx.get(self.url, params=params, timeout=httpx.Timeout(30.0, connect=15.0))
+                    response = httpx.get(self.url, params=params, timeout=httpx.Timeout(budget, connect=min(12.0, budget)))
                 except httpx.HTTPError as error:
                     if attempt == 0:
                         continue
@@ -83,6 +94,8 @@ class GdeltProvider:
             if response.status_code == 200 and not text:
                 return []
             if (response.status_code == 429 or "limit requests" in text.lower()) and attempt == 0:
+                if self.BACKOFF_429_S > left() - 10:
+                    raise NewsUnavailable("GDELT is rate-limiting requests (HTTP 429); try again in a few minutes")
                 time.sleep(self.BACKOFF_429_S)
                 continue
             raise NewsUnavailable(f"GDELT returned HTTP {response.status_code}: {text[:160]}")
@@ -193,11 +206,12 @@ def search_area_news(snapshot: dict[str, Any], provider: NewsProvider, now: date
                 "reason": "The report has no locality and district name to search for."}
     names = " OR ".join(f'"{v}"' for v in terms["variants"])
     queries, by_topic = [], {}
+    deadline = time.monotonic() + SEARCH_BUDGET_S
     try:
         for topic, (_, words) in TOPICS.items():
             query = f'({names}) "{terms["district"]}" ({" OR ".join(words)}) sourcecountry:IN'
             queries.append({"topic": topic, "query": query})
-            by_topic[topic] = provider.search(query, now - timedelta(days=365 * SEARCH_YEARS))
+            by_topic[topic] = provider.search(query, now - timedelta(days=365 * SEARCH_YEARS), deadline=deadline)
     except NewsUnavailable as error:
         return {**base, "status": "unavailable", "queries": queries, "items": [], "reason": str(error)}
     items = classify(by_topic, now)

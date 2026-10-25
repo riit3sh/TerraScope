@@ -181,6 +181,20 @@
               "null"
             ]
           }
+        },
+        "zoning_verified": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Land-use zoning confirmed against an official record. Null = not verified."
+        },
+        "approvals_verified": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Required layout/building approvals confirmed against official records. Null = not verified."
         }
       }
     },

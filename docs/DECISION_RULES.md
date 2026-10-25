@@ -17,8 +17,9 @@ codes are kept so saved reports still read.
 3. **INSUFFICIENT DATA** when a weighted location factor (area growth or road/school access) has no evidence.
 4. Otherwise the **location score** = weighted mean of the scored location factors (your profile's weights). It is a
    rule-based score, not a probability of success or appreciation.
-5. **BUY only when the location score is 75 or more AND the legal due diligence is verified** (title, encumbrance,
-   zoning and approvals from matched land records). History alone never makes a BUY. Unknown legal status is never
+5. **BUY only when the location score is 75 or more AND all four legal checks are positively verified** in matched land
+   records: title clear, no encumbrance, zoning verified, approvals verified. A missing value is pending, never clean.
+   A matched record showing an unclear title or an encumbrance is **WALK AWAY**. History alone never makes a BUY. Unknown legal status is never
    treated as safe: a strong location with unverified legal checks is **WAIT**, naming the pending checks. No land-records
    source is integrated today, so in practice the best answer is "WAIT: location strong, legal checks pending".
 6. A WAIT names what holds it back. Every answer lists **what would change it** (`verdict.would_change`).
