@@ -1,6 +1,6 @@
 # TerraScope project checklist
 
-The single current progress checklist. Last updated 2026-10-26 (review readiness, J-62; due diligence gate, charts, satellite basemap, news, claims, speed, J-61; decision clarity and Andhra Pradesh data, J-60; area-development display fix and dataset audit, J-59; land prices removed, J-58; completion pass, J-57; buy/wait decision, J-56).
+The single current progress checklist. Last updated 2026-10-26 (blur, timeline, legal checks, J-63; review readiness, J-62; due diligence gate, charts, satellite basemap, news, claims, speed, J-61; decision clarity and Andhra Pradesh data, J-60; area-development display fix and dataset audit, J-59; land prices removed, J-58; completion pass, J-57; buy/wait decision, J-56).
 
 Rules: an item is "verified" only when a recorded check exercised the real behaviour (real services, real
 data, or the browser), not because code exists, a mocked test passes or a page loads. "Implemented" without
@@ -13,6 +13,10 @@ only read.
 
 ## 1. Fixed and verified
 
+- [x] **Satellite blur diagnosed (J-63)**: 10 m source; no enlarged tiles fetched; zoom note.
+- [x] **Legal-check workflow (J-63)**: Tamil Nadu guide; manual records; a recorded problem gives WALK AWAY; never BUY.
+- [x] **News timeline from 2017 (J-63)**: year grouping and reported status. The live results path is untested
+  (GDELT 429).
 - [x] **Review readiness (J-62)**: BUY needs all four legal checks; a defective title is WALK AWAY; stale evaluations
   flagged; news search capped at 45 s; fresh-start demo rehearsed on the real store with no data change.
 - [x] **BUY needs verified due diligence (J-61)**: strong location + unverified legal = WAIT with the pending checks;

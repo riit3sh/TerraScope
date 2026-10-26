@@ -61,9 +61,16 @@ export function getSavedParcel(parcelId: string) {
   return request<{ parcel_id: string; analysis_snapshot_id: string; evidence_snapshot: ParcelRecord; uploaded_documents: { source_reference: string }[]; documents?: DocumentInfo[]; land_details?: LandDetails|null; latest_evaluation: ParcelRecord | null }>(`/api/v1/parcels/${encodeURIComponent(parcelId)}`)
 }
 
+/** Legal checks: official sources to consult per state, and the buyer's own records (never verification). */
+export type LegalCheckKey = 'title'|'encumbrance'|'zoning'|'approvals'|'rera'
+export interface LegalCheckInput { check: LegalCheckKey; outcome: 'confirmed'|'problem'|'not_found'|'not_applicable'; source: string; checked_on: string; reference?: string|null; evidence?: string|null; notes?: string|null }
+export interface LegalChecklist { state: string|null; state_guide: 'available'|'not_yet'; automated_sources: string[]; notice: string; history_count: number; checks: { check: LegalCheckKey; label: string; mandatory_for_buy: boolean; guide: { authority: string; url: string; how: string; access: string }|null; record: (LegalCheckInput & { recorded_at: string })|null; verification: 'user_recorded'|'not_checked' }[] }
+export function getLegalChecks(parcelId: string) { return request<LegalChecklist>(`/api/v1/parcels/${encodeURIComponent(parcelId)}/legal-checks`) }
+export function recordLegalCheck(parcelId: string, record: LegalCheckInput) { return request<LegalChecklist>(`/api/v1/parcels/${encodeURIComponent(parcelId)}/legal-checks`, { method: 'POST', body: JSON.stringify(record) }) }
+
 /** Local news: discovery evidence only. 'unavailable' means the search failed, never "no news". */
-export interface NewsItem { title: string; topic: 'hazards'|'legal_planning'|'development'; topic_label: string; publisher: string; url: string; published: string|null; language: string|null; outlets: number; other_urls: string[]; verification: 'official_source'|'corroborated'|'single_report'; speculative: boolean; stale: boolean }
-export interface AreaNews { status: 'results'|'no_results'|'unavailable'|'not_searched'; provider: string; coverage: string; retrieved_at: string; searched_from: string; place: { locality: string|null; variants: string[]; district: string|null }; queries: { topic: string; query: string }[]; items: NewsItem[]; limitations: string; reason?: string; cached: boolean; cache_age_s?: number }
+export interface NewsItem { title: string; topic: 'hazards'|'legal_planning'|'development'; topic_label: string; publisher: string; url: string; published: string|null; language: string|null; outlets: number; other_urls: string[]; verification: 'official_source'|'corroborated'|'single_report'; evidence_type: 'official_publication'|'news_report'; locality_in_headline: boolean; project_status: 'proposed'|'approved'|'under_construction'|'completed'|'cancelled'|'unknown'|null; speculative: boolean; stale: boolean }
+export interface AreaNews { status: 'results'|'no_results'|'unavailable'|'not_searched'; provider: string; coverage: string; retrieved_at: string; searched_from: string; place: { locality: string|null; variants: string[]; district: string|null }; queries: { topic: string; query: string }[]; items: NewsItem[]; limitations: string; reason?: string; cached: boolean; cache_age_s?: number; truncated_topics?: string[] }
 export function getAreaNews(parcelId: string, refresh = false) { return request<AreaNews>(`/api/v1/parcels/${encodeURIComponent(parcelId)}/area-news${refresh ? '?refresh=true' : ''}`) }
 
 export type ProjectType = 'road'|'transport'|'industrial'|'residential_layout'|'school'|'hospital'|'commercial'|'other'

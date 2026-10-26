@@ -26,7 +26,10 @@ NEWS_TTL = timedelta(hours=24)
 # Whole search, all topics: past this the buyer sees "temporarily unavailable" instead of waiting minutes
 # (measured 2026-10-26: 189 s of rate-limit back-offs before a 429 was reported).
 SEARCH_BUDGET_S = 45.0
-SEARCH_YEARS = 3
+# GDELT DOC 2.0 searches back to 2017-01-01 (its blog posts disagree; verified 2026-10-26 by a 2018 Coimbatore query).
+ARCHIVE_START = datetime(2017, 1, 1, tzinfo=timezone.utc)
+SEARCH_YEARS = 10
+MAX_RECORDS = 250  # GDELT's ceiling per query
 STALE_AFTER_DAYS = 730
 TOPICS = {
     "hazards": ("Flooding, waterlogging or road closures",
@@ -38,6 +41,14 @@ TOPICS = {
                     ["highway", "\"ring road\"", "bypass", "metro", "railway", "industrial", "sipcot", "\"it park\"",
                      "layout", "township", "school", "hospital", "college"]),
 }
+# Project status as the headline words it, first match wins. A headline is not a sanction order: it is shown as "reported".
+PROJECT_STATUS = [
+    ("cancelled", re.compile(r"\b(scrapped|cancel+ed|cancels|dropped|shelved|withdrawn|abandoned)\b", re.I)),
+    ("completed", re.compile(r"\b(inaugurat\w*|opened|thrown open|completed|commissioned)\b", re.I)),
+    ("under_construction", re.compile(r"\b(under construction|foundation stone|works? (begins?|began|started|in progress)|construction (begins|began|starts|started|under ?way))\b", re.I)),
+    ("approved", re.compile(r"\b(approved|sanction(ed)?|nod|go-ahead|cleared|notified|funds? released)\b", re.I)),
+    ("proposed", re.compile(r"\b(proposed|proposal|plans?|planned|mooted|to come up|dpr|feasibility|survey)\b", re.I)),
+]
 SPECULATIVE = re.compile(r"\b(proposed|propose|plan|plans|planned|likely|may|soon|to come up|mooted|expected|demand|sought)\b", re.I)
 
 
@@ -62,12 +73,21 @@ class GdeltProvider:
     _last = 0.0
     MIN_INTERVAL_S = 6.0  # GDELT asks for at most one request every 5 seconds
     BACKOFF_429_S = 15.0  # after a 429 it keeps refusing for a while; one longer pause, then report unavailable
+    COOLDOWN_429_S = 120.0  # after reporting a 429, send no request until this passes
+    _cooldown_until = 0.0
+
+    def _rate_limited(self) -> NewsUnavailable:
+        GdeltProvider._cooldown_until = time.monotonic() + self.COOLDOWN_429_S
+        return NewsUnavailable("GDELT is rate-limiting requests (HTTP 429); try again in a few minutes")
 
     def search(self, query: str, since: datetime, deadline: float | None = None) -> list[dict[str, Any]]:
         def left() -> float:
             return float("inf") if deadline is None else deadline - time.monotonic()
 
-        params = {"query": query, "mode": "artlist", "format": "json", "maxrecords": 75, "sort": "datedesc",
+        wait_left = GdeltProvider._cooldown_until - time.monotonic()
+        if wait_left > 0:  # GDELT refused us moments ago: asking again only prolongs the block
+            raise NewsUnavailable(f"GDELT is rate-limiting requests (HTTP 429); TerraScope waits {wait_left:.0f} s before asking again")
+        params = {"query": query, "mode": "artlist", "format": "json", "maxrecords": MAX_RECORDS, "sort": "datedesc",
                   "startdatetime": since.strftime("%Y%m%d%H%M%S")}
         for attempt in range(2):
             with GdeltProvider._lock:  # bounded: one request in flight, spaced out, across all parcels
@@ -95,11 +115,13 @@ class GdeltProvider:
                 return []
             if (response.status_code == 429 or "limit requests" in text.lower()) and attempt == 0:
                 if self.BACKOFF_429_S > left() - 10:
-                    raise NewsUnavailable("GDELT is rate-limiting requests (HTTP 429); try again in a few minutes")
+                    raise self._rate_limited()
                 time.sleep(self.BACKOFF_429_S)
                 continue
+            if response.status_code == 429 or "limit requests" in text.lower():
+                raise self._rate_limited()
             raise NewsUnavailable(f"GDELT returned HTTP {response.status_code}: {text[:160]}")
-        raise NewsUnavailable("GDELT rate limit")
+        raise self._rate_limited()
 
 
 def _ascii(value: str) -> str:
@@ -153,8 +175,17 @@ def _seen(article: dict[str, Any]) -> datetime | None:
         return None
 
 
-def classify(articles_by_topic: dict[str, list[dict[str, Any]]], now: datetime) -> list[dict[str, Any]]:
-    """Group duplicates and syndicated copies, then label each event: official, corroborated or single report."""
+def project_status(topic: str, title: str) -> str | None:
+    if topic == "hazards":
+        return None
+    return next((status for status, pattern in PROJECT_STATUS if pattern.search(title or "")), "unknown")
+
+
+def classify(articles_by_topic: dict[str, list[dict[str, Any]]], now: datetime,
+             variants: list[str] | None = None) -> list[dict[str, Any]]:
+    """Group duplicates and syndicated copies, then label each event: official, corroborated or single report.
+    Newest year first; within a year, official and corroborated items first."""
+    names = [_norm_title(v) for v in variants or []]
     groups: dict[str, dict[str, Any]] = {}
     for topic, articles in articles_by_topic.items():
         for article in articles:
@@ -186,21 +217,30 @@ def classify(articles_by_topic: dict[str, list[dict[str, Any]]], now: datetime) 
             "outlets": len(group["domains"]),
             "other_urls": [a["url"] for a in group["articles"] if a is not lead][:4],
             "verification": status,
+            "evidence_type": "official_publication" if official else "news_report",
+            # GDELT matched the article text; when the headline itself does not name the place, the item may be about
+            # somewhere else that merely mentions it.
+            "locality_in_headline": any(n and n in _norm_title(group["title"] or "") for n in names),
+            "project_status": project_status(group["topic"], group["title"]),
             "speculative": bool(SPECULATIVE.search(group["title"] or "")),
             "stale": bool(first and (now - first).days > STALE_AFTER_DAYS),
         })
     order = {"official_source": 0, "corroborated": 1, "single_report": 2}
-    return sorted(items, key=lambda i: (order[i["verification"]], i["published"] or ""), reverse=False)
+    items.sort(key=lambda i: i["published"] or "", reverse=True)
+    return sorted(items, key=lambda i: (-int((i["published"] or "0")[:4]), order[i["verification"]]))
 
 
 def search_area_news(snapshot: dict[str, Any], provider: NewsProvider, now: datetime | None = None) -> dict[str, Any]:
     now = now or datetime.now(timezone.utc)
     terms = place_terms(snapshot)
+    since = max(ARCHIVE_START, now - timedelta(days=365 * SEARCH_YEARS))
     base = {"provider": provider.name, "coverage": provider.coverage, "retrieved_at": now.isoformat(timespec="seconds"),
-            "searched_from": (now - timedelta(days=365 * SEARCH_YEARS)).date().isoformat(), "place": terms,
+            "searched_from": since.date().isoformat(), "place": terms,
             "limitations": ("News can surface a reported problem or project; it cannot verify title, prove that no dispute "
                             "exists, or show that a plot is flood-safe. Finding nothing means nothing was indexed for these "
-                            "words, not that nothing happened. Conflicting reports cannot be detected from headlines.")}
+                            "words, not that nothing happened. Conflicting reports cannot be detected from headlines. "
+                            "Dates are when GDELT saw the article, not when the event happened; project status is the "
+                            "headline's wording, not a sanction record; distance from the plot is not known.")}
     if not terms["variants"] or not terms["district"]:
         return {**base, "status": "not_searched", "queries": [], "items": [],
                 "reason": "The report has no locality and district name to search for."}
@@ -211,12 +251,14 @@ def search_area_news(snapshot: dict[str, Any], provider: NewsProvider, now: date
         for topic, (_, words) in TOPICS.items():
             query = f'({names}) "{terms["district"]}" ({" OR ".join(words)}) sourcecountry:IN'
             queries.append({"topic": topic, "query": query})
-            by_topic[topic] = provider.search(query, now - timedelta(days=365 * SEARCH_YEARS), deadline=deadline)
+            by_topic[topic] = provider.search(query, since, deadline=deadline)
     except NewsUnavailable as error:
         return {**base, "status": "unavailable", "queries": queries, "items": [], "reason": str(error)}
-    items = classify(by_topic, now)
+    items = classify(by_topic, now, terms["variants"])
     return {**base, "status": "results" if items else "no_results", "queries": queries, "items": items,
-            "raw_articles": sum(len(v) for v in by_topic.values())}
+            "raw_articles": sum(len(v) for v in by_topic.values()),
+            # A topic at the record ceiling has older articles that GDELT did not return.
+            "truncated_topics": [t for t, v in by_topic.items() if len(v) >= MAX_RECORDS]}
 
 
 # --- development claims ---------------------------------------------------------------------------------------
@@ -253,7 +295,7 @@ from routers.store import delete_claim, get_cached_news, get_latest_for_parcel, 
 
 router = APIRouter()
 PROVIDER: NewsProvider = GdeltProvider()
-NEWS_CACHE_VERSION = "news-1"
+NEWS_CACHE_VERSION = "news-2"
 _key_locks: dict[str, threading.Lock] = {}
 
 

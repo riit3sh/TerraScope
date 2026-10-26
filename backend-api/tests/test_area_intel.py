@@ -53,7 +53,7 @@ def test_every_query_requires_the_locality_and_the_district() -> None:
 def test_no_results_is_reported_as_no_results_with_what_was_searched() -> None:
     result = area_intel.search_area_news(SNAPSHOT, Fake(), NOW)
     assert result["status"] == "no_results" and result["items"] == []
-    assert len(result["queries"]) == 3 and result["searched_from"] == "2023-10-26"
+    assert len(result["queries"]) == 3 and result["searched_from"] == "2017-01-01", "GDELT archive start, within 10 years"
     assert "not that nothing happened" in result["limitations"]
 
 
@@ -189,9 +189,51 @@ def test_a_rate_limited_provider_gives_up_within_the_search_budget(monkeypatch) 
     class Quick(area_intel.GdeltProvider):
         MIN_INTERVAL_S, BACKOFF_429_S = 0.01, 0.5
 
-    monkeypatch.setattr(area_intel.httpx, "get", always_429)
+    calls = []
+    monkeypatch.setattr(area_intel.httpx, "get", lambda *a, **k: calls.append(1) or always_429(*a, **k))
+    monkeypatch.setattr(area_intel.GdeltProvider, "_cooldown_until", 0.0)
     monkeypatch.setattr(area_intel, "SEARCH_BUDGET_S", 12.0)
     began = time.monotonic()
     result = area_intel.search_area_news(SNAPSHOT, Quick(), NOW)
     assert result["status"] == "unavailable" and "429" in result["reason"]
     assert time.monotonic() - began < 12.0, "the whole search stays within its budget"
+    before = len(calls)
+    again = area_intel.search_area_news(SNAPSHOT, Quick(), NOW)
+    assert again["status"] == "unavailable" and len(calls) == before, "no request is sent during the 429 cooldown"
+
+
+def test_timeline_items_carry_status_evidence_type_and_whether_the_headline_names_the_place() -> None:
+    items = area_intel.search_area_news(SNAPSHOT, Fake({"development": [
+        art("Senjeri ring road work begins", "thehindu.com", days_ago=400),
+        art("Coimbatore metro project shelved", "news.example.in", days_ago=30),
+        art("Senjery bus stand inaugurated", "tnhb.tn.gov.in", days_ago=900)],
+        "hazards": [art("Senjeri roads flooded", "dtnext.in", days_ago=3)]}), NOW)["items"]
+    by = {i["title"]: i for i in items}
+    assert by["Senjeri ring road work begins"]["project_status"] == "under_construction"
+    assert by["Coimbatore metro project shelved"]["project_status"] == "cancelled"
+    assert not by["Coimbatore metro project shelved"]["locality_in_headline"], "may be about another place"
+    assert by["Senjery bus stand inaugurated"]["project_status"] == "completed", "spelling variants count"
+    assert by["Senjery bus stand inaugurated"]["evidence_type"] == "official_publication"
+    assert by["Senjeri roads flooded"]["project_status"] is None, "hazards have no project status"
+    years = [i["published"][:4] for i in items]
+    assert years == sorted(years, reverse=True), "newest year first"
+
+
+def test_legal_checks_are_guided_per_state_and_recorded_as_the_buyers_statement(client) -> None:
+    empty = client.get("/api/v1/parcels/p1/legal-checks").json()
+    assert empty["state_guide"] == "available" and empty["automated_sources"] == []
+    title = next(c for c in empty["checks"] if c["check"] == "title")
+    assert title["verification"] == "not_checked" and "eservices.tn.gov.in" in title["guide"]["url"]
+    first = {"check": "encumbrance", "outcome": "not_found", "source": "TNREGINET", "checked_on": "2026-10-20"}
+    second = {**first, "outcome": "confirmed", "reference": "EC 1234/2026", "checked_on": "2026-10-24"}
+    client.post("/api/v1/parcels/p1/legal-checks", json=first)
+    after = client.post("/api/v1/parcels/p1/legal-checks", json=second).json()
+    ec = next(c for c in after["checks"] if c["check"] == "encumbrance")
+    assert ec["verification"] == "user_recorded" and ec["record"]["outcome"] == "confirmed", "newest record wins"
+    assert after["history_count"] == 2, "earlier records are kept"
+    bad = client.post("/api/v1/parcels/p1/legal-checks", json={**first, "check": "title", "outcome": "not_applicable"})
+    assert bad.status_code == 422, "title always applies"
+    assert client.post("/api/v1/parcels/p1/legal-checks", json={**first, "checked_on": "yesterday"}).status_code == 422
+    store.save_snapshot({"parcel_id": "p3", "metadata": {"analysis_snapshot_id": "s3"}, "location": {"state": "Goa"}})
+    goa = client.get("/api/v1/parcels/p3/legal-checks").json()
+    assert goa["state_guide"] == "not_yet" and all(c["guide"] is None for c in goa["checks"]), "no state implied covered"

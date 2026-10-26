@@ -151,3 +151,16 @@ def test_buy_needs_all_four_legal_checks_and_a_defect_is_walk_away() -> None:
     assert "verification of zoning, approvals" in partial["reasoning_summary"]
     complete = compute_evaluation(parcel(), profile)
     assert complete["recommendation"] == "BUY"
+
+
+def test_recorded_legal_checks_never_make_buy_but_a_recorded_problem_is_walk_away() -> None:
+    """The buyer's own records (2026-10-26): statements, not verification."""
+    profile = _evidenced_profile("investor")
+    mine = {k: {"outcome": "confirmed", "source": "portal", "checked_on": "2026-10-24"}
+            for k in ("title", "encumbrance", "zoning", "approvals")}
+    recorded = compute_evaluation(parcel(land_records=None, user_legal_checks=mine), profile)
+    assert recorded["recommendation"] == "WAIT", "only matched official records verify"
+    assert "you recorded it as checked on 2026-10-24" in recorded["reasoning_summary"]
+    problem = dict(mine, encumbrance={"outcome": "problem", "source": "TNREGINET", "checked_on": "2026-10-24"})
+    walk = compute_evaluation(parcel(land_records=None, user_legal_checks=problem), profile)
+    assert walk["recommendation"] == "AVOID" and "you recorded a problem with the encumbrance check" in walk["reasoning_summary"]

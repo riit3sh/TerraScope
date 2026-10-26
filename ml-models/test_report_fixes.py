@@ -165,3 +165,18 @@ def test_findings_put_red_flags_first_and_never_call_missing_evidence_ok() -> No
     assert by_area["Rainfall waterlogging and coastal flooding"]["assessment"] == "unknown"
     assert all(f["next_step"] for f in findings)
     assert by_area["River flooding"]["as_of"] == "2026-01-12"  # the model release, not today
+
+
+def test_recorded_legal_checks_pass_schema_validation_and_stay_the_buyers_statement() -> None:
+    """Regression (2026-10-26): the evidence schema rejected user_legal_checks, so re-evaluation failed."""
+    snapshot = copy.deepcopy(VIT)
+    snapshot["user_legal_checks"] = {"encumbrance": {"check": "encumbrance", "outcome": "confirmed", "source": "TNREGINET",
+                                                     "checked_on": "2026-10-26", "recorded_at": "2026-10-26T05:00:00+00:00"}}
+    result = evaluate_snapshot(snapshot, SETTINGS)
+    assert result["land_records"] is None and result["verdict"]["recommendation"] != "BUY"
+    title = next(f for f in result["verdict"]["findings"] if f["area"] == "Title and ownership")
+    assert title["assessment"] == "unknown" and "TerraScope cannot verify your records" in title["finding"]
+    snapshot["user_legal_checks"]["zoning"] = {"check": "zoning", "outcome": "problem", "source": "DTCP", "checked_on": "2026-10-26"}
+    walk = evaluate_snapshot(snapshot, SETTINGS)
+    title = next(f for f in walk["verdict"]["findings"] if f["area"] == "Title and ownership")
+    assert walk["verdict"]["recommendation"] == "AVOID" and title["assessment"] == "red_flag", "findings agree with the verdict"

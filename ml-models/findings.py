@@ -64,12 +64,21 @@ def _legal(record: dict[str, Any], factors: dict[str, dict[str, Any]], state: st
         return _row("Title and ownership", legal["basis"], "ok" if legal["score"] >= 70 else "caution", "measured",
                     "Have a lawyer confirm the title chain before paying.")
     finding = "No land record was retrieved, so ownership, encumbrance and approvals are not verified."
+    mine = {k: r for k, r in _section(record, "user_legal_checks").items() if isinstance(r, dict)}
+    problems = [f"{k} ({r.get('source')}, {r.get('checked_on')})" for k, r in mine.items() if r.get("outcome") == "problem"]
+    if problems:  # the buyer's own finding of a defect: the same evidence that makes the verdict WALK AWAY
+        return _row("Title and ownership", "You recorded a problem with: " + "; ".join(problems) + ".", "red_flag",
+                    "user_provided", "Do not pay. Have a lawyer read the official record; buy only if it shows the "
+                    "problem does not affect this plot.", source="Your recorded legal checks")
+    confirmed = [k for k, r in mine.items() if r.get("outcome") == "confirmed"]
+    if confirmed:
+        finding += " You recorded checking " + ", ".join(confirmed) + "; TerraScope cannot verify your records."
     if supplied.get("survey_number"):
         finding += f" You supplied survey {supplied['survey_number']}" + (
             f"/{supplied['subdivision']}" if supplied.get("subdivision") else "") + "."
     if documents:
         finding += f" {len(documents)} document(s) uploaded; they are your claims, not verification."
-    return _row("Title and ownership", finding, "unknown", "user_provided" if supplied else "not_verified",
+    return _row("Title and ownership", finding, "unknown", "user_provided" if supplied or mine else "not_verified",
                 where + "Get a 30-year encumbrance certificate and the parent documents, and have a lawyer check "
                 "the title chain and any loans or court cases on the land.",
                 source="No permitted land-records source is integrated")

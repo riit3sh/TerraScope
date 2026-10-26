@@ -62,16 +62,32 @@ def build_verdict(
     adverse = [text for present, text in ((records.get("title_clear") is False, "the title is not clear"),
                                          (records.get("encumbrance_flag") is True, "an encumbrance is recorded"))
                if present]
+    # The buyer's own records (source, date, evidence): a recorded problem counts against buying; a recorded
+    # confirmation is named in the reasoning but never satisfies a legal requirement, which needs a matched record.
+    user_checks = record.get("user_legal_checks") if isinstance(record.get("user_legal_checks"), dict) else {}
+    user_problems = [f"you recorded a problem with the {key if key != 'rera' else 'RERA'} check "
+                     f"({r.get('source')}, {r.get('checked_on')})"
+                     for key, r in user_checks.items() if isinstance(r, dict) and r.get("outcome") == "problem"]
     pending = [label for key, wanted, label in LEGAL_REQUIREMENTS if records.get(key) is not wanted]
     due_diligence_done = bool(records) and not pending and not adverse
+
+    def pending_text(label: str) -> str:
+        mine = user_checks.get(label) if isinstance(user_checks.get(label), dict) else {}
+        if mine.get("outcome") == "confirmed":
+            return f"{label} (you recorded it as checked on {mine.get('checked_on')}; TerraScope cannot verify that)"
+        return label
+
     legal_pending = ("a lawyer's check of title, a 30-year encumbrance certificate, zoning and approvals against official records"
-                     if len(pending) == len(LEGAL_REQUIREMENTS) else
-                     "verification of " + ", ".join(pending) + " against official records")
-    if adverse:
-        # A matched record showing a defect is material adverse evidence, whatever the location looks like.
+                     if len(pending) == len(LEGAL_REQUIREMENTS) and not user_checks else
+                     "verification of " + ", ".join(pending_text(label) for label in pending) + " against official records")
+    if adverse or user_problems:
+        # A matched record showing a defect, or the buyer's own finding of one, is material adverse evidence,
+        # whatever the location looks like.
         recommendation = "AVOID"
-        summary = "WALK AWAY: the matched land records show that " + " and ".join(adverse) + "."
-        would_change = ["Corrected official records showing clear title and no encumbrance"]
+        summary = ("WALK AWAY: " + ("the matched land records show that " + " and ".join(adverse) if adverse else "")
+                   + ("; " if adverse and user_problems else "") + "; ".join(user_problems) + ".")
+        would_change = ["Corrected official records showing clear title and no encumbrance" if adverse else
+                        "A lawyer confirming, from the official records, that the recorded problem does not affect this plot"]
         composite = None
     elif legal["score"] is not None and (100.0 - legal["score"]) > hard_legal_risk_threshold:
         # Proven disqualifying evidence decides on its own.

@@ -62,6 +62,13 @@ def init_store() -> None:
                 claim_json TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
+            -- The buyer's own legal-check records, append-only: a newer record per check supersedes, none is lost.
+            CREATE TABLE IF NOT EXISTS legal_checks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                parcel_id TEXT NOT NULL,
+                record_json TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
             CREATE TABLE IF NOT EXISTS news_cache (
                 cache_key TEXT PRIMARY KEY,
                 payload_json TEXT NOT NULL,
@@ -72,6 +79,7 @@ def init_store() -> None:
             CREATE INDEX IF NOT EXISTS idx_evaluations_parcel ON evaluation_history(parcel_id, id);
             CREATE INDEX IF NOT EXISTS idx_documents_parcel ON documents(parcel_id);
             CREATE INDEX IF NOT EXISTS idx_claims_parcel ON development_claims(parcel_id);
+            CREATE INDEX IF NOT EXISTS idx_legal_checks_parcel ON legal_checks(parcel_id, id);
             """
         )
         # Additive migration: existing rows keep doc_type NULL ("type not given").
@@ -240,6 +248,19 @@ def delete_claim(parcel_id: str, claim_id: int) -> bool:
         return connection.execute(
             "DELETE FROM development_claims WHERE parcel_id = ? AND id = ?", (parcel_id, claim_id)
         ).rowcount > 0
+
+
+def save_legal_check(parcel_id: str, record: dict[str, Any]) -> None:
+    with _connect() as connection:
+        connection.execute("INSERT INTO legal_checks(parcel_id, record_json, created_at) VALUES (?, ?, ?)",
+                           (parcel_id, json.dumps(record), datetime.now(timezone.utc).isoformat()))
+
+
+def legal_check_history(parcel_id: str) -> list[dict[str, Any]]:
+    with _connect() as connection:
+        rows = connection.execute("SELECT record_json, created_at FROM legal_checks WHERE parcel_id = ? ORDER BY id",
+                                  (parcel_id,)).fetchall()
+    return [{**json.loads(row["record_json"]), "recorded_at": row["created_at"]} for row in rows]
 
 
 def get_cached_news(cache_key: str, max_age_s: float) -> dict[str, Any] | None:

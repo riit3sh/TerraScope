@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowLeft, FileText, FlaskConical, History, Printer, RefreshCw, Sparkles, TriangleAlert, Upload, X } from 'lucide-react'
-import { DOC_TYPE_LABEL, DocType, evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, uploadEvidence, AreaNews, NewsItem, getAreaNews, DevelopmentClaim, DevelopmentClaimInput, ProjectType, listClaims, addClaim, deleteClaim } from '../lib/api'
+import { DOC_TYPE_LABEL, DocType, evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, uploadEvidence, AreaNews, NewsItem, getAreaNews, LegalChecklist, LegalCheckInput, getLegalChecks, recordLegalCheck, DevelopmentClaim, DevelopmentClaimInput, ProjectType, listClaims, addClaim, deleteClaim } from '../lib/api'
 
 type EvidenceTab = 'Satellite' | 'Infrastructure' | 'Flood indicators' | 'RERA' | 'Uploaded Documents' | 'Derived Scores'
 
@@ -187,6 +187,7 @@ function Highlights({ findings }: { findings?: Finding[] | null }) {
 }
 
 const NEWS_STATUS: Record<NewsItem['verification'], string> = { official_source: 'Official source', corroborated: 'Reported by 2+ outlets', single_report: 'Single news report' }
+const PROJECT_STATUS_LABEL: Record<NonNullable<NewsItem['project_status']>, string> = { proposed: 'proposed', approved: 'approved', under_construction: 'under construction', completed: 'completed', cancelled: 'cancelled', unknown: 'status unknown' }
 const NEWS_WHY: Record<NewsItem['topic'], string> = {
   hazards: 'A reported flood, waterlogging or road closure in this locality. Ask neighbours and the local body whether this plot or its access road was affected.',
   legal_planning: 'A reported dispute, encroachment, demolition or planning action in this locality. Check whether it involves this survey number before paying.',
@@ -213,12 +214,14 @@ function LocalNews({ parcelId }: { parcelId: string }) {
     {news?.status === 'unavailable' && <p className="muted">Temporarily unavailable: {news.reason}. Nothing is assumed from a failed search; it says nothing about the area either way.</p>}
     {news?.status === 'no_results' && <p className="muted">Nothing indexed mentions this locality and district with flooding, disputes, demolition or development words. That is not evidence that nothing happened: small local reports are often not indexed.</p>}
     {news?.status === 'not_searched' && <p className="muted">{news.reason}</p>}
-    {news && news.items.length > 0 && <div className="news-list">{news.items.slice(0, 12).map(item => <div className={`news-item ${item.topic}`} key={item.url}>
-      <div className="news-meta"><span className={`finding-badge ${item.verification === 'single_report' ? 'unknown' : 'caution'}`}>{NEWS_STATUS[item.verification]}</span><span>{item.topic_label}</span>{item.speculative && <span className="news-flag">proposal or speculation</span>}{item.stale && <span className="news-flag">older than 2 years</span>}</div>
+    {news?.truncated_topics?.length ? <p className="muted">Some topics reached the provider's limit of 250 articles, so older items may be missing from the timeline.</p> : null}
+    {news && news.items.length > 0 && <div className="news-list">{news.items.slice(0, 40).map((item, index, shown) => <Fragment key={item.url}>{(index === 0 || (shown[index - 1].published || '').slice(0, 4) !== (item.published || '').slice(0, 4)) && <div className="section-label">{(item.published || '').slice(0, 4) || 'Date unknown'}</div>}<div className={`news-item ${item.topic}`}>
+      <div className="news-meta"><span className={`finding-badge ${item.verification === 'single_report' ? 'unknown' : 'caution'}`}>{NEWS_STATUS[item.verification]}</span><span>{item.topic_label}</span>{item.project_status && <span className="news-flag">reported as {PROJECT_STATUS_LABEL[item.project_status]}</span>}{item.speculative && <span className="news-flag">proposal or speculation</span>}{item.stale && <span className="news-flag">older than 2 years</span>}{!item.locality_in_headline && <span className="news-flag">headline does not name the locality: check it is about this place</span>}</div>
       <a href={item.url} target="_blank" rel="noreferrer">{item.title}</a>
       <small>{item.publisher} · {item.published || 'date unknown'}{item.language && item.language !== 'English' ? ` · ${item.language}` : ''}{item.outlets > 1 ? ` · ${item.outlets} outlets` : ''}</small>
       <p>{NEWS_WHY[item.topic]}</p>
-    </div>)}</div>}
+    </div></Fragment>)}</div>}
+    {news && news.items.length > 0 && <p className="field-hint">Dates are when the article was indexed, not when the event happened. “Reported as …” is the headline's wording, not an official record: confirm sanction and status with the authority. Distance from the plot is not known. None of this changes the decision.</p>}
     {news && <details className="flood-details"><summary>What was searched, and the limits</summary><p className="muted">{news.coverage}</p><p className="muted">{news.limitations}</p><ul className="method-notes">{news.queries.map(q => <li key={q.topic}><code>{q.query}</code></li>)}</ul></details>}
   </section>
 }
@@ -229,7 +232,7 @@ const PROJECT_LABEL: Record<ProjectType, string> = { road: 'Road', transport: 'P
 /** What a resident, broker or the buyer has heard about upcoming projects: kept as claims, never scored. */
 function FutureDevelopment({ parcelId }: { parcelId: string }) {
   const [claims, setClaims] = useState<DevelopmentClaim[]>([])
-  const [form, setForm] = useState<DevelopmentClaimInput>({ claim: '', project_type: 'road', source: 'resident', checked_on: new Date().toISOString().slice(0, 10) })
+  const [form, setForm] = useState<DevelopmentClaimInput>({ claim: '', project_type: 'road', source: 'resident', checked_on: new Date().toLocaleDateString('en-CA') })
   const [message, setMessage] = useState('')
   useEffect(() => { listClaims(parcelId).then(setClaims).catch(() => setMessage('Could not load recorded claims.')) }, [parcelId])
   async function save() {
@@ -303,6 +306,50 @@ function LegalEvidence({ record, onChanged }: { record: ParcelRecord; onChanged:
     {supplied?.documents?.length ? <ul className="doc-list">{supplied.documents.map(doc => <li key={doc.filename}><strong>{doc.filename}</strong> · {doc.doc_type ? DOC_TYPE_LABEL[doc.doc_type] : 'type not given'} · {doc.text_extracted ? `${doc.pages ? `${doc.pages} pages, ` : ''}text extracted` : 'no text extracted (scanned?)'}{doc.mentions?.length ? ` · ${doc.mentions.map(mm => `${mm.field.replace('_', ' ')} ${mm.value}${mm.pages ? ` on page ${mm.pages.join(', ')}` : ''}`).join('; ')}` : (form.survey_number ? ' · your survey number was not found in it' : '')}</li>)}</ul> : null}
     <div className="land-upload"><label className="upload-row"><input type="file" accept=".pdf,.txt,application/pdf,text/plain" onChange={e => setFile(e.target.files?.[0] || null)} /><Upload size={14} /><span>{file ? file.name : 'Add a document (PDF or TXT)'}</span></label><select value={docType} onChange={e => setDocType(e.target.value as DocType)}>{(Object.keys(DOC_TYPE_LABEL) as DocType[]).map(type => <option key={type} value={type}>{DOC_TYPE_LABEL[type]}</option>)}</select><button className="quiet-button" onClick={save}>Save and re-evaluate</button></div>
     <p className="field-hint">State, district and village are needed: survey numbers repeat across villages. TerraScope shows where your survey number and village appear in your documents (by page). That is never title verification.</p>
+    {status && <p className="muted" role="status">{status}</p>}
+  </div>
+}
+
+const OUTCOME_LABEL: Record<LegalCheckInput['outcome'], string> = { confirmed: 'Record found and matches the seller', problem: 'Problem found', not_found: 'Could not find the record', not_applicable: 'Not applicable' }
+
+/** The official source for each legal check, and the buyer's own record of checking it. A record is never verification. */
+function LegalChecks({ record, onChanged }: { record: ParcelRecord; onChanged: () => Promise<void> }) {
+  const parcelId = record.parcel_id || ''
+  const [list, setList] = useState<LegalChecklist | null>(null)
+  const [form, setForm] = useState<LegalCheckInput | null>(null)
+  const [status, setStatus] = useState('')
+  useEffect(() => { getLegalChecks(parcelId).then(setList).catch(() => setStatus('Could not load the legal checklist.')) }, [parcelId])
+  async function save() {
+    if (!form) return
+    setStatus('Saving…')
+    try {
+      const clean = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, typeof v === 'string' ? v.trim() || null : v]).filter(([, v]) => v != null)) as unknown as LegalCheckInput
+      setList(await recordLegalCheck(parcelId, clean)); setForm(null)
+      await onChanged()
+      setStatus('Recorded and re-evaluated. This is your record, not verification by TerraScope.')
+    } catch (error) { setStatus(error instanceof Error ? error.message : 'Could not save.') }
+  }
+  if (!list) return status ? <p className="muted">{status}</p> : null
+  return <div className="land-evidence">
+    <div className="field-label">LEGAL CHECKS <span>{list.state_guide === 'available' ? `official sources for ${list.state}` : `no state guide for ${list.state || 'this state'} yet`} · automated verification: none</span></div>
+    <p className="field-hint">{list.notice}</p>
+    <ul className="doc-list">{list.checks.map(c => <li key={c.check}>
+      <strong>{c.label}</strong>{c.mandatory_for_buy ? ' · required for BUY' : ''} · <span className={`finding-badge ${c.record?.outcome === 'problem' ? 'red_flag' : c.record ? 'caution' : 'unknown'}`}>{c.record ? `${OUTCOME_LABEL[c.record.outcome]} · recorded by you ${c.record.checked_on}` : 'Not checked'}</span>
+      {c.record && <small> {c.record.source}{c.record.reference ? ` · ref ${c.record.reference}` : ''}{c.record.evidence ? ` · evidence: ${c.record.evidence}` : ''}{c.record.notes ? ` · ${c.record.notes}` : ''}</small>}
+      {c.guide ? <p className="muted">Where: <a href={c.guide.url} target="_blank" rel="noreferrer">{c.guide.authority}</a>. {c.guide.how} <em>{c.guide.access}</em></p> : <p className="muted">No official source has been researched for this state yet: ask a local lawyer which office holds this record.</p>}
+      {form?.check !== c.check && <button className="quiet-button" onClick={() => setForm({ check: c.check, outcome: 'confirmed', source: c.guide?.authority || '', checked_on: new Date().toLocaleDateString('en-CA'), reference: '', evidence: '', notes: '' })}>Record a check</button>}
+      {form?.check === c.check && <div className="land-grid">
+        <label className="stacked-field">What you found<select value={form.outcome} onChange={e => setForm({ ...form, outcome: e.target.value as LegalCheckInput['outcome'] })}>{(Object.keys(OUTCOME_LABEL) as LegalCheckInput['outcome'][]).filter(o => o !== 'not_applicable' || c.check === 'rera').map(o => <option key={o} value={o}>{OUTCOME_LABEL[o]}</option>)}</select></label>
+        <label className="stacked-field">Source consulted<input value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} /></label>
+        <label className="stacked-field">Date checked<input type="date" value={form.checked_on} onChange={e => setForm({ ...form, checked_on: e.target.value })} /></label>
+        <label className="stacked-field">Reference no.<input value={form.reference || ''} onChange={e => setForm({ ...form, reference: e.target.value })} /></label>
+        <label className="stacked-field">Evidence (document)<input list="legal-evidence-docs" value={form.evidence || ''} onChange={e => setForm({ ...form, evidence: e.target.value })} /></label>
+        <label className="stacked-field">Notes<input value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} /></label>
+        <datalist id="legal-evidence-docs">{(record.user_land_details?.documents || []).map(d => <option key={d.filename} value={d.filename} />)}</datalist>
+        <button className="quiet-button" disabled={form.source.trim().length < 3 || !form.checked_on} onClick={save}>Save and re-evaluate</button><button className="quiet-button" onClick={() => setForm(null)}>Cancel</button>
+      </div>}
+    </li>)}</ul>
+    {list.history_count > 0 && <p className="field-hint">{list.history_count} record{list.history_count === 1 ? '' : 's'} kept; the newest per check is shown. A record you could not find is not a clearance.</p>}
     {status && <p className="muted" role="status">{status}</p>}
   </div>
 }
@@ -411,7 +458,7 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
           {f.factor === 'accessibility' && <AccessibilityDetails factor={f} />}
           <small>{f.factor === 'flood_safety' ? 'No overall Flood Safety score: no validated method combines the mechanisms.' : f.limitations}</small>
           {f.checklist && f.checklist.length > 0 && <ul className="checklist">{f.checklist.map(c => <li key={c}>{c}</li>)}</ul>}
-          {f.factor === 'legal_safety' && record.parcel_id && <LegalEvidence record={record} onChanged={() => rerun(settings, 'Survey details or documents updated')} />}
+          {f.factor === 'legal_safety' && record.parcel_id && <><LegalEvidence record={record} onChanged={() => rerun(settings, 'Survey details or documents updated')} /><LegalChecks record={record} onChanged={() => rerun(settings, 'Legal check recorded')} /></>}
         </div>)}</div>
       </section>
       <FloodPanel indicators={record.flood_indicators} latitude={record.location?.latitude} />

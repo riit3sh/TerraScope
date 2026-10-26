@@ -57,11 +57,38 @@ explanation. `SATELLITE_DEMO_FALLBACK=false`, so no synthetic imagery is ever su
 
 | Service | Used for | Licence / terms | Notes |
 |---|---|---|---|
-| EOxCloudless 2023 (EOX, Sentinel-2 composite) | "Satellite (2023)" basemap in the workspace | CC BY-NC-SA 4.0, free for non-commercial use with attribution; commercial use needs an EOX licence | 10 m, one cloud-free composite for 2023; not today's image; not the analysis data |
+| EOxCloudless 2023 (EOX, Sentinel-2 composite) | "Satellite (2023)" basemap in the workspace | CC BY-NC-SA 4.0, free for non-commercial use with attribution; commercial use needs an EOX licence | 10 m, one cloud-free composite for 2023; not today's image; not the analysis data. Real detail ends at zoom 14 (measured below) |
 | OpenStreetMap tiles | "Map" basemap | ODbL; OSM tile usage policy (light use) | Heavy or commercial use needs another tile host |
-| GDELT DOC 2.0 | Local news search | Free, no key; no licence page found; asks for at most one request per 5 s | Headline-level metadata; frequently rate-limited (HTTP 429) during testing |
+| GDELT DOC 2.0 | Local news timeline | Free, no key; no licence page found; asks for at most one request per 5 s | Headline-level metadata from 2017-01-01 (a 2018 query returned 2018 articles, 2026-10-26); at most 250 records per query; frequently rate-limited (HTTP 429) from this network, so TerraScope pauses 2 minutes after a 429 |
+
+## Satellite sharpness, measured (2026-10-26, Senjeri, 10.85°N)
+
+Detail added by each zoom level, as the mean grey-level difference between a tile and the tile one level below
+enlarged 2x (more difference = more real detail):
+
+| Zoom (m per screen pixel) | 14 (9.4) | 15 (4.7) | 16 (2.3) | 17 (1.2) | 18 (0.6) |
+|---|---|---|---|---|---|
+| EOxCloudless 2023 | 8.1 | 2.7 | 1.6 | 1.3 | — |
+| Esri World Imagery (6 tiles fetched for this comparison only; not used by the app) | — | 10.3 | 10.9 | 10.7 | 11.4 |
+
+EOX tiles above zoom 14 are enlarged copies of the 10 m Sentinel-2 composite, so the blur is the source, not a bug.
+The workspace now stops downloading EOX tiles above zoom 14 (Leaflet enlarges zoom 14 itself) and says so when the user
+zooms further. Sharp (sub-metre) imagery needs a commercial imagery provider; none has been switched.
 
 ## Licensing: academic demo vs commercial deployment
+
+Verified 2026-10-26 on the providers' own pages:
+
+- **EOxCloudless:** 2018-2025 layers are CC BY-NC-SA 4.0 (non-commercial, attribution); the 2016 layer is CC BY 4.0
+  (commercial use allowed, attribution, but ten-year-old imagery). Commercial licences are sold per product; no prices
+  are published (quote via cloudless@eox.at).
+- **OSM tiles (OSMF tile usage policy):** visible attribution; a valid Referer (browsers send it); honour caching; no
+  bulk or offline download; heavy use is not allowed, and access can be blocked without notice. Commercial services are
+  warned that access may be withdrawn at any time.
+- **Costs found for licensed alternatives:** ArcGIS Location Platform lists 2M free basemap tiles, then $0.15 per
+  1,000 (the page does not name World Imagery or state commercial terms: confirm with Esri). MapTiler: Free plan for
+  non-commercial use (5k map sessions, 100k requests a month); Flex $30 a month (25k sessions, 500k requests); its
+  satellite resolution per plan is not stated.
 
 - **Academic / non-commercial demo:** the current setup is permitted.
   - EOxCloudless 2023 is CC BY-NC-SA 4.0. Attribution is shown on the map.
@@ -85,6 +112,7 @@ explanation. `SATELLITE_DEMO_FALLBACK=false`, so no synthetic imagery is ever su
 | WRI Aqueduct Floods v2 | Riverine and coastal inundation by return period | ~1 km; released 2020 | Not stated on WRI's page; secondary sources say CC BY 4.0 | Would fill the coastal gap; confirm the licence first |
 | MERIT Hydro (HAND layer) | Height above nearest drainage | ~90 m | CC BY-NC 4.0 / ODbL dual; registration form | Would replace the terrain indicator with a real HAND figure; non-commercial |
 | HydroSHEDS / HydroRIVERS | River network and basins | 15 arc-seconds | Free for scientific, educational and commercial use (official page); read the licence document | Drainage context |
+| SACHET, NDMA (official) | CAP 1.2 disaster alerts from IMD, INCOIS, state authorities | Country / state RSS feeds | Not stated | Current warnings, not historical parcel risk; feed URL not confirmed |
 | IMD gridded rainfall (official) | Daily rainfall | 0.25°; 1901-present | Terms not verified; long series reportedly sold | Rainfall climate, not waterlogging |
 | CHIRPS | Daily rainfall | 0.05°; 1981-present | Public domain (Earth Engine catalogue) | Rainfall climate, not waterlogging |
 | India-WRIS (official) | Rainfall, river and reservoir dashboards | Varies | NDSAP / 2013 hydro-met policy | Report downloads; no bulk data path found |

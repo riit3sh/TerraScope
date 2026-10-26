@@ -1671,3 +1671,39 @@ the reason the approach changed.
 - **Limits:** no land-records, RERA, rainfall-flood or coastal source; GDELT is rate-limited from this network, so the
   news results path is demonstrated with recorded test fixtures only; the basemaps are not licensed for commercial use.
 - **Status:** fixed and verified.
+
+## J-63 Satellite blur, news timeline, legal-check workflow, licensing evidence
+
+- **Date / problem (2026-10-26):**
+  - The satellite view looked blurred when zoomed in.
+  - News covered only 3 years.
+  - There was no place to record official legal checks.
+  - Map licensing was asserted rather than verified.
+- **Diagnosis:**
+  - EOX tiles above zoom 14 add 1-3 grey levels of detail versus 8 at zoom 14; Esri adds about 11 at every level to
+    18. The blur is the 10 m source.
+  - GDELT's DOC API searches from 2017-01-01 (verified with a 2018 query; its blog posts disagree).
+- **Changes:**
+  - Satellite `maxNativeZoom` 14, plus a note when zoomed past it.
+  - News timeline from 2017 (at most 10 years): grouped by year, with the headline's reported project status, evidence
+    type, and a flag when the headline does not name the locality. 250 records per topic, with a notice when that limit
+    is reached. A 2-minute pause after a GDELT 429.
+  - Legal checks: Tamil Nadu state guide, append-only manual records. A recorded problem gives WALK AWAY and a red-flag
+    finding; a recorded confirmation never gives BUY. Schema field `user_legal_checks`.
+  - Local date for check dates; the old UTC default showed yesterday in the Indian morning.
+  - Docs: `LEGAL_VERIFICATION.md`; measured sharpness and verified licence terms in `DATASETS.md`.
+- **Verification:**
+  - **Tests:** ml-models 70, backend-api 28.
+  - **Browser, user's store (view only):** at zoom 16 only zoom-14 EOX tiles load and the note shows.
+  - **Browser, disposable copy:** recorded an EC and a title check → WAIT naming both as "recorded by you". Recorded a
+    zoning problem → WALK AWAY, no score, "1 red flag". RERA "not applicable" is offered only for RERA. 4 rows stored,
+    one per action.
+  - **Two defects caught by the browser run and fixed:**
+    - the schema rejected `user_legal_checks`;
+    - the findings disagreed with WALK AWAY.
+  - **Live GDELT:** rate-limited (HTTP 429) for both attempts. The timeline is verified with test fixtures only.
+- **Limits:**
+  - No automated land-record, EC, zoning or approval source for any state.
+  - Rainfall and coastal flooding not assessed.
+  - Event dates and distances are not derivable from headlines.
+- **Status:** fixed and verified, except the live news results path (blocked by the rate limit).

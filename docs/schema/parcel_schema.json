@@ -1506,6 +1506,13 @@
         "null"
       ],
       "description": "Survey/subdivision identifiers and document claims supplied by the user. Never independently verified; never populates land_records."
+    },
+    "user_legal_checks": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "The buyer's own legal-check records (latest per check: outcome, source, date, reference). Statements, never verification: a recorded problem counts against buying, a recorded confirmation never satisfies a legal requirement."
     }
   },
   "$defs": {
