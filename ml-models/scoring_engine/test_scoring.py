@@ -164,3 +164,73 @@ def test_recorded_legal_checks_never_make_buy_but_a_recorded_problem_is_walk_awa
     problem = dict(mine, encumbrance={"outcome": "problem", "source": "TNREGINET", "checked_on": "2026-10-24"})
     walk = compute_evaluation(parcel(land_records=None, user_legal_checks=problem), profile)
     assert walk["recommendation"] == "AVOID" and "you recorded a problem with the encumbrance check" in walk["reasoning_summary"]
+
+
+# --- government and restricted land (2026-10-26): decided before any score, synthetic inputs only -------------
+
+def _mapped(category, contact, name=None):
+    return {"status": "assessed", "uncertainty_m": 15, "data_as_of": "2026-10-04",
+            "overlaps": [] if contact == "nearby" else [{"category": category, "category_label": category.title(), "name": name,
+                                                          "contact": contact, "ownership_signal": "unknown"}],
+            "nearby": [{"category": category, "contact": "nearby", "distance_m": 120.0}] if contact == "nearby" else []}
+
+
+def _record(outcome, source="TN e-Services poramboke verification"):
+    return {"check": "government_land", "outcome": outcome, "source": source, "survey_number": "123/4A", "checked_on": "2026-10-26"}
+
+
+def test_mapped_overlap_with_a_high_court_or_stadium_warns_and_holds_a_strong_buy_at_wait() -> None:
+    profile = _evidenced_profile("investor")
+    assert compute_evaluation(parcel(), profile)["recommendation"] == "BUY", "baseline: strong and legally verified"
+    for category, name in (("court", "High Court"), ("sports", "City Stadium")):
+        result = compute_evaluation(parcel(public_land=_mapped(category, "overlap", name)), profile)
+        assert result["recommendation"] == "WAIT", f"{category}: never bought on a score"
+        assert result["reasoning_summary"].startswith("WARNING:") and "not an ownership finding" in result["reasoning_summary"]
+        assert result["government_land"]["status"] == "potential_public"
+
+
+def test_a_parcel_near_a_stadium_but_outside_it_is_not_held() -> None:
+    result = compute_evaluation(parcel(public_land=_mapped("sports", "nearby")), _evidenced_profile("investor"))
+    assert result["recommendation"] == "BUY" and result["government_land"]["hold"] is False
+
+
+def test_an_official_record_of_non_transferable_government_land_is_walk_away_whatever_the_score() -> None:
+    result = compute_evaluation(parcel(user_government_land=[_record("government_non_transferable")]), _evidenced_profile("investor"))
+    assert result["recommendation"] == "AVOID" and result["composite_score"] is None
+    assert "non-transferable government land" in result["reasoning_summary"]
+    blocked = compute_evaluation(parcel(user_government_land=[_record("restriction_prohibits_use")]), _evidenced_profile("investor"))
+    assert blocked["recommendation"] == "AVOID"
+
+
+def test_potential_public_land_without_an_official_record_holds_at_wait() -> None:
+    result = compute_evaluation(parcel(public_land=_mapped("defence", "edge"), user_government_land=[_record("records_unavailable")]),
+                                _evidenced_profile("investor"))
+    assert result["recommendation"] == "WAIT" and result["government_land"]["status"] == "records_unavailable"
+
+
+def test_conflicting_official_records_hold_at_wait_and_name_both() -> None:
+    result = compute_evaluation(parcel(user_government_land=[_record("government_non_transferable", "A-register"),
+                                                             _record("private_per_record", "Patta copy")]), _evidenced_profile("investor"))
+    assert result["recommendation"] == "WAIT" and result["government_land"]["status"] == "records_conflicting"
+    assert "A-register" in result["reasoning_summary"] and "Patta copy" in result["reasoning_summary"]
+
+
+def test_a_documented_lawful_auction_or_transfer_is_not_rejected_for_being_government_land() -> None:
+    result = compute_evaluation(parcel(user_government_land=[_record("government_transfer_documented", "Auction order G.O. 12")]),
+                                _evidenced_profile("investor"))
+    assert result["recommendation"] == "WAIT", "verify the order's conditions, but do not walk away"
+    assert any("auction or assignment order" in c for c in result["pre_purchase_checks"])
+    conditions = compute_evaluation(parcel(user_government_land=[_record("restriction_with_conditions", "Railway NOC rule")]),
+                                    _evidenced_profile("investor"))
+    assert conditions["recommendation"] == "WAIT"
+
+
+def test_no_mapped_facility_or_missing_map_data_is_never_read_as_private_land() -> None:
+    profile = _evidenced_profile("investor")
+    for public in ({"status": "assessed", "overlaps": [], "nearby": []},
+                   {"status": "unavailable", "overlaps": [], "nearby": [], "reason": "not built"}, None):
+        result = compute_evaluation(parcel(land_records=None, public_land=public), profile)
+        assert result["government_land"]["status"] == "ownership_unverified"
+        assert result["recommendation"] == "WAIT" and "private" not in result["reasoning_summary"].lower()
+    other_state = compute_evaluation(parcel(land_records=None, location={"state": "Goa"}), profile)
+    assert not any("Tamil Nadu" in c for c in other_state["pre_purchase_checks"]), "no state's portal is implied for another"

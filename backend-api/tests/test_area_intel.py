@@ -237,3 +237,18 @@ def test_legal_checks_are_guided_per_state_and_recorded_as_the_buyers_statement(
     store.save_snapshot({"parcel_id": "p3", "metadata": {"analysis_snapshot_id": "s3"}, "location": {"state": "Goa"}})
     goa = client.get("/api/v1/parcels/p3/legal-checks").json()
     assert goa["state_guide"] == "not_yet" and all(c["guide"] is None for c in goa["checks"]), "no state implied covered"
+
+
+def test_government_land_records_need_a_survey_number_and_keep_each_source(client) -> None:
+    record = {"check": "government_land", "outcome": "private_per_record", "source": "e-Services poramboke verification",
+              "checked_on": "2026-10-26", "survey_number": "123/4A"}
+    assert client.post("/api/v1/parcels/p1/legal-checks", json={**record, "survey_number": None}).status_code == 422
+    assert client.post("/api/v1/parcels/p1/legal-checks", json={**record, "outcome": "confirmed"}).status_code == 422
+    assert client.post("/api/v1/parcels/p1/legal-checks", json={**record, "check": "title", "outcome": "private_per_record"}).status_code == 422
+    client.post("/api/v1/parcels/p1/legal-checks", json=record)
+    after = client.post("/api/v1/parcels/p1/legal-checks", json={**record, "source": "A-register",
+                                                                  "outcome": "government_non_transferable"}).json()
+    gov = next(c for c in after["checks"] if c["check"] == "government_land")
+    assert len(gov["records"]) == 2 and gov["verification"] == "user_recorded", "both sources kept: the conflict stays visible"
+    from routers.legal_checks import latest_checks
+    assert "government_land" not in latest_checks("p1")

@@ -46,3 +46,33 @@ are not official records and are not used.
 5. Layout approval number and the approved layout plan, confirmed with the issuing office.
 6. RERA, if a promoter sells the plot in a layout.
 7. Record each check in the report, then have a lawyer review the title chain before paying.
+
+## Government, public-facility and restricted land
+
+**Two kinds of evidence, never mixed:**
+
+| Kind | Source | What it can say | What it cannot say |
+|---|---|---|---|
+| Mapped | OpenStreetMap public-facility store per region (`data-cache/regions/<region>/public_land.sqlite`) | A court, government office, government school or hospital (by name or operator tag), stadium or sports ground, park, railway land / station / line, defence area, protected area, burial ground or water body overlaps, touches or is near the boundary | Who owns the land. A stadium is a sports facility; its owner is unknown unless a record says so |
+| Official record | Checked by the buyer and recorded (`government_land` check): Tamil Nadu e-Services "Verify Government (Poramboke) / Private Land", A-register, FMB sketch, taluk office orders | Government (non-transferable), government with a documented lawful auction or transfer, private per that record, a restriction that prohibits the use or allows it on conditions, or record unavailable | A full title: one record is not a title guarantee |
+
+- **Official access:** the e-Services verification is a public web form (district, taluk, village, survey and
+  subdivision number), with no published API. It is not automated, scraped or captcha-bypassed. TNGIS has no
+  documented API. No authoritative public-land (cadastral / poramboke) geometry is available for any state, so a
+  mapped overlap is always "potential", never "confirmed".
+- **Contact** is measured on the parcel polygon:
+  - overlap: at least 200 m² or 5 % of the plot, or a railway line crossing it;
+  - a facility point inside the plot;
+  - edge: touching, or within the ±15 m positional uncertainty;
+  - nearby: within 2 km.
+- **Status and effect** (decided before any score, so a high location or development score cannot override it):
+  - confirmed government (non-transferable), or a restriction prohibiting the use → **WALK AWAY**;
+  - documented lawful transfer or auction, a restriction with conditions, conflicting records, potential public land
+    (map only) → at most **WAIT**, with the warning first in the summary;
+  - private per the record checked → no hold, unless the map shows an overlap (then a surveyor's boundary check);
+  - records unavailable / ownership unverified → never read as private.
+- **Coverage:** public-facility stores are built for Tamil Nadu and Andhra Pradesh (2026-10-26, from the 2026-10-04
+  Geofabrik extract). Other states report "not built", which is not evidence of anything. Build one from an installed
+  region's extract with `python data-pipeline/fetch_data.py <region> --public-land`.
+- **Licence:** OpenStreetMap data, ODbL 1.0. The store is a derived database: fine for local use; publishing it requires
+  ODbL attribution and share-alike.

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowLeft, FileText, FlaskConical, History, Printer, RefreshCw, Sparkles, TriangleAlert, Upload, X } from 'lucide-react'
-import { DOC_TYPE_LABEL, DocType, evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, uploadEvidence, AreaNews, NewsItem, getAreaNews, LegalChecklist, LegalCheckInput, getLegalChecks, recordLegalCheck, DevelopmentClaim, DevelopmentClaimInput, ProjectType, listClaims, addClaim, deleteClaim } from '../lib/api'
+import { DOC_TYPE_LABEL, DocType, evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, uploadEvidence, AreaNews, NewsItem, getAreaNews, PublicFacility, LegalChecklist, LegalCheckInput, getLegalChecks, recordLegalCheck, DevelopmentClaim, DevelopmentClaimInput, ProjectType, listClaims, addClaim, deleteClaim } from '../lib/api'
 
 type EvidenceTab = 'Satellite' | 'Infrastructure' | 'Flood indicators' | 'RERA' | 'Uploaded Documents' | 'Derived Scores'
 
@@ -136,7 +136,7 @@ function DecisionPanel({ record, growth }: { record: ParcelRecord; growth?: Fact
 }
 
 const ASSESSMENT_LABEL: Record<Finding['assessment'], string> = { red_flag: 'Red flag', caution: 'Caution', ok: 'OK', unknown: 'Unknown' }
-const BASIS_LABEL: Record<Finding['basis'], string> = { measured: 'measured', modelled: 'model scenario', user_provided: 'your claim, not verified', not_verified: 'not verified', unavailable: 'source unavailable' }
+const BASIS_LABEL: Record<Finding['basis'], string> = { measured: 'measured', modelled: 'model scenario', mapped: 'mapped (OpenStreetMap), not ownership', user_provided: 'your claim, not verified', not_verified: 'not verified', unavailable: 'source unavailable' }
 
 function FindingsTable({ findings }: { findings?: Finding[] | null }) {
   if (!findings?.length) return <section className="findings-section"><div className="section-label">WHAT WE FOUND</div><p className="muted">This evaluation predates the findings list. Use “Re-evaluate with current methods” above to add it.</p></section>
@@ -310,7 +310,31 @@ function LegalEvidence({ record, onChanged }: { record: ParcelRecord; onChanged:
   </div>
 }
 
-const OUTCOME_LABEL: Record<LegalCheckInput['outcome'], string> = { confirmed: 'Record found and matches the seller', problem: 'Problem found', not_found: 'Could not find the record', not_applicable: 'Not applicable' }
+const OUTCOME_LABEL: Record<LegalCheckInput['outcome'], string> = { confirmed: 'Record found and matches the seller', problem: 'Problem found', not_found: 'Could not find the record', not_applicable: 'Not applicable', government_non_transferable: 'Government land, not transferable', government_transfer_documented: 'Government land with a documented lawful auction or transfer', private_per_record: 'Private according to this record', restriction_prohibits_use: 'Restriction prohibits this use', restriction_with_conditions: 'Restriction allows this use on conditions (e.g. NOC)', records_unavailable: 'Record unavailable' }
+const ADVERSE_OUTCOMES = new Set(['problem', 'government_non_transferable', 'restriction_prohibits_use'])
+const CONTACT_LABEL: Record<PublicFacility['contact'], string> = { overlap: 'Overlaps the boundary', point_inside: 'Mapped as a point inside the boundary', edge: 'Touches it or within the map uncertainty', nearby: 'Nearby' }
+const SIGNAL_LABEL: Record<PublicFacility['ownership_signal'], string> = { government_tagged: 'map tag suggests a public operator', private_tagged: 'map tag suggests a private operator', unknown: 'ownership not shown on the map' }
+
+/** Government and restricted land: mapped facilities (never ownership) and the decision's status. */
+function GovernmentLand({ record }: { record: ParcelRecord }) {
+  const status = record.verdict?.government_land
+  const mapped = record.public_land
+  const tone = status?.walk_away ? 'red_flag' : status?.hold ? 'caution' : 'unknown'
+  return <section className={`finding ${tone} gov-land`}>
+    <div className="section-label">GOVERNMENT AND RESTRICTED LAND · MAPPING IS NOT OWNERSHIP</div>
+    <h2>{status ? status.label : 'Not assessed in this evaluation: re-evaluate'}</h2>
+    {status?.warning && <p><strong>{status.warning}</strong></p>}
+    {!mapped ? <p className="muted">This report was analysed before TerraScope checked mapped public facilities. Analyse the same boundary again to add it. Until then, nothing is known either way.</p>
+      : mapped.status !== 'assessed' ? <p className="muted">Public facilities not checked: {mapped.reason} This is not evidence that the land is private or unrestricted.</p>
+      : <>
+        {mapped.overlaps.length ? <ul className="doc-list">{mapped.overlaps.map((f, i) => <li key={`${f.osm_id}-${i}`}><strong>{f.category_label}{f.name ? ` · ${f.name}` : ''}</strong> · {CONTACT_LABEL[f.contact]}{f.contact === 'overlap' && f.overlap_share ? ` (${Math.round(f.overlap_share * 100)}% of the plot)` : ''} · {SIGNAL_LABEL[f.ownership_signal]}{f.osm_id ? <> · <a href={`https://www.openstreetmap.org/${({ n: 'node', w: 'way', r: 'relation' } as Record<string, string>)[f.osm_id[0]]}/${f.osm_id.slice(1)}`} target="_blank" rel="noreferrer">OSM {f.osm_id}</a></> : null}</li>)}</ul>
+          : <p className="muted">No mapped court, government office, stadium, park, railway, defence area or water body touches the boundary. That does not show the land is private or unrestricted: mapping is incomplete.</p>}
+        {mapped.nearby.length > 0 && <p className="field-hint">Nearby (straight line, proximity only): {mapped.nearby.slice(0, 6).map(f => `${f.category_label.split(' (')[0]}${f.name ? ` ${f.name}` : ''} ${Math.round(f.distance_m)} m`).join(' · ')}.</p>}
+        <p className="field-hint">OpenStreetMap ({mapped.licence}), data as of {mapped.data_as_of || 'unknown'}{mapped.stale ? ' (more than a year old)' : ''}; positions can be off by about {mapped.uncertainty_m} m. {mapped.limitations}</p>
+      </>}
+    {status?.checks?.length ? <p className="field-hint">Next: {status.checks[0]}. Record what you find under Legal checks → Government / poramboke land.</p> : null}
+  </section>
+}
 
 /** The official source for each legal check, and the buyer's own record of checking it. A record is never verification. */
 function LegalChecks({ record, onChanged }: { record: ParcelRecord; onChanged: () => Promise<void> }) {
@@ -334,19 +358,21 @@ function LegalChecks({ record, onChanged }: { record: ParcelRecord; onChanged: (
     <div className="field-label">LEGAL CHECKS <span>{list.state_guide === 'available' ? `official sources for ${list.state}` : `no state guide for ${list.state || 'this state'} yet`} · automated verification: none</span></div>
     <p className="field-hint">{list.notice}</p>
     <ul className="doc-list">{list.checks.map(c => <li key={c.check}>
-      <strong>{c.label}</strong>{c.mandatory_for_buy ? ' · required for BUY' : ''} · <span className={`finding-badge ${c.record?.outcome === 'problem' ? 'red_flag' : c.record ? 'caution' : 'unknown'}`}>{c.record ? `${OUTCOME_LABEL[c.record.outcome]} · recorded by you ${c.record.checked_on}` : 'Not checked'}</span>
-      {c.record && <small> {c.record.source}{c.record.reference ? ` · ref ${c.record.reference}` : ''}{c.record.evidence ? ` · evidence: ${c.record.evidence}` : ''}{c.record.notes ? ` · ${c.record.notes}` : ''}</small>}
+      <strong>{c.label}</strong>{c.mandatory_for_buy ? ' · required for BUY' : ''} · <span className={`finding-badge ${c.record && ADVERSE_OUTCOMES.has(c.record.outcome) ? 'red_flag' : c.record ? 'caution' : 'unknown'}`}>{c.record ? `${OUTCOME_LABEL[c.record.outcome]} · recorded by you ${c.record.checked_on}` : 'Not checked'}</span>
+      {(c.records?.length ?? 0) > 1 && <small> {c.records!.length} sources recorded: {c.records!.map(r => `${r.source}: ${OUTCOME_LABEL[r.outcome]}`).join(' · ')}</small>}
+      {c.record && <small> {c.record.source}{c.record.survey_number ? ` · survey ${c.record.survey_number}` : ''}{c.record.reference ? ` · ref ${c.record.reference}` : ''}{c.record.evidence ? ` · evidence: ${c.record.evidence}` : ''}{c.record.notes ? ` · ${c.record.notes}` : ''}</small>}
       {c.guide ? <p className="muted">Where: <a href={c.guide.url} target="_blank" rel="noreferrer">{c.guide.authority}</a>. {c.guide.how} <em>{c.guide.access}</em></p> : <p className="muted">No official source has been researched for this state yet: ask a local lawyer which office holds this record.</p>}
-      {form?.check !== c.check && <button className="quiet-button" onClick={() => setForm({ check: c.check, outcome: 'confirmed', source: c.guide?.authority || '', checked_on: new Date().toLocaleDateString('en-CA'), reference: '', evidence: '', notes: '' })}>Record a check</button>}
+      {form?.check !== c.check && <button className="quiet-button" onClick={() => setForm({ check: c.check, outcome: c.outcomes[0], survey_number: c.check === 'government_land' ? (record.user_land_details?.survey_number || '') : null, source: c.guide?.authority || '', checked_on: new Date().toLocaleDateString('en-CA'), reference: '', evidence: '', notes: '' })}>Record a check</button>}
       {form?.check === c.check && <div className="land-grid">
-        <label className="stacked-field">What you found<select value={form.outcome} onChange={e => setForm({ ...form, outcome: e.target.value as LegalCheckInput['outcome'] })}>{(Object.keys(OUTCOME_LABEL) as LegalCheckInput['outcome'][]).filter(o => o !== 'not_applicable' || c.check === 'rera').map(o => <option key={o} value={o}>{OUTCOME_LABEL[o]}</option>)}</select></label>
+        <label className="stacked-field">What you found<select value={form.outcome} onChange={e => setForm({ ...form, outcome: e.target.value as LegalCheckInput['outcome'] })}>{c.outcomes.filter(o => o !== 'not_applicable' || c.check === 'rera').map(o => <option key={o} value={o}>{OUTCOME_LABEL[o]}</option>)}</select></label>
+        {c.check === 'government_land' && <label className="stacked-field">Survey no. looked up<input value={form.survey_number || ''} onChange={e => setForm({ ...form, survey_number: e.target.value })} /></label>}
         <label className="stacked-field">Source consulted<input value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} /></label>
         <label className="stacked-field">Date checked<input type="date" value={form.checked_on} onChange={e => setForm({ ...form, checked_on: e.target.value })} /></label>
         <label className="stacked-field">Reference no.<input value={form.reference || ''} onChange={e => setForm({ ...form, reference: e.target.value })} /></label>
         <label className="stacked-field">Evidence (document)<input list="legal-evidence-docs" value={form.evidence || ''} onChange={e => setForm({ ...form, evidence: e.target.value })} /></label>
         <label className="stacked-field">Notes<input value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} /></label>
         <datalist id="legal-evidence-docs">{(record.user_land_details?.documents || []).map(d => <option key={d.filename} value={d.filename} />)}</datalist>
-        <button className="quiet-button" disabled={form.source.trim().length < 3 || !form.checked_on} onClick={save}>Save and re-evaluate</button><button className="quiet-button" onClick={() => setForm(null)}>Cancel</button>
+        <button className="quiet-button" disabled={form.source.trim().length < 3 || !form.checked_on || (form.check === 'government_land' && !(form.survey_number || '').trim())} onClick={save}>Save and re-evaluate</button><button className="quiet-button" onClick={() => setForm(null)}>Cancel</button>
       </div>}
     </li>)}</ul>
     {list.history_count > 0 && <p className="field-hint">{list.history_count} record{list.history_count === 1 ? '' : 's'} kept; the newest per check is shown. A record you could not find is not a clearance.</p>}
@@ -443,6 +469,7 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
       {scenarioError && !scenario && <div className="older-note error-note" role="alert"><TriangleAlert size={15} /><span>{scenarioError}</span></div>}
       {record.verdict?.reasoning_summary && <p className="decision-lede">{record.verdict.reasoning_summary}</p>}
       <Highlights findings={record.verdict?.findings} />
+      <GovernmentLand record={record} />
       <DecisionPanel record={record} growth={factorOf('growth')} />
       <FacilitiesTable record={record} />
       <FindingsTable findings={record.verdict?.findings} />

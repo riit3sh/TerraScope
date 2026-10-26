@@ -31,7 +31,7 @@ from .store import (
     save_snapshot,
 )
 
-from routers.legal_checks import latest_checks
+from routers.legal_checks import government_land_records, latest_checks
 
 LOGGER = logging.getLogger(__name__)
 router = APIRouter()
@@ -283,6 +283,9 @@ async def evaluate_parcel(parcel_id: str, request: EvaluationRequest) -> dict[st
     recorded = latest_checks(parcel_id)
     if recorded:  # the buyer's statements; the verdict treats them as such, never as verification
         request_snapshot["user_legal_checks"] = recorded
+    government = government_land_records(parcel_id)
+    if government:
+        request_snapshot["user_government_land"] = government
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(

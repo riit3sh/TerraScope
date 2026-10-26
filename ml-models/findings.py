@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from scoring_engine._government_land import government_land_status
 from scoring_engine._assessment import (
     RIVER_FLAG_MAX_RETURN_PERIOD,
     RIVER_FLAG_PARCEL_SHARE,
@@ -213,6 +214,20 @@ def _access(rows: dict[str, dict[str, Any]], factors: dict[str, dict[str, Any]],
                 "ok" if access["score"] >= ACCESS_OK_SCORE and not unmapped else "caution", "measured", step, evidence)
 
 
+def _government_land(record: dict[str, Any]) -> dict[str, Any]:
+    status = government_land_status(record)
+    mapped = _section(record, "public_land")
+    assessment = ("red_flag" if status["walk_away"] else "caution" if status["hold"] else "unknown")
+    mapping = ("" if status["warning"] else
+               f" No mapped public facility, railway, defence area or water body touches the boundary (OpenStreetMap, "
+               f"data as of {mapped.get('data_as_of')}); that does not show the land is private." if mapped.get("status") == "assessed"
+               else f" Public facilities not checked: {mapped.get('reason') or 'this report predates the check; analyse again'}.")
+    return _row("Government and restricted land", f"{status['label']}. {status['warning']}".strip() + mapping, assessment,
+                "user_provided" if status["records"] else "mapped" if mapped.get("status") == "assessed" else "not_verified",
+                (status["checks"] or ["Verify government / poramboke status on the official land records"])[0],
+                as_of=mapped.get("data_as_of"), source="OpenStreetMap (mapping only) and your recorded checks")
+
+
 def build_findings(record: dict[str, Any], factors: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Every row a buyer should read, red flags first."""
     rows, by_factor = _rows(record), {f["factor"]: f for f in factors}
@@ -220,6 +235,7 @@ def build_findings(record: dict[str, Any], factors: list[dict[str, Any]]) -> lis
     flood = _section(record, "flood_indicators")
     findings = [
         _legal(record, by_factor, state),
+        _government_land(record),
         _rera(rows, record, state),
         _river(rows, flood),
         _surface_water(rows, flood),

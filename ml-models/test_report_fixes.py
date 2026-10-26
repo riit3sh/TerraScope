@@ -180,3 +180,15 @@ def test_recorded_legal_checks_pass_schema_validation_and_stay_the_buyers_statem
     walk = evaluate_snapshot(snapshot, SETTINGS)
     title = next(f for f in walk["verdict"]["findings"] if f["area"] == "Title and ownership")
     assert walk["verdict"]["recommendation"] == "AVOID" and title["assessment"] == "red_flag", "findings agree with the verdict"
+
+
+def test_a_mapped_public_facility_overlap_passes_schema_validation_and_holds_the_decision() -> None:
+    """Regression (2026-10-26): the schema rejected the 'mapped' basis, so an overlap made evaluation fail."""
+    snapshot = copy.deepcopy(VIT)
+    snapshot["public_land"] = {"status": "assessed", "uncertainty_m": 15, "data_as_of": "2026-10-04", "nearby": [],
+                               "overlaps": [{"category": "sports", "category_label": "Stadium or sports ground", "name": "Synthetic Stadium",
+                                             "contact": "overlap", "overlap_share": 0.6, "ownership_signal": "unknown"}]}
+    result = evaluate_snapshot(snapshot, SETTINGS)
+    row = next(f for f in result["verdict"]["findings"] if f["area"] == "Government and restricted land")
+    assert row["basis"] == "mapped" and row["assessment"] == "caution"
+    assert result["verdict"]["government_land"]["status"] == "potential_public" and result["verdict"]["recommendation"] != "BUY"

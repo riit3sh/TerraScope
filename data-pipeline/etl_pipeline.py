@@ -18,7 +18,7 @@ import pandas as pd
 from jsonschema import Draft202012Validator, FormatChecker
 from shapely.geometry import shape
 
-from connectors import flood_indicators
+from connectors import flood_indicators, public_land
 from connectors.elevation_dem import ElevationClient, ElevationError
 from connectors import land_cover_history, river_flood
 from connectors.local_osm import LocalOSM
@@ -227,6 +227,19 @@ def _flood_components(river, river_error, flood) -> list[dict[str, Any]]:
          "summary": "Not assessed: no storm-surge or sea-level dataset is integrated. Distance from the sea or "
                     "elevation alone is not used as evidence of safety."},
     ]
+
+
+def _public_land_summary(public: dict[str, Any]) -> str:
+    if public.get("status") != "assessed":
+        return f"Public facilities not checked: {public.get('reason')} This is not evidence that the land is private."
+    overlaps = [i for i in public["overlaps"] if i["contact"] in ("overlap", "point_inside")]
+    edges = [i for i in public["overlaps"] if i["contact"] == "edge"]
+    parts = [f"The boundary overlaps a mapped {i['category_label'].lower()}{' (' + i['name'] + ')' if i['name'] else ''}"
+             for i in overlaps[:3]]
+    parts += [f"a mapped {i['category_label'].lower()} touches it or lies within {public['uncertainty_m']:.0f} m" for i in edges[:2]]
+    if not parts:
+        parts = ["No mapped public facility, railway, defence area or water body touches the boundary"]
+    return "; ".join(parts) + ". Mapping evidence only: it does not show who owns the land."
 
 
 def _metres(value: Any) -> str:
@@ -721,6 +734,14 @@ def build_evidence_snapshot(
 
     if local_osm is not None:
         local_osm.close()
+    # Mapping evidence only (facility type and overlap), never ownership; fast local reads, so not in the pool.
+    try:
+        public = (public_land.assess(geojson_polygon, region.path / public_land.STORE_NAME, region.osm_store)
+                  if region is not None else
+                  {"status": "unavailable", "overlaps": [], "nearby": [], "reason": local_osm_error})
+    except Exception as error:  # a damaged store must not cost the whole report
+        LOGGER.warning("Public-facility map unreadable: %s", error)
+        public = {"status": "unavailable", "overlaps": [], "nearby": [], "reason": f"the public-facility map could not be read: {error}"}
     components = _flood_components(river, river_error, flood)
     usable = [c for c in components if c["status"] in ("assessed", "partial")]
 
@@ -854,6 +875,17 @@ def build_evidence_snapshot(
             ),
         },
         {
+            "evidence_id": f"{snapshot_id}:public-land",
+            "source_type": "osm_public_land",
+            "source_reference": f"OpenStreetMap public facilities ({public.get('source') or 'not available'})",
+            "title": "Mapped public facilities and possibly restricted land (not ownership)",
+            "observed_at": (public.get("data_as_of") + "T00:00:00Z") if public.get("data_as_of") else now,
+            "freshness": "cached",
+            "licence": "ODbL 1.0 - (c) OpenStreetMap contributors",
+            "resolution": f"vector features; positional uncertainty about {public_land.UNCERTAINTY_M:.0f} m",
+            "summary": _public_land_summary(public),
+        },
+        {
             "evidence_id": f"{snapshot_id}:rera",
             "source_type": "maharera_seed" if maharashtra else "rera",
             "source_reference": "MahaRERA static seed dataset" if maharashtra else
@@ -901,6 +933,7 @@ def build_evidence_snapshot(
         "satellite": satellite_facts,
         "land_cover_history": land_cover,
         "infrastructure": amenities,
+        "public_land": public,
         "risk": {
             # No flood hazard dataset is integrated, so flood risk stays unknown.
             # The elevation comparison below is a terrain indicator, not flooding:

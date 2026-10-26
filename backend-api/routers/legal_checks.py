@@ -23,6 +23,13 @@ CHECKS = {
     "zoning": "Zoning / land use",
     "approvals": "Layout and building approvals",
     "rera": "RERA registration (only for plots sold in a promoter's layout or project)",
+    "government_land": "Government / poramboke land and restrictions",
+}
+OUTCOMES = {
+    "default": ("confirmed", "problem", "not_found", "not_applicable"),
+    # Several official records can be checked for one plot; each is kept per source, so conflicts stay visible.
+    "government_land": ("government_non_transferable", "government_transfer_documented", "private_per_record",
+                        "restriction_prohibits_use", "restriction_with_conditions", "records_unavailable"),
 }
 MANDATORY_FOR_BUY = ("title", "encumbrance", "zoning", "approvals")
 
@@ -69,6 +76,18 @@ STATE_GUIDES: dict[str, dict[str, dict[str, Any]]] = {
             "access": "Public listing pages; no published API, and robots.txt excludes uploaded documents. "
                       "Registration does not prove clear title.",
         },
+        "government_land": {
+            "authority": "Commissionerate of Land Administration e-Services: 'Verify Government (Poramboke) / Private "
+                         "Land', A-register extract and FMB sketch; the taluk office for orders and restrictions",
+            "url": "https://eservices.tn.gov.in/",
+            "how": "Enter district, taluk, village, survey and subdivision number exactly as on the seller's patta. "
+                   "The A-register shows the land's classification (for example ryotwari / patta land or a poramboke "
+                   "class such as water body, road or burial ground). For government land being sold, ask for the "
+                   "auction or assignment order and its conditions. Near defence or railway land, ask the local "
+                   "military authority or the railway division whether a no-objection certificate is needed.",
+            "access": "Public web form, no published API; not automated or scraped. One record is not a title "
+                      "guarantee: forged patta entries on poramboke land are known, so a lawyer checks the chain.",
+        },
     },
 }
 
@@ -77,8 +96,11 @@ class LegalCheckRecord(BaseModel):
     """What the buyer (or their lawyer) found on an official source. Stored as their statement, append-only."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
-    check: Literal["title", "encumbrance", "zoning", "approvals", "rera"]
-    outcome: Literal["confirmed", "problem", "not_found", "not_applicable"]
+    check: Literal["title", "encumbrance", "zoning", "approvals", "rera", "government_land"]
+    outcome: Literal["confirmed", "problem", "not_found", "not_applicable", "government_non_transferable",
+                     "government_transfer_documented", "private_per_record", "restriction_prohibits_use",
+                     "restriction_with_conditions", "records_unavailable"]
+    survey_number: str | None = Field(None, max_length=60)
     source: str = Field(min_length=3, max_length=200)  # the portal or office consulted
     checked_on: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     reference: str | None = Field(None, max_length=120)  # EC / patta / approval / registration number
@@ -87,6 +109,10 @@ class LegalCheckRecord(BaseModel):
 
     @model_validator(mode="after")
     def _applicable(self) -> "LegalCheckRecord":
+        if self.outcome not in OUTCOMES.get(self.check, OUTCOMES["default"]):
+            raise ValueError(f"{self.outcome} is not an outcome of the {self.check} check.")
+        if self.check == "government_land" and not self.survey_number:
+            raise ValueError("A government-land check needs the survey number that was looked up.")
         if self.outcome == "not_applicable" and self.check != "rera":
             raise ValueError("Only RERA can be not applicable; title, EC, zoning and approvals always apply.")
         return self
@@ -95,13 +121,24 @@ class LegalCheckRecord(BaseModel):
 def latest_checks(parcel_id: str) -> dict[str, dict[str, Any]]:
     latest: dict[str, dict[str, Any]] = {}
     for row in legal_check_history(parcel_id):  # oldest first, so the newest record per check wins
-        latest[row["check"]] = row
+        if row["check"] != "government_land":
+            latest[row["check"]] = row
     return latest
+
+
+def government_land_records(parcel_id: str) -> list[dict[str, Any]]:
+    """The newest government-land record per official source: two sources that disagree both stay visible."""
+    latest: dict[str, dict[str, Any]] = {}
+    for row in legal_check_history(parcel_id):
+        if row["check"] == "government_land":
+            latest[row["source"].strip().casefold()] = row
+    return list(latest.values())
 
 
 def checklist(parcel_id: str, state: str | None) -> dict[str, Any]:
     guide = STATE_GUIDES.get((state or "").strip().casefold())
     latest = latest_checks(parcel_id)
+    government = government_land_records(parcel_id)
     return {
         "state": state,
         "state_guide": "available" if guide else "not_yet",
@@ -114,8 +151,10 @@ def checklist(parcel_id: str, state: str | None) -> dict[str, Any]:
             "label": label,
             "mandatory_for_buy": key in MANDATORY_FOR_BUY,
             "guide": (guide or {}).get(key),
-            "record": latest.get(key),
-            "verification": "user_recorded" if key in latest else "not_checked",
+            "record": government[-1] if key == "government_land" and government else latest.get(key),
+            "records": government if key == "government_land" else None,
+            "outcomes": list(OUTCOMES.get(key, OUTCOMES["default"])),
+            "verification": "user_recorded" if (government if key == "government_land" else key in latest) else "not_checked",
         } for key, label in CHECKS.items()],
         "history_count": len(legal_check_history(parcel_id)),
     }

@@ -273,6 +273,7 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         "pre_purchase_checks": result["pre_purchase_checks"],
         "would_change": result["would_change"],
         "findings": evaluated["verdict"]["findings"],
+        "government_land": result["government_land"],
     }
     _validate_snapshot(evaluated)
     return evaluated

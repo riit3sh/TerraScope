@@ -1707,3 +1707,39 @@ the reason the approach changed.
   - Rainfall and coastal flooding not assessed.
   - Event dates and distances are not derivable from headlines.
 - **Status:** fixed and verified, except the live news results path (blocked by the rate limit).
+
+## J-64 Government, public-facility and restricted-land detection
+
+- **Date / problem (2026-10-26):** nothing checked whether a plot lies on a court, stadium, railway, defence area,
+  water body or other public land. A buyer could see a strong score for land that cannot lawfully be sold.
+- **Changes:**
+  - **Map store:** a public-facility store per region, built from the extract on disk (no download). Tamil Nadu: 5.0 MB
+    in 86 s; Andhra Pradesh: 3.1 MB in 97 s. `osm.sqlite` is untouched.
+  - **Contact measurement:** overlap vs touch vs nearby, measured on the parcel polygon with a ±15 m uncertainty.
+    Facility type is kept apart from any operator/ownership tag.
+  - **Official checks:** a `government_land` record type (outcome, source, survey number, date), kept per source so
+    conflicts stay visible. Tamil Nadu guide: the e-Services poramboke verification, A-register, FMB sketch and
+    taluk office.
+  - **Decision engine:** the government-land status is decided before scores (WALK AWAY / hold at WAIT / no hold), and
+    a "Government and restricted land" finding is added.
+  - **Report and map:** a new report section (mapped facilities, ownership signal, nearby, data date, limits); overlap
+    polygons and markers in the workspace Layers.
+  - **Schema:** `public_land`, `user_government_land`, `verdict.government_land`, and a `mapped` basis.
+- **Verification:**
+  - **Unit tests, synthetic geometry only:** 7 connector tests and 7 decision tests covering the 9 required scenarios,
+    plus a pipeline test with schema validation and a backend test.
+  - **Real map data (read-only):** test boundaries inside the Madurai Bench of the Madras High Court and inside MA
+    Chidambaram Stadium each report an overlap with ownership unknown. The saved Senjeri boundary has no mapped
+    facility within 2 km.
+  - **End to end, disposable copy:** a test boundary over the stadium gave WAIT with the warning first.
+    - Adding a TEST "private per record" kept WAIT with a boundary-check requirement.
+    - Adding a TEST A-register "non-transferable" from a second source gave "Official records conflict", WAIT.
+  - **Defect caught and fixed:** the schema rejected the new `mapped` basis.
+  - The user store is row-identical to the backup afterwards.
+- **Limits:**
+  - No authoritative public-land geometry for any state.
+  - Official checks are manual.
+  - OSM coverage is incomplete and ±15 m.
+  - Saved reports predate the check until analysed again.
+  - Stores exist only for Tamil Nadu and Andhra Pradesh.
+- **Status:** fixed and verified (mapping and decision rules); official verification remains manual.

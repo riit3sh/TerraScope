@@ -578,6 +578,8 @@ def build_region(name: str, root: Path, session: requests.Session) -> None:
     rasters = fetch_rasters(coverage, root, session)
     directory = root / "regions" / name
     osm = build_osm(pbf, coverage, directory)
+    from connectors import public_land
+    public_land.build_store(pbf, coverage, directory, log)
     (directory / REGION_BOUNDARY).write_text(json.dumps({
         "type": "Feature",
         "properties": {"name": label, "states": catalogue[name], "source": "geoBoundaries gbOpen IND ADM1"},
@@ -587,6 +589,24 @@ def build_region(name: str, root: Path, session: requests.Session) -> None:
                 "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     (directory / MANIFEST_NAME).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     log(f"Region {name} ready: {directory}")
+
+
+def build_public_land(name: str, root: Path) -> None:
+    """Only the public-facility store, from the extract already on disk: an installed region gains it without a rebuild."""
+    import shapely
+
+    from connectors import public_land
+
+    catalogue = region_catalogue(root)
+    if name not in catalogue:
+        raise SystemExit(f"Unknown region {name!r}. Known regions: {', '.join(sorted(catalogue))}")
+    states = load_states(root)
+    coverage = shapely.union_all([states[iso]["geometry"] for iso in catalogue[name]])
+    extracts = sorted((root / "downloads").glob(f"{zone_for(coverage, root, requests.Session())}-*.osm.pbf"))
+    if not extracts:
+        raise SystemExit(f"No OpenStreetMap extract on disk for {name}; run: terrascope.cmd fetch-data {name}")
+    log(f"Building the public-facility store for {name} from {extracts[-1].name} ...")
+    public_land.build_store(extracts[-1], coverage, root / "regions" / name, log)
 
 
 def list_regions(root: Path) -> None:
@@ -602,8 +622,13 @@ def main() -> None:
     parser.add_argument("region", nargs="?", help="region slug, e.g. tamil-nadu or andhra-pradesh")
     parser.add_argument("--list", action="store_true", help="list regions and exit")
     parser.add_argument("--data-dir", type=Path, default=None)
+    parser.add_argument("--public-land", action="store_true",
+                        help="only (re)build the public-facility store of an installed region, from the extract on disk")
     args = parser.parse_args()
     root = (args.data_dir or data_root()).resolve()
+    if args.public_land and args.region:
+        build_public_land(args.region, root)
+        return
     session = requests.Session()
     migrate_legacy(root)
     install_india(root, session)

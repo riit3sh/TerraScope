@@ -13,6 +13,7 @@ from ._assessment import (
     points_a_year,
     red_flags,
 )
+from ._government_land import government_land_status
 
 LABEL = {"legal_safety": "legal safety", "flood_safety": "flood safety", "growth": "area growth",
          "accessibility": "accessibility"}
@@ -70,6 +71,10 @@ def build_verdict(
                      for key, r in user_checks.items() if isinstance(r, dict) and r.get("outcome") == "problem"]
     pending = [label for key, wanted, label in LEGAL_REQUIREMENTS if records.get(key) is not wanted]
     due_diligence_done = bool(records) and not pending and not adverse
+    # Decided before any score: a high location or development score can never override it.
+    government = government_land_status(record)
+    if government["walk_away"]:
+        user_problems.append(government["warning"])
 
     def pending_text(label: str) -> str:
         mine = user_checks.get(label) if isinstance(user_checks.get(label), dict) else {}
@@ -87,6 +92,7 @@ def build_verdict(
         summary = ("WALK AWAY: " + ("the matched land records show that " + " and ".join(adverse) if adverse else "")
                    + ("; " if adverse and user_problems else "") + "; ".join(user_problems) + ".")
         would_change = ["Corrected official records showing clear title and no encumbrance" if adverse else
+                        government["would_change"][0] if government["walk_away"] else
                         "A lawyer confirming, from the official records, that the recorded problem does not affect this plot"]
         composite = None
     elif legal["score"] is not None and (100.0 - legal["score"]) > hard_legal_risk_threshold:
@@ -147,6 +153,15 @@ def build_verdict(
                 f"Stronger {LABEL[weakest['factor']]}: for example an officially sanctioned road, school or other facility "
                 "near the plot, with its sanction order (a resident's or broker's claim alone is not enough)")
 
+    checks = checks + government["checks"]
+    if government["hold"] and recommendation != "AVOID":
+        if recommendation == "BUY":  # mapped or recorded government / restricted land is never bought on a score
+            recommendation = "WAIT"
+            summary = ("WAIT: the location evidence is strong and the legal checks are verified, but government or "
+                       "restricted land must be ruled out first.")
+        summary = government["warning"] + " " + summary
+        would_change = government["would_change"] + would_change
+
     return {
         "legal_safety_score": factors[0]["score"],
         "accessibility_score": factors[1]["score"],
@@ -164,4 +179,5 @@ def build_verdict(
         "red_flags": flags,
         "pre_purchase_checks": checks,
         "would_change": would_change,
+        "government_land": government,
     }

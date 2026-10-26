@@ -515,6 +515,13 @@
         }
       }
     },
+    "public_land": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Mapped public facilities and possibly restricted land touching or near the parcel (OpenStreetMap): facility type, overlap measured on the parcel geometry, and any operator/ownership tag. Mapping evidence only, never ownership."
+    },
     "risk": {
       "type": [
         "object",
@@ -1178,6 +1185,7 @@
                 "enum": [
                   "measured",
                   "modelled",
+                  "mapped",
                   "user_provided",
                   "not_verified",
                   "unavailable"
@@ -1216,6 +1224,13 @@
             "type": "string"
           },
           "description": "The specific evidence that would change the recommendation."
+        },
+        "government_land": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Government / restricted-land status decided before any score: status, label, walk_away, hold, warning, map_contacts, records. Mapping alone never confirms ownership."
         }
       }
     },
@@ -1513,6 +1528,13 @@
         "null"
       ],
       "description": "The buyer's own legal-check records (latest per check: outcome, source, date, reference). Statements, never verification: a recorded problem counts against buying, a recorded confirmation never satisfies a legal requirement."
+    },
+    "user_government_land": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "The buyer's records of official government-land checks (latest per source): outcome, source, survey number, date. Statements, never verification by TerraScope."
     }
   },
   "$defs": {

@@ -21,7 +21,11 @@ codes are kept so saved reports still read.
    records: title clear, no encumbrance, zoning verified, approvals verified. A missing value is pending, never clean.
    A matched record showing an unclear title or an encumbrance is **WALK AWAY**. A check the buyer records
    (source, date, evidence) is their statement: a recorded problem is **WALK AWAY**; a recorded confirmation is named
-   but never satisfies a BUY requirement (see `LEGAL_VERIFICATION.md`). History alone never makes a BUY. Unknown legal status is never
+   but never satisfies a BUY requirement (see `LEGAL_VERIFICATION.md`).
+   **Government and restricted land** is decided before any score: an official record of non-transferable government
+   land, or a restriction prohibiting the use, is WALK AWAY. A mapped overlap with public land, conflicting records, a
+   documented lawful transfer or a conditional restriction hold the answer at WAIT. Missing records or an absent map
+   feature never mean private or unrestricted. History alone never makes a BUY. Unknown legal status is never
    treated as safe: a strong location with unverified legal checks is **WAIT**, naming the pending checks. No land-records
    source is integrated today, so in practice the best answer is "WAIT: location strong, legal checks pending".
 6. A WAIT names what holds it back. Every answer lists **what would change it** (`verdict.would_change`).
