@@ -328,7 +328,7 @@ function GovernmentLand({ record }: { record: ParcelRecord }) {
   const tone = status?.walk_away ? 'red_flag' : status?.hold ? 'caution' : 'unknown'
   return <section className={`finding ${tone} gov-land`}>
     <div className="section-label">MAPPED RESTRICTION SIGNAL · NOT OWNERSHIP PROOF</div>
-    <h2>{status ? status.label : 'Not assessed in this evaluation: re-evaluate'}</h2>
+    <h2>{status?.walk_away ? 'Mapped overlap requires official verification' : status ? status.label : 'Not assessed in this evaluation: re-evaluate'}</h2>
     {status?.warning && <p><strong>{status.warning}</strong></p>}
     {!mapped ? <p className="muted">This report was analysed before TerraScope checked mapped public facilities. Analyse the same boundary again to add it. Until then, nothing is known either way.</p>
       : mapped.status !== 'assessed' ? <p className="muted">Public facilities not checked: {mapped.reason} This is not evidence that the land is private or unrestricted.</p>
@@ -481,7 +481,7 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
       {record.verdict && <p className="report-disclaimer" role="note"><TriangleAlert size={14} /><span><strong>Not perfect, and not advice.</strong> TerraScope's answer is a rule-based estimate from public map and satellite data. The development outlook extends the past trend and can be wrong; nothing here predicts prices or verifies ownership. Check title, encumbrance and approvals with official records and a lawyer before paying.</span></p>}
       {olderEvaluation && <div className="older-note" role="note"><TriangleAlert size={15} /><span>This saved evaluation was made with an earlier version of TerraScope, so it lacks the current checks (the findings list, the buy / wait rules and what would change the answer). Re-evaluating uses the same evidence; nothing is collected again.</span><button className="quiet-button" disabled={busy} onClick={() => rerun(settings).catch(() => undefined)}><RefreshCw size={14} /> {busy ? 'Re-evaluating…' : 'Re-evaluate with current methods'}</button></div>}
       {scenarioError && !scenario && <div className="older-note error-note" role="alert"><TriangleAlert size={15} /><span>{scenarioError}</span></div>}
-      {record.verdict?.reasoning_summary && <p className="decision-lede">{record.verdict.reasoning_summary}</p>}
+      {record.verdict?.reasoning_summary && !restricted && <p className="decision-lede">{record.verdict.reasoning_summary}</p>}
       {!restricted && <Highlights findings={record.verdict?.findings} />}
       <GovernmentLand record={record} />
       {!restricted && <>
