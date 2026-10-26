@@ -234,3 +234,14 @@ def test_no_mapped_facility_or_missing_map_data_is_never_read_as_private_land() 
         assert result["recommendation"] == "WAIT" and "private" not in result["reasoning_summary"].lower()
     other_state = compute_evaluation(parcel(land_records=None, location={"state": "Goa"}), profile)
     assert not any("Tamil Nadu" in c for c in other_state["pre_purchase_checks"]), "no state's portal is implied for another"
+
+
+def test_missing_road_data_makes_accessibility_unknown_not_scored_from_schools() -> None:
+    """All-India store without roads (2026-10-26): never a zero, never a school-only access score."""
+    infra = {"nearest_road_distance_m": None, "nearest_school_distance_m": 400.0, "search_radius_m": 5000,
+             "layer_status": {"road": "not_installed", "school": "installed"}}
+    result = compute_evaluation(parcel(infrastructure=infra, location={"state": "Karnataka"}), _evidenced_profile("investor"))
+    access = next(f for f in result["factors"] if f["factor"] == "accessibility")
+    assert access["score"] is None and access["status"] == "unavailable"
+    assert "road data is not installed for Karnataka" in access["basis"] and "fetch-data karnataka" in access["basis"]
+    assert result["recommendation"] == "INSUFFICIENT_EVIDENCE"

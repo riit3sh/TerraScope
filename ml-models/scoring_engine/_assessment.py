@@ -363,6 +363,22 @@ def assess_accessibility(
             "checklist": ["Regional OpenStreetMap data covering this parcel"],
             "details": None,
         }
+    if (infrastructure.get("layer_status") or {}).get("road") == "not_installed":
+        # Scoring access from schools alone would hide the missing road data: the factor stays unknown.
+        return {
+            "factor": "accessibility",
+            "score": None,
+            "status": "unavailable",
+            "basis": (f"Accessibility unavailable: road data is not installed for {parcel_state(record) or 'this state'}. "
+                      "The all-India store has water, schools, hospitals, transport stops and public facilities, but no "
+                      "roads. Build the state's roads with "
+                      + (regional_install_hint(record) or "terrascope.cmd fetch-data "
+                         + (re.sub(r"[^a-z0-9]+", "-", (parcel_state(record) or "<state>").lower()).strip("-") or "<state>"))
+                      + " and analyse again."),
+            "limitations": "Unknown, not absent: no road distance is reported rather than an estimated one.",
+            "checklist": ["Regional road data for this state"],
+            "details": None,
+        }
     parts = accessibility_components({**record, "evaluation": evaluation}, _section(evaluation, "preferences"))
 
     def describe(name: str, part: dict[str, Any]) -> str:

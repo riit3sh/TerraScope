@@ -205,7 +205,8 @@ def _scan_regions(root: Path) -> list[Region]:
         shapely.prepare(geometry)
         meta = read_manifest(directory)
         regions.append(Region(directory.name, directory, meta.get("label") or directory.name, geometry, meta))
-    return regions
+    # Smallest first: a state's own store (with roads) wins over the all-India store (without them).
+    return sorted(regions, key=lambda region: region.coverage.area)
 
 
 def region_for(geojson_polygon: dict[str, Any], root: Path | None = None) -> Region | None:

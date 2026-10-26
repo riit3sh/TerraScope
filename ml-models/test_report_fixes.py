@@ -192,3 +192,14 @@ def test_a_mapped_public_facility_overlap_passes_schema_validation_and_holds_the
     row = next(f for f in result["verdict"]["findings"] if f["area"] == "Government and restricted land")
     assert row["basis"] == "mapped" and row["assessment"] == "caution"
     assert result["verdict"]["government_land"]["status"] == "potential_public" and result["verdict"]["recommendation"] != "BUY"
+
+
+def test_unsupported_flood_types_are_not_assessed_and_every_finding_names_its_source() -> None:
+    result = evaluate_snapshot(copy.deepcopy(VIT), SETTINGS)
+    findings = result["verdict"]["findings"]
+    rain = next(f for f in findings if f["area"].startswith("Rainfall waterlogging"))
+    assert rain["assessment"] == "unknown" and rain["finding"].startswith("Not assessed")
+    for f in findings:
+        assert f.get("source") or f["basis"] in ("not_verified", "unavailable", "user_provided"), f["area"]
+        assert f["next_step"], f["area"]
+    assert result["verdict"]["recommendation"] != "BUY", "no matched land records: never BUY"

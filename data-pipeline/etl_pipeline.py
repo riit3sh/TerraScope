@@ -91,11 +91,18 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any]) -> dict[str
     """Nearest road, school, hospital, bus and rail station from the local extract."""
     lon, lat = InfrastructureClient._representative_point(geojson_polygon)
     parcel = shape(geojson_polygon)
-    road = osm.nearest(lon, lat, "road", max_distance_m=POI_SEARCH_M)
-    school = osm.nearest(lon, lat, "school", max_distance_m=POI_SEARCH_M)
+    # A layer the store does not hold is "not installed", reported as unknown: never as "none mapped nearby".
+    layer_status = {layer: "installed" if osm.has_layer(layer) else "not_installed"
+                    for layer in ("road", "school", "hospital", "bus", "rail_station")}
+
+    def near(layer: str, **kwargs):
+        return osm.nearest(lon, lat, layer, max_distance_m=POI_SEARCH_M, **kwargs) if osm.has_layer(layer) else None
+
+    road = near("road")
+    school = near("school")
     # From the drawn edge, too: a road along a big parcel's frontage is far from its centroid.
-    road_edge = osm.nearest(lon, lat, "road", max_distance_m=POI_SEARCH_M, around=parcel)
-    school_edge = osm.nearest(lon, lat, "school", max_distance_m=POI_SEARCH_M, around=parcel)
+    road_edge = near("road", around=parcel)
+    school_edge = near("school", around=parcel)
     road_tags = (road or {}).get("tags", {})
     access_tag = road_tags.get("access")
     return {
@@ -111,10 +118,11 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any]) -> dict[str
         "nearest_road_lat": road["lat"] if road else None,
         "nearest_road_lon": road["lon"] if road else None,
         **_hit_fields("nearest_school", school, with_point=True),
-        **_hit_fields("nearest_hospital", osm.nearest(lon, lat, "hospital", max_distance_m=POI_SEARCH_M)),
-        **_hit_fields("nearest_bus", osm.nearest(lon, lat, "bus", max_distance_m=POI_SEARCH_M), with_class=True),
-        **_hit_fields("nearest_rail_station", osm.nearest(lon, lat, "rail_station", max_distance_m=POI_SEARCH_M), with_class=True),
+        **_hit_fields("nearest_hospital", near("hospital")),
+        **_hit_fields("nearest_bus", near("bus"), with_class=True),
+        **_hit_fields("nearest_rail_station", near("rail_station"), with_class=True),
         "search_radius_m": POI_SEARCH_M,
+        "layer_status": layer_status,
         "distance_measurement": "straight_line_to_nearest_point_on_osm_geometry",
         "road_access_verified": False,
         "road_access_note": (
@@ -251,7 +259,9 @@ def _local_infrastructure_summary(amenities: dict[str, Any]) -> str:
     road_text = (
         f"road {_metres(road)} ({amenities.get('nearest_road_type') or 'class unrecorded'}"
         + (f", {amenities['nearest_road_name']}" if amenities.get("nearest_road_name") else "") + ")"
-        if road is not None else "road: none mapped within 5 km"
+        if road is not None else
+        "road: road data not installed for this region (unknown, not absent)"
+        if (amenities.get("layer_status") or {}).get("road") == "not_installed" else "road: none mapped within 5 km"
     )
     bus = amenities.get("nearest_bus_distance_m")
     rail = amenities.get("nearest_rail_station_distance_m")

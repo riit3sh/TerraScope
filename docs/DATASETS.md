@@ -1,6 +1,9 @@
 # TerraScope datasets: what is installed, what is missing, what to download
 
-Audited 2026-10-25 on the development machine (`data-cache\`). Sizes are measured, not estimated, unless marked.
+Audited 2026-10-25, updated 2026-10-26 (all-India store) on the development machine (`data-cache\`). Sizes are
+measured, not estimated, unless marked. Per-region, per-layer coverage for all 36 states and UTs, tested at a sample
+point in each: [DATASET_REGISTRY.md](DATASET_REGISTRY.md), regenerated with `python data-pipeline/dataset_registry.py`.
+No `.part`, `.tmp`, `.building` or empty files were found in `data-cache\` (2026-10-26).
 
 ## Installed
 
@@ -12,6 +15,9 @@ Audited 2026-10-25 on the development machine (`data-cache\`). Sizes are measure
 | Region `tamil-nadu` (Tamil Nadu and Puducherry) | `regions\tamil-nadu\osm.sqlite` | 279 MB | ODbL 1.0 | Road, school, hospital, bus and rail distances (accessibility); rivers, canals and tanks |
 | Region `andhra-pradesh` (built 2026-10-25 from the same extract) | `regions\andhra-pradesh\osm.sqlite` | 204 MB | ODbL 1.0 | 572,665 road segments, 1,803 schools, 4,532 hospitals, 3,528 bus stops/stations, 565 railway stations, 32,399 water bodies, 11,473 waterways |
 | Public-facility stores (built 2026-10-26 from the same extract) | `regions\tamil-nadu\public_land.sqlite`, `regions\andhra-pradesh\public_land.sqlite` | 5.0 MB + 3.1 MB | ODbL 1.0 | Courts (TN 91, AP 35), government offices, government schools and hospitals (by name or operator tag), stadiums and sports grounds, parks, railway land / stations / lines, defence areas (TN 71, AP 29), protected areas, burial grounds. Mapping only, never ownership |
+| **OpenStreetMap India extract** (Geofabrik), data to 2026-10-25 21:21 UTC | `downloads\india-261025.osm.pbf` | 1,711,981,786 bytes (MD5 `0987260dd817f9f73a122d1eeadb952c`, matches Geofabrik's) | ODbL 1.0 | Source of the all-India store; kept unchanged. Also usable for future state road builds |
+| **All-India store, no roads** (built 2026-10-26) | `regions\india\osm.sqlite` | 523 MB | ODbL 1.0 | All 36 states/UTs: 340,254 water bodies, 274,648 waterways, 56,191 hospitals, 44,047 bus stops/stations, 38,381 schools, 10,679 rail stations. Records its layers; roads are reported "not installed" |
+| **All-India public-facility store** (built 2026-10-26) | `regions\india\public_land.sqlite` | 69 MB | ODbL 1.0 | 807 courts, 22,287 government offices, 7,779 government schools, 7,036 government hospitals, 3,658 stadiums/sports grounds, 39,974 parks, 1,669 railway-land areas, 106,348 railway line segments, 3,669 defence areas, 1,009 protected areas, 3,006 burial grounds. Mapping only, never ownership |
 | Previous Tamil Nadu build (backup, unused) | `regions\tamil-nadu\previous-build-2026-10-06\` | 276 MB | ODbL 1.0 | Nothing; can be deleted |
 | Copernicus DEM GLO-30, 75 tiles (Tamil Nadu, Puducherry, Andhra Pradesh) | `rasters\dem\` | 2.5 GB | Copernicus DEM licence (free use) | Elevation; height relative to mapped water. Elsewhere read remotely |
 | JRC Global Surface Water v1.4, 8 tiles (70-90°E, 0-20°N) | `rasters\gsw\` | 180 MB | Copernicus, free without restriction ("Source: EC JRC/Google") | Water seen on and around the plot, 1984-2021 |
@@ -28,7 +34,7 @@ explanation. `SATELLITE_DEMO_FALLBACK=false`, so no synthetic imagery is ever su
 
 | Gap | Effect in the report | Fix |
 |---|---|---|
-| Regional OpenStreetMap for any state except Tamil Nadu, Puducherry and Andhra Pradesh | Road and school access "Unknown"; **no BUY / WAIT decision** (an unscored location factor withholds it) | `terrascope.cmd fetch-data <state>` (below) |
+| **Roads** for any state except Tamil Nadu, Puducherry and Andhra Pradesh (the all-India store has every other layer) | Road "not installed (unknown)"; accessibility not assessed, so **no BUY / WAIT decision** (INSUFFICIENT DATA) | A nationwide road store needs about 3 GB more disk than this machine has (3.4 GB free on C:). Per state: `terrascope.cmd fetch-data <state>` (100-300 MB each) |
 | State RERA data (only a MahaRERA seed format is supported; none configured) | RERA "Unknown" | Manual check on the state portal: rera.tn.gov.in, rera.ap.gov.in. No public API was found, and portals are not scraped |
 | Land records and encumbrance | Title "Unknown"; always on the "before you pay" list | Manual: Tamil Nadu eservices.tn.gov.in (patta/chitta) and tnreginet.gov.in (EC); Andhra Pradesh meebhoomi.ap.gov.in (Adangal, 1B). Web lookups for individuals; not integrated, never automated, never treated as verification |
 | Rainfall waterlogging, coastal flooding, observed flood footprints | Those mechanisms "Unknown" | See candidate sources below |
@@ -103,6 +109,39 @@ Verified 2026-10-26 on the providers' own pages:
     attribution and caching terms, to be read before switching. No provider has been switched.
 - **GDELT:** no licence or terms page was found. Treat it as a discovery aid for the demo, and confirm terms with the
   GDELT Project before any commercial use.
+
+## Bhuvan (NRSC / ISRO): tested 2026-10-26, not integrated
+
+- **Terms (live page, read 2026-10-26: https://bhuvan.nrsc.gov.in/home/terms.php):**
+  - "Image data and map data, and related content are provided for viewing purposes only."
+  - Without prior written authorization from DOS/ISRO/NRSC, you must not access the content "through any technology or
+    means other than those provided by the Bhuvan portal", make derivative works, redistribute, or obtain bulk feeds of
+    imagery, coordinates or map data.
+  - Some content belongs to third parties (Survey of India, NBSS&LUP, Census).
+  - **So TerraScope may not display, sample or derive facts from Bhuvan layers without written permission.** An older
+    NRSC citation policy (2012) allowed derivative works with attribution; the current terms supersede it for the
+    portal and its services.
+- **What was tested:** only metadata, two documented OGC GetCapabilities requests. No map images (GetMap), tiles or
+  data were requested, because the terms restrict content access.
+  - `https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms` → HTTP 200 in 108 s, 5.2 MB, 9,141 layer names.
+  - `https://bhuvan-vec1.nrsc.gov.in/bhuvan/wms` → HTTP 200 in 7.7 s, 8.2 MB, 14,489 layer names.
+  - Both report `Fees: NONE` and `AccessConstraints: NONE`. These are GeoServer default fields, not a licence; the
+    terms above govern.
+- **Relevant layers found in the metadata** (for a permission request; none used):
+
+| Theme | Layers (examples) | Coverage / period / scale | What it is |
+|---|---|---|---|
+| Land use / land cover | `lulc:<ST>_LULC50K_1112`, `lulc:<ST>_LULC50K_1516` (one per state); `sisdp_v2_india_lulc:sisdp_v2_india_lulc`; `sisdp_phase2:SISDP_P2_LULC_10K_2016_2019_<ST>` | 1:50,000 for 2011-12 and 2015-16; SISDP 1:10,000 for 2016-2019 | Interpreted land-use maps. Ten years old at 1:50,000, so they cannot show current parcel use |
+| Wasteland | `wasteland:<ST>_WL50K_1516` and earlier | 1:50,000, 2005-2016 | Wasteland classes |
+| Water-related | watershed boundaries, `pmksy:pmksy_waterbodes_lulc50k1112`, NUIS water bodies | 2011-12 and others | Mapped water bodies and watersheds, not flooding |
+| Flood | `sdv:pb_flood_1988_93`, `school:school_flood_hazard_zone`, CWC forecasting stations | Punjab 1988-93; school points | Historic or point layers. **No national parcel-level flood hazard layer was found** in these services. The Bhuvan store lists "Flood Hazard (1998-2007)", which is historic and coarse |
+| Elevation | `vector:cdem_*` (CartoDEM coverage indexes) | — | Coverage indexes only. CartoDEM download needs a login and is capped at 10 tiles a day (help page) |
+
+- **Downloads (Bhuvan Open Data Archive help page):** login required; Cartosat-DEM and AWiFS capped at 10 tiles a day,
+  LISS-III at 16 a day; thumbnails only for viewing. No licence text on that page.
+- **Satellite imagery (Bhuvan 2D):** viewable in the portal; the same terms make it viewing-only.
+- **To integrate any Bhuvan layer:** ask NRSC for written authorization, naming the layers, the use (display and
+  sampling at one parcel per analysis), and the attribution to be shown.
 
 ## Candidate sources for flood, rainfall, terrain and drainage (researched 2026-10-25; none integrated)
 

@@ -104,7 +104,9 @@ def _feature_component(infrastructure: dict[str, Any], feature: str, cap: float,
     distance, measured_from = (edge, "parcel boundary") if isinstance(edge, (int, float)) else (centroid, "parcel centroid")
     radius = infrastructure.get("search_radius_m")
     sub_score = _distance_score(distance, cap)
-    if sub_score is None and isinstance(radius, (int, float)):
+    if (infrastructure.get("layer_status") or {}).get(feature) == "not_installed":
+        measured_from = "not installed for this region (unknown, not absent)"
+    elif sub_score is None and isinstance(radius, (int, float)):
         measured_from = f"none mapped within {radius:,.0f} m (OpenStreetMap can miss it; not confirmed absent)"
     return {
         "distance_m": distance if isinstance(distance, (int, float)) else None,

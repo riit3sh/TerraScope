@@ -127,3 +127,15 @@ def test_the_states_sidecar_is_used_and_rebuilt_when_the_source_changes(tmp_path
     source.write_text(source.read_text(encoding="utf-8").replace('"A"', '"B"'), encoding="utf-8")
     os.utime(source, (1, 1))
     assert _load_states(source)[0]["name"] == "B", "a changed source invalidates the sidecar"
+
+
+def test_a_states_own_store_wins_over_the_all_india_store(root) -> None:
+    """The all-India store has no roads (2026-10-26): a state store with roads must be chosen where both cover."""
+    from shapely.geometry import box
+
+    _install_region(root, "aaa-india", box(70.0, 5.0, 95.0, 35.0))  # sorts first by name, covers everything
+    _install_region(root, "state-a", STATE_A)
+    regions._regions.clear()
+    assert regions.region_for(_parcel(78.5, 11.0), root).slug == "state-a"
+    assert regions.region_for(_parcel(79.5, 10.5), root).slug == "aaa-india", "elsewhere the national store answers"
+    regions._regions.clear()

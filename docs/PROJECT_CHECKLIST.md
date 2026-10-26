@@ -1,6 +1,6 @@
 # TerraScope project checklist
 
-The single current progress checklist. Last updated 2026-10-26 (government and restricted land, J-64; blur, timeline, legal checks, J-63; review readiness, J-62; due diligence gate, charts, satellite basemap, news, claims, speed, J-61; decision clarity and Andhra Pradesh data, J-60; area-development display fix and dataset audit, J-59; land prices removed, J-58; completion pass, J-57; buy/wait decision, J-56).
+The single current progress checklist. Last updated 2026-10-26 (all-India data, J-65; government and restricted land, J-64; blur, timeline, legal checks, J-63; review readiness, J-62; due diligence gate, charts, satellite basemap, news, claims, speed, J-61; decision clarity and Andhra Pradesh data, J-60; area-development display fix and dataset audit, J-59; land prices removed, J-58; completion pass, J-57; buy/wait decision, J-56).
 
 Rules: an item is "verified" only when a recorded check exercised the real behaviour (real services, real
 data, or the browser), not because code exists, a mocked test passes or a page loads. "Implemented" without
@@ -13,6 +13,9 @@ only read.
 
 ## 1. Fixed and verified
 
+- [x] **All-India data (J-65)**: verified India extract; nationwide store of every non-road layer and public facilities
+  for all 36 regions; per-layer "not installed" status; registry tested in every region. Roads outside TN/PY/AP are
+  blocked by disk space; Bhuvan needs written permission.
 - [x] **Government and restricted land (J-64)**: mapped overlaps hold at WAIT; an official non-transferable record is
   WALK AWAY; Tamil Nadu and Andhra Pradesh maps built; official checks stay manual.
 - [x] **Satellite blur diagnosed (J-63)**: 10 m source; no enlarged tiles fetched; zoom note.

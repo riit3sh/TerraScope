@@ -155,6 +155,8 @@ function FindingsTable({ findings }: { findings?: Finding[] | null }) {
 /** The four answers in buyer words. The stored codes (AVOID, INSUFFICIENT_EVIDENCE) are unchanged so saved reports still read. */
 const VERDICT_LABEL: Record<string, string> = { BUY: 'BUY', WAIT: 'WAIT', AVOID: 'WALK AWAY', INSUFFICIENT_EVIDENCE: 'INSUFFICIENT DATA', UNAVAILABLE: 'NOT EVALUATED' }
 
+const LAYER_OF: Record<string, string> = { Road: 'road', School: 'school', Hospital: 'hospital', 'Bus stop or station': 'bus', 'Railway station': 'rail_station' }
+
 /** Nearby facilities, exactly as the regional OpenStreetMap store returned them: distance, name, nothing inferred. */
 function FacilitiesTable({ record }: { record: ParcelRecord }) {
   const i: NonNullable<ParcelRecord['infrastructure']> = record.infrastructure || { nearest_road_distance_m: null, nearest_road_type: null, nearest_school_distance_m: null }
@@ -168,8 +170,9 @@ function FacilitiesTable({ record }: { record: ParcelRecord }) {
   ]
   const collected = i.search_radius_m != null
   return <section className="facilities-section"><div className="section-label">NEARBY FACILITIES · STRAIGHT-LINE DISTANCES FROM OPENSTREETMAP</div>
-    {collected ? <div className="flood-table-wrap"><table className="flood-table"><thead><tr><th>Facility</th><th>Distance</th><th>Name / type</th><th>Measured</th></tr></thead><tbody>{rows.map(([name, d, label, from]) => <tr key={name}><td>{name}</td><td>{d == null ? `none mapped within ${m(i.search_radius_m)}` : m(d)}</td><td>{d == null ? '—' : label || 'unnamed'}</td><td>{d == null ? '—' : from}</td></tr>)}</tbody></table></div>
+    {collected ? <div className="flood-table-wrap"><table className="flood-table"><thead><tr><th>Facility</th><th>Distance</th><th>Name / type</th><th>Measured</th></tr></thead><tbody>{rows.map(([name, d, label, from]) => <tr key={name}><td>{name}</td><td>{d == null ? (i.layer_status?.[LAYER_OF[name]] === 'not_installed' ? 'not installed for this region (unknown)' : `none mapped within ${m(i.search_radius_m)}`) : m(d)}</td><td>{d == null ? '—' : label || 'unnamed'}</td><td>{d == null ? '—' : from}</td></tr>)}</tbody></table></div>
       : <p className="muted">{osm?.summary || 'No facility data was collected for this parcel.'}</p>}
+    {Object.entries(i.layer_status || {}).some(([, s]) => s === 'not_installed') && <p className="older-note" role="note"><TriangleAlert size={15} /><span>Not installed for this region: {Object.entries(i.layer_status || {}).filter(([, s]) => s === 'not_installed').map(([l]) => l.replace('_', ' ')).join(', ')}. These are unknown, not absent; accessibility is not assessed without roads.</span></p>}
     <p className="field-hint">{osm ? `${osm.source_reference} · data as of ${(osm.observed_at || '').slice(0, 10)}. ` : ''}Straight lines, not travel routes; a mapped road is not proof of legal access. “None mapped” means OpenStreetMap has nothing there, not that none exists: check locally. Colleges, markets and shops are not collected in this version.</p>
   </section>
 }

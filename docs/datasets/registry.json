@@ -1,0 +1,2692 @@
+{
+ "generated_at": "2026-10-26T05:27:41+00:00",
+ "regions": [
+  {
+   "iso": "IN-AN",
+   "name": "Andaman and Nicobar Islands",
+   "type": "union_territory",
+   "sample_point": [
+    10.70559,
+    92.4894
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 10.70559,92.4894 resolved to ['IN-AN']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "102 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "no school mapped within 50 km of the sample point (not proof of absence)"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 3,981 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-AP",
+   "name": "Andhra Pradesh",
+   "type": "state",
+   "sample_point": [
+    15.89591,
+    79.62166
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 15.89591,79.62166 resolved to ['IN-AP']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "38,366 GeoNames rows"
+    },
+    "roads": {
+     "status": "installed",
+     "store": "andhra-pradesh",
+     "data_as_of": "2026-10-04",
+     "detail": "nearest road to the sample point: 165 m"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "andhra-pradesh",
+     "data_as_of": "2026-10-04",
+     "detail": "nearest school to the sample point: 12,246 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "andhra-pradesh",
+     "data_as_of": "2026-10-04",
+     "detail": "nearest water to the sample point: 2,686 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "andhra-pradesh",
+     "data_as_of": "2026-10-04",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "installed",
+     "detail": "Copernicus GLO-30 tile on disk"
+    },
+    "surface_water": {
+     "status": "installed",
+     "detail": "JRC GSW tile on disk"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-AR",
+   "name": "Arunāchal Pradesh",
+   "type": "state",
+   "sample_point": [
+    28.05559,
+    95.02845
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 28.05559,95.02845 resolved to ['IN-AR']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "996 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 24,928 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 11,267 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-AS",
+   "name": "Assam",
+   "type": "state",
+   "sample_point": [
+    26.05391,
+    90.75967
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 26.05391,90.75967 resolved to ['IN-AS']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "5,851 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 4,542 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 4,402 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-BR",
+   "name": "Bihār",
+   "type": "state",
+   "sample_point": [
+    25.90411,
+    86.12394
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 25.90411,86.12394 resolved to ['IN-BR']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "54,319 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 11,763 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 498 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-CH",
+   "name": "Chandīgarh",
+   "type": "union_territory",
+   "sample_point": [
+    30.73099,
+    76.78416
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 30.73099,76.78416 resolved to ['IN-CH']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "110 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 146 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 958 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "8 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-CT",
+   "name": "Chhattīsgarh",
+   "type": "state",
+   "sample_point": [
+    20.94441,
+    81.50686
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 20.94441,81.50686 resolved to ['IN-CT']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "21,502 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 26,396 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 541 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-DH",
+   "name": "Dādra and Nagar Haveli and Damān and Diu",
+   "type": "union_territory",
+   "sample_point": [
+    20.72094,
+    70.9338
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 20.72094,70.9338 resolved to ['IN-DH']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "137 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 6,173 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 1,391 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "1 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-DL",
+   "name": "Delhi",
+   "type": "union_territory",
+   "sample_point": [
+    28.64431,
+    77.1237
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 28.64431,77.1237 resolved to ['IN-DL']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "1,302 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 375 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 1,025 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "7 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-GA",
+   "name": "Goa",
+   "type": "state",
+   "sample_point": [
+    15.35125,
+    74.10242
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 15.35125,74.10242 resolved to ['IN-GA']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "754 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 3,798 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 915 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "1 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "installed",
+     "detail": "JRC GSW tile on disk"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-GJ",
+   "name": "Gujarāt",
+   "type": "state",
+   "sample_point": [
+    22.41579,
+    72.01367
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 22.41579,72.01367 resolved to ['IN-GJ']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "14,499 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 25,633 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 829 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "1 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-HP",
+   "name": "Himāchal Pradesh",
+   "type": "state",
+   "sample_point": [
+    31.81745,
+    77.34987
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 31.81745,77.34987 resolved to ['IN-HP']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "25,000 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 4,643 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 8,488 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "1 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-HR",
+   "name": "Haryāna",
+   "type": "state",
+   "sample_point": [
+    29.29047,
+    76.05193
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 29.29047,76.05193 resolved to ['IN-HR']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "10,351 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 15,771 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 2,471 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-JH",
+   "name": "Jhārkhand",
+   "type": "state",
+   "sample_point": [
+    23.66009,
+    85.16916
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 23.66009,85.16916 resolved to ['IN-JH']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "31,982 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 18,010 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 3,775 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-JK",
+   "name": "Jammu and Kashmīr",
+   "type": "union_territory",
+   "sample_point": [
+    33.69698,
+    74.92702
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 33.69698,74.92702 resolved to ['IN-JK']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "14,031 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 3,491 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 4,051 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-KA",
+   "name": "Karnātaka",
+   "type": "state",
+   "sample_point": [
+    15.0268,
+    75.53497
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 15.0268,75.53497 resolved to ['IN-KA']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "42,845 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 23,052 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 4,246 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "installed",
+     "detail": "JRC GSW tile on disk"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-KL",
+   "name": "Kerala",
+   "type": "state",
+   "sample_point": [
+    10.54408,
+    76.42814
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 10.54408,76.42814 resolved to ['IN-KL']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "12,335 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 2,100 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 677 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "installed",
+     "detail": "Copernicus GLO-30 tile on disk"
+    },
+    "surface_water": {
+     "status": "installed",
+     "detail": "JRC GSW tile on disk"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-LA",
+   "name": "Ladākh",
+   "type": "union_territory",
+   "sample_point": [
+    34.7072,
+    77.65517
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 34.7072,77.65517 resolved to ['IN-LA']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "620 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 17,137 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 6,338 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-LD",
+   "name": "Lakshadweep",
+   "type": "union_territory",
+   "sample_point": [
+    10.81057,
+    73.67761
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 10.81057,73.67761 resolved to ['IN-LD']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "57 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "no school mapped within 50 km of the sample point (not proof of absence)"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "no water mapped within 50 km of the sample point (not proof of absence)"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "1 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "installed",
+     "detail": "JRC GSW tile on disk"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-MH",
+   "name": "Mahārāshtra",
+   "type": "state",
+   "sample_point": [
+    18.81999,
+    75.37152
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 18.81999,75.37152 resolved to ['IN-MH']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "36,737 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 45,272 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 159 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "installed",
+     "detail": "JRC GSW tile on disk"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-ML",
+   "name": "Meghālaya",
+   "type": "state",
+   "sample_point": [
+    25.57432,
+    91.26513
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 25.57432,91.26513 resolved to ['IN-ML']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "786 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 6,350 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 3,093 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-MN",
+   "name": "Manipur",
+   "type": "state",
+   "sample_point": [
+    24.76283,
+    93.86546
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 24.76283,93.86546 resolved to ['IN-MN']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "1,031 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 5,677 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 2,087 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "2 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-MP",
+   "name": "Madhya Pradesh",
+   "type": "state",
+   "sample_point": [
+    23.96959,
+    79.3951
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 23.96959,79.3951 resolved to ['IN-MP']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "57,853 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "no school mapped within 50 km of the sample point (not proof of absence)"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 2,929 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-MZ",
+   "name": "Mizoram",
+   "type": "state",
+   "sample_point": [
+    23.23136,
+    92.86623
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 23.23136,92.86623 resolved to ['IN-MZ']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "672 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 46,859 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 3,235 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-NL",
+   "name": "Nāgāland",
+   "type": "state",
+   "sample_point": [
+    26.11749,
+    94.5564
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 26.11749,94.5564 resolved to ['IN-NL']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "687 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 5,529 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 19,395 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-OR",
+   "name": "Odisha",
+   "type": "state",
+   "sample_point": [
+    20.18991,
+    84.47928
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 20.18991,84.47928 resolved to ['IN-OR']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "30,475 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 39,472 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 7,484 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-PB",
+   "name": "Punjab",
+   "type": "state",
+   "sample_point": [
+    31.02745,
+    75.584
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 31.02745,75.584 resolved to ['IN-PB']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "15,853 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 2,880 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 1,835 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-PY",
+   "name": "Puducherry",
+   "type": "union_territory",
+   "sample_point": [
+    10.91566,
+    79.80668
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 10.91566,79.80668 resolved to ['IN-PY']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "251 GeoNames rows"
+    },
+    "roads": {
+     "status": "installed",
+     "store": "tamil-nadu",
+     "data_as_of": "2026-10-04",
+     "detail": "nearest road to the sample point: 480 m"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "tamil-nadu",
+     "data_as_of": "2026-10-04",
+     "detail": "nearest school to the sample point: 3,045 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "tamil-nadu",
+     "data_as_of": "2026-10-04",
+     "detail": "nearest water to the sample point: 702 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "tamil-nadu",
+     "data_as_of": "2026-10-04",
+     "detail": "2 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "installed",
+     "detail": "Copernicus GLO-30 tile on disk"
+    },
+    "surface_water": {
+     "status": "installed",
+     "detail": "JRC GSW tile on disk"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-RJ",
+   "name": "Rājasthān",
+   "type": "state",
+   "sample_point": [
+    26.62802,
+    73.82693
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 26.62802,73.82693 resolved to ['IN-RJ']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "31,666 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 31,488 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 8,039 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "1 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-SK",
+   "name": "Sikkim",
+   "type": "state",
+   "sample_point": [
+    27.60407,
+    88.45743
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 27.60407,88.45743 resolved to ['IN-SK']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "592 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 12,882 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 7,655 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-TG",
+   "name": "Telangāna",
+   "type": "state",
+   "sample_point": [
+    17.87623,
+    79.29764
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 17.87623,79.29764 resolved to ['IN-TG']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "19,554 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 8,015 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 119 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "1 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "installed",
+     "detail": "Copernicus GLO-30 tile on disk"
+    },
+    "surface_water": {
+     "status": "installed",
+     "detail": "JRC GSW tile on disk"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-TN",
+   "name": "Tamil Nādu",
+   "type": "state",
+   "sample_point": [
+    10.82073,
+    78.34976
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 10.82073,78.34976 resolved to ['IN-TN']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "53,458 GeoNames rows"
+    },
+    "roads": {
+     "status": "installed",
+     "store": "tamil-nadu",
+     "data_as_of": "2026-10-04",
+     "detail": "nearest road to the sample point: 41 m"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "tamil-nadu",
+     "data_as_of": "2026-10-04",
+     "detail": "nearest school to the sample point: 15,274 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "tamil-nadu",
+     "data_as_of": "2026-10-04",
+     "detail": "nearest water to the sample point: 5,156 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "tamil-nadu",
+     "data_as_of": "2026-10-04",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "installed",
+     "detail": "Copernicus GLO-30 tile on disk"
+    },
+    "surface_water": {
+     "status": "installed",
+     "detail": "JRC GSW tile on disk"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "manual_guide",
+     "detail": "official portals listed; buyer records checks"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-TR",
+   "name": "Tripura",
+   "type": "state",
+   "sample_point": [
+    23.73338,
+    91.55716
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 23.73338,91.55716 resolved to ['IN-TR']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "879 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 21,227 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 12,591 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-UP",
+   "name": "Uttar Pradesh",
+   "type": "state",
+   "sample_point": [
+    27.13805,
+    80.779
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 27.13805,80.779 resolved to ['IN-UP']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "178,337 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 15,243 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 11,086 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-UT",
+   "name": "Uttarākhand",
+   "type": "state",
+   "sample_point": [
+    30.08951,
+    79.31904
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 30.08951,79.31904 resolved to ['IN-UT']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "15,164 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 8,111 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 9,304 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "0 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  },
+  {
+   "iso": "IN-WB",
+   "name": "West Bengal",
+   "type": "state",
+   "sample_point": [
+    24.38875,
+    88.10018
+   ],
+   "layers": {
+    "boundary": {
+     "status": "installed",
+     "source": "geoBoundaries gbOpen IND ADM1 (CC BY 2.5 IN), 2011 boundaries"
+    },
+    "region_resolution": {
+     "status": "verified",
+     "detail": "sample point 24.38875,88.10018 resolved to ['IN-WB']"
+    },
+    "place_search": {
+     "status": "installed",
+     "detail": "14,112 GeoNames rows"
+    },
+    "roads": {
+     "status": "not_installed",
+     "store": "india",
+     "detail": "the india store does not hold roads"
+    },
+    "schools_hospitals_transport": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest school to the sample point: 8,792 m"
+    },
+    "water_features": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "nearest water to the sample point: 2,391 m"
+    },
+    "public_facilities": {
+     "status": "installed",
+     "store": "india",
+     "data_as_of": "2026-10-25",
+     "detail": "1 facility categories within 2 km of the sample point"
+    },
+    "dem": {
+     "status": "remote",
+     "detail": "read from Planetary Computer at analysis time"
+    },
+    "surface_water": {
+     "status": "remote",
+     "detail": "read remotely at analysis time"
+    },
+    "land_cover_2017_2023": {
+     "status": "remote",
+     "detail": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)"
+    },
+    "sentinel2": {
+     "status": "remote",
+     "detail": "Sentinel-2 L2A (Microsoft Planetary Computer)"
+    },
+    "river_flood": {
+     "status": "remote",
+     "detail": "JRC river flood hazard maps v2.1.2"
+    },
+    "land_records": {
+     "status": "not_integrated",
+     "detail": "no state guide yet"
+    },
+    "bhuvan": {
+     "status": "not_integrated",
+     "detail": "Bhuvan terms: viewing only; integration needs written authorization from DOS/ISRO/NRSC"
+    }
+   }
+  }
+ ],
+ "remote_sources": {
+  "land_cover_2017_2023": {
+   "source": "Impact Observatory / Esri 10 m annual land cover (Microsoft Planetary Computer)",
+   "resolution": "10 m",
+   "period": "2017-2023",
+   "licence": "CC BY 4.0"
+  },
+  "sentinel2": {
+   "source": "Sentinel-2 L2A (Microsoft Planetary Computer)",
+   "resolution": "10 m",
+   "period": "2015-present",
+   "licence": "Copernicus open licence"
+  },
+  "river_flood": {
+   "source": "JRC river flood hazard maps v2.1.2",
+   "resolution": "~90 m",
+   "period": "modelled return periods",
+   "licence": "CC BY 4.0"
+  }
+ }
+}

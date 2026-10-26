@@ -3,6 +3,8 @@
     python fetch_data.py                      India boundary (~46 MB) and place-search index (~20 MB download)
     python fetch_data.py tamil-nadu           build one region (any state/UT slug works)
     python fetch_data.py --list               show regions and what is installed
+    python fetch_data.py --national           all-India store without roads, from downloads/india-*.osm.pbf
+    python fetch_data.py <region> --public-land   only the public-facility store of an installed region
 
 (run by: terrascope.cmd fetch-data [region])
 
@@ -391,8 +393,14 @@ def _classify(obj, tags) -> list[tuple[str, str]]:
     return out
 
 
-def build_osm(pbf: Path, coverage, directory: Path) -> dict:
-    """Local store of the region's features within 5 km of its coverage polygon."""
+OSM_LAYERS = ("road", "waterway", "school", "hospital", "bus", "rail_station", "water")
+
+
+def build_osm(pbf: Path, coverage, directory: Path, skip_layers: frozenset[str] = frozenset()) -> dict:
+    """Local store of the region's features within 5 km of its coverage polygon.
+
+    ``skip_layers`` leaves layers out by design (the national store has no roads). The store records the layers it
+    holds, so a missing layer reads as "not installed", never as "nothing mapped"."""
     import osmium
     import shapely
     from shapely import wkb as shapely_wkb
@@ -420,7 +428,7 @@ def build_osm(pbf: Path, coverage, directory: Path) -> dict:
     )
     for obj in processor:
         tags = obj.tags
-        layers = _classify(obj, tags)
+        layers = [pair for pair in _classify(obj, tags) if pair[0] not in skip_layers]
         if not layers:
             continue
         try:
@@ -473,6 +481,7 @@ def build_osm(pbf: Path, coverage, directory: Path) -> dict:
         "data_as_of": as_of,
         "extract_file": pbf.name,
         "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "layers": json.dumps([layer for layer in OSM_LAYERS if layer not in skip_layers]),
     }
     connection.executemany("INSERT OR REPLACE INTO store_meta VALUES (?, ?)", list(meta.items()))
     connection.commit()
@@ -609,6 +618,89 @@ def build_public_land(name: str, root: Path) -> None:
     public_land.build_store(extracts[-1], coverage, root / "regions" / name, log)
 
 
+NATIONAL = "india"
+NATIONAL_KEYS = ("amenity", "healthcare", "railway", "waterway", "natural", "landuse", "office", "government",
+                 "leisure", "military", "boundary", "highway")
+
+
+def _national_keep(obj) -> bool:
+    """Objects the non-road layers and the public-facility store can use (a superset; the builders classify exactly)."""
+    t = obj.tags
+    if obj.is_relation() and t.get("type") not in ("multipolygon", "boundary"):
+        return False
+    return bool(
+        t.get("natural") == "water" or t.get("landuse") in ("reservoir", "railway", "military", "cemetery")
+        or t.get("waterway") in WATERWAYS | {"riverbank"}
+        or t.get("amenity") in ("school", "hospital", "bus_station", "courthouse", "townhall", "police", "fire_station",
+                                "prison", "grave_yard")
+        or t.get("healthcare") == "hospital"
+        or t.get("railway") in ("station", "halt", "rail", "light_rail", "subway", "narrow_gauge")
+        or (obj.is_node() and t.get("highway") == "bus_stop")
+        or t.get("office") == "government" or bool(t.get("government"))
+        or t.get("leisure") in ("stadium", "sports_centre", "recreation_ground", "park", "playground", "nature_reserve")
+        or t.get("military") not in (None, "no")
+        or t.get("boundary") in ("protected_area", "national_park"))
+
+
+def stamp_source(directory: Path, pbf: Path) -> None:
+    """Record the original extract (name, URL, data date) in the stores: the derived file carries no replication date."""
+    import osmium
+    import sqlite3
+
+    as_of = osmium.io.Reader(str(pbf), osmium.osm.osm_entity_bits.NOTHING).header().get("osmosis_replication_timestamp") or ""
+    values = {"data_as_of": as_of, "extract_file": pbf.name, "source_url": f"https://download.geofabrik.de/asia/{pbf.name}",
+              "source": "OpenStreetMap, Geofabrik India extract (filtered to non-road features)"}
+    for name in (REGION_STORE, "public_land.sqlite"):
+        with sqlite3.connect(directory / name) as connection:
+            connection.executemany("INSERT OR REPLACE INTO store_meta VALUES (?, ?)", list(values.items()))
+
+
+def build_national(root: Path) -> None:
+    """One store for all 36 states and UTs, without roads, from the India extract on disk (never modified).
+
+    Memory-safe: one pass copies the wanted objects and every node they reference into a small derived file, so the
+    geometry builders never hold the locations of all ~200 million Indian nodes. Roads are left out because a
+    nationwide road store needs ~3 GB more disk than this machine has; states keep their own road stores."""
+    import osmium
+    import shapely
+
+    from connectors import public_land
+
+    extracts = sorted((root / "downloads").glob("india-*.osm.pbf"))
+    if not extracts:
+        raise SystemExit("No India extract on disk (downloads/india-*.osm.pbf).")
+    pbf = extracts[-1]
+    directory = root / "regions" / NATIONAL
+    check_disk(root, 1_200_000_000)
+    directory.mkdir(parents=True, exist_ok=True)
+    coverage = shapely.from_wkb((root / INDIA_DIR / UNION_FILE).read_bytes())
+    filtered = directory / "source-nonroad.osm.pbf"
+    log(f"Filtering {pbf.name} to the non-road features (original unchanged) ...")
+    started = time.monotonic()
+    kept = 0
+    with osmium.BackReferenceWriter(str(filtered), ref_src=str(pbf), overwrite=True) as writer:
+        for obj in osmium.FileProcessor(str(pbf)).with_filter(osmium.filter.KeyFilter(*NATIONAL_KEYS)):
+            if _national_keep(obj):
+                writer.add(obj)
+                kept += 1
+    log(f"  kept {kept:,} tagged objects; derived file {filtered.stat().st_size / 1e6:.0f} MB in {time.monotonic() - started:.0f}s")
+    osm = build_osm(filtered, coverage, directory, skip_layers=frozenset({"road"}))
+    public = public_land.build_store(filtered, coverage, directory, log)
+    stamp_source(directory, pbf)
+    (directory / REGION_BOUNDARY).write_text(json.dumps({
+        "type": "Feature",
+        "properties": {"name": "India (all states and union territories)", "source": "geoBoundaries gbOpen IND ADM0"},
+        "geometry": shapely.geometry.mapping(coverage),
+    }), encoding="utf-8")
+    manifest = {"label": "India (all states and UTs): no roads", "national": True, "source_extract": pbf.name,
+                "source_bytes": pbf.stat().st_size, "osm": osm, "public_land": public,
+                "not_included": {"road": "needs ~3 GB more disk; build a state with fetch-data <state> for its roads"},
+                "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+    (directory / MANIFEST_NAME).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    filtered.unlink()  # derived; rebuildable from the original extract
+    log(f"National store ready: {directory}")
+
+
 def list_regions(root: Path) -> None:
     catalogue = region_catalogue(root)
     installed = {path.name for path in (root / "regions").glob("*") if (path / REGION_STORE).exists()}
@@ -624,8 +716,13 @@ def main() -> None:
     parser.add_argument("--data-dir", type=Path, default=None)
     parser.add_argument("--public-land", action="store_true",
                         help="only (re)build the public-facility store of an installed region, from the extract on disk")
+    parser.add_argument("--national", action="store_true",
+                        help="build the all-India store (no roads) from downloads/india-*.osm.pbf")
     args = parser.parse_args()
     root = (args.data_dir or data_root()).resolve()
+    if args.national:
+        build_national(root)
+        return
     if args.public_land and args.region:
         build_public_land(args.region, root)
         return

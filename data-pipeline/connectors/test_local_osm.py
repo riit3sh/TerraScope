@@ -78,3 +78,57 @@ def test_store_is_read_only(store) -> None:
 def test_missing_store_is_reported(tmp_path) -> None:
     with pytest.raises(LocalDataMissing):
         LocalOSM(tmp_path / "absent.sqlite")
+
+
+def test_a_store_without_roads_reports_them_not_installed_never_none_mapped(tmp_path) -> None:
+    """The all-India store has no roads (2026-10-26): road distance must be unknown, not 'none within 5 km'."""
+    import json
+
+    from etl_pipeline import _local_amenities, _local_infrastructure_summary
+
+    lon, lat = ORIGIN
+    path = tmp_path / "national.sqlite"
+    connection = create_store(path)
+    write_features(connection, [("school", "school", "School", "n1", {}, Point(lon + 0.001, lat))])
+    connection.executemany("INSERT INTO store_meta VALUES (?, ?)",
+                           [("layers", json.dumps(["waterway", "school", "hospital", "bus", "rail_station", "water"]))])
+    connection.commit()
+    connection.close()
+    osm = LocalOSM(path)
+    try:
+        assert not osm.has_layer("road") and osm.has_layer("school")
+        amenities = _local_amenities(osm, _parcel(lon, lat))
+    finally:
+        osm.close()
+    assert amenities["layer_status"]["road"] == "not_installed" and amenities["nearest_road_distance_m"] is None
+    assert amenities["nearest_school_distance_m"] is not None
+    assert "road data not installed" in _local_infrastructure_summary(amenities)
+
+
+def test_stores_built_before_layer_lists_hold_every_layer(store) -> None:
+    assert store.layers is None and store.has_layer("road")
+
+
+def test_amenities_with_layer_status_pass_the_evidence_schema(tmp_path) -> None:
+    """Regression (2026-10-26): the schema rejected layer_status, so every new analysis failed with HTTP 400."""
+    import json
+    from pathlib import Path
+
+    import jsonschema
+
+    from etl_pipeline import _local_amenities
+
+    lon, lat = ORIGIN
+    path = tmp_path / "national.sqlite"
+    connection = create_store(path)
+    connection.executemany("INSERT INTO store_meta VALUES (?, ?)", [("layers", json.dumps(["school", "water"]))])
+    connection.commit()
+    connection.close()
+    osm = LocalOSM(path)
+    try:
+        amenities = _local_amenities(osm, _parcel(lon, lat))
+    finally:
+        osm.close()
+    schema = json.loads((Path(__file__).resolve().parents[2] / "docs" / "schema" / "parcel_schema.json").read_text(encoding="utf-8"))
+    jsonschema.validate(amenities, {**schema["properties"]["infrastructure"], "$defs": schema.get("$defs", {}),
+                                    "definitions": schema.get("definitions", {})})

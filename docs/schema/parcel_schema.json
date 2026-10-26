@@ -512,6 +512,19 @@
             "null"
           ],
           "minimum": 0
+        },
+        "layer_status": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "enum": [
+              "installed",
+              "not_installed"
+            ]
+          },
+          "description": "Per OSM layer: installed in the store this parcel was read from, or not installed (unknown, never 'none mapped')."
         }
       }
     },

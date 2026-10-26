@@ -1,0 +1,326 @@
+{
+ "IN-AN": {
+  "school": 14,
+  "hospital": 21,
+  "bus": 29,
+  "rail_station": 0,
+  "water": 338,
+  "waterway": 515,
+  "public_facilities": 150
+ },
+ "IN-AP": {
+  "school": 1771,
+  "hospital": 4473,
+  "bus": 3716,
+  "rail_station": 535,
+  "water": 31553,
+  "waterway": 10985,
+  "public_facilities": 9072
+ },
+ "IN-AR": {
+  "school": 64,
+  "hospital": 36,
+  "bus": 28,
+  "rail_station": 5,
+  "water": 1028,
+  "waterway": 2234,
+  "public_facilities": 298
+ },
+ "IN-AS": {
+  "school": 349,
+  "hospital": 398,
+  "bus": 164,
+  "rail_station": 331,
+  "water": 6831,
+  "waterway": 2730,
+  "public_facilities": 5468
+ },
+ "IN-BR": {
+  "school": 454,
+  "hospital": 801,
+  "bus": 97,
+  "rail_station": 705,
+  "water": 11467,
+  "waterway": 5794,
+  "public_facilities": 6247
+ },
+ "IN-CH": {
+  "school": 176,
+  "hospital": 69,
+  "bus": 26,
+  "rail_station": 1,
+  "water": 34,
+  "waterway": 10,
+  "public_facilities": 948
+ },
+ "IN-CT": {
+  "school": 212,
+  "hospital": 614,
+  "bus": 53,
+  "rail_station": 149,
+  "water": 8807,
+  "waterway": 4120,
+  "public_facilities": 4890
+ },
+ "IN-DH": {
+  "school": 9,
+  "hospital": 37,
+  "bus": 3,
+  "rail_station": 0,
+  "water": 31,
+  "waterway": 74,
+  "public_facilities": 98
+ },
+ "IN-DL": {
+  "school": 1110,
+  "hospital": 669,
+  "bus": 2146,
+  "rail_station": 279,
+  "water": 1350,
+  "waterway": 1070,
+  "public_facilities": 8084
+ },
+ "IN-GA": {
+  "school": 261,
+  "hospital": 188,
+  "bus": 426,
+  "rail_station": 22,
+  "water": 1174,
+  "waterway": 1575,
+  "public_facilities": 1154
+ },
+ "IN-GJ": {
+  "school": 485,
+  "hospital": 5209,
+  "bus": 535,
+  "rail_station": 851,
+  "water": 8364,
+  "waterway": 9469,
+  "public_facilities": 9068
+ },
+ "IN-HP": {
+  "school": 361,
+  "hospital": 388,
+  "bus": 340,
+  "rail_station": 68,
+  "water": 1043,
+  "waterway": 6851,
+  "public_facilities": 1540
+ },
+ "IN-HR": {
+  "school": 669,
+  "hospital": 1427,
+  "bus": 332,
+  "rail_station": 271,
+  "water": 6255,
+  "waterway": 4540,
+  "public_facilities": 5701
+ },
+ "IN-JH": {
+  "school": 245,
+  "hospital": 698,
+  "bus": 125,
+  "rail_station": 336,
+  "water": 6431,
+  "waterway": 3545,
+  "public_facilities": 6492
+ },
+ "IN-JK": {
+  "school": 356,
+  "hospital": 309,
+  "bus": 151,
+  "rail_station": 52,
+  "water": 976,
+  "waterway": 2832,
+  "public_facilities": 2364
+ },
+ "IN-KA": {
+  "school": 4338,
+  "hospital": 3615,
+  "bus": 6062,
+  "rail_station": 560,
+  "water": 36307,
+  "waterway": 11237,
+  "public_facilities": 15377
+ },
+ "IN-KL": {
+  "school": 15109,
+  "hospital": 5495,
+  "bus": 16045,
+  "rail_station": 226,
+  "water": 52611,
+  "waterway": 106171,
+  "public_facilities": 24366
+ },
+ "IN-LA": {
+  "school": 96,
+  "hospital": 19,
+  "bus": 30,
+  "rail_station": 0,
+  "water": 907,
+  "waterway": 4292,
+  "public_facilities": 555
+ },
+ "IN-LD": {
+  "school": 6,
+  "hospital": 4,
+  "bus": 0,
+  "rail_station": 0,
+  "water": 9,
+  "waterway": 0,
+  "public_facilities": 19
+ },
+ "IN-MH": {
+  "school": 2274,
+  "hospital": 8241,
+  "bus": 4729,
+  "rail_station": 1067,
+  "water": 24565,
+  "waterway": 13955,
+  "public_facilities": 18560
+ },
+ "IN-ML": {
+  "school": 70,
+  "hospital": 60,
+  "bus": 42,
+  "rail_station": 1,
+  "water": 526,
+  "waterway": 823,
+  "public_facilities": 164
+ },
+ "IN-MN": {
+  "school": 27,
+  "hospital": 68,
+  "bus": 30,
+  "rail_station": 12,
+  "water": 300,
+  "waterway": 1456,
+  "public_facilities": 210
+ },
+ "IN-MP": {
+  "school": 581,
+  "hospital": 2110,
+  "bus": 298,
+  "rail_station": 638,
+  "water": 9567,
+  "waterway": 8995,
+  "public_facilities": 8720
+ },
+ "IN-MZ": {
+  "school": 8,
+  "hospital": 50,
+  "bus": 5,
+  "rail_station": 5,
+  "water": 217,
+  "waterway": 3506,
+  "public_facilities": 386
+ },
+ "IN-NL": {
+  "school": 40,
+  "hospital": 62,
+  "bus": 26,
+  "rail_station": 4,
+  "water": 95,
+  "waterway": 706,
+  "public_facilities": 329
+ },
+ "IN-OR": {
+  "school": 339,
+  "hospital": 1025,
+  "bus": 336,
+  "rail_station": 343,
+  "water": 9184,
+  "waterway": 5989,
+  "public_facilities": 6432
+ },
+ "IN-PB": {
+  "school": 811,
+  "hospital": 3049,
+  "bus": 288,
+  "rail_station": 334,
+  "water": 6350,
+  "waterway": 5152,
+  "public_facilities": 4736
+ },
+ "IN-PY": {
+  "school": 110,
+  "hospital": 93,
+  "bus": 107,
+  "rail_station": 4,
+  "water": 169,
+  "waterway": 307,
+  "public_facilities": 397
+ },
+ "IN-RJ": {
+  "school": 625,
+  "hospital": 2816,
+  "bus": 726,
+  "rail_station": 699,
+  "water": 9103,
+  "waterway": 6838,
+  "public_facilities": 8417
+ },
+ "IN-SK": {
+  "school": 29,
+  "hospital": 20,
+  "bus": 18,
+  "rail_station": 0,
+  "water": 323,
+  "waterway": 1006,
+  "public_facilities": 160
+ },
+ "IN-TG": {
+  "school": 1412,
+  "hospital": 2900,
+  "bus": 1132,
+  "rail_station": 334,
+  "water": 7658,
+  "waterway": 4239,
+  "public_facilities": 6932
+ },
+ "IN-TN": {
+  "school": 2720,
+  "hospital": 5856,
+  "bus": 4250,
+  "rail_station": 684,
+  "water": 14006,
+  "waterway": 11909,
+  "public_facilities": 13906
+ },
+ "IN-TR": {
+  "school": 22,
+  "hospital": 48,
+  "bus": 12,
+  "rail_station": 30,
+  "water": 1002,
+  "waterway": 151,
+  "public_facilities": 494
+ },
+ "IN-UP": {
+  "school": 1204,
+  "hospital": 3595,
+  "bus": 484,
+  "rail_station": 1224,
+  "water": 16543,
+  "waterway": 14215,
+  "public_facilities": 19601
+ },
+ "IN-UT": {
+  "school": 649,
+  "hospital": 447,
+  "bus": 149,
+  "rail_station": 45,
+  "water": 762,
+  "waterway": 6497,
+  "public_facilities": 1562
+ },
+ "IN-WB": {
+  "school": 938,
+  "hospital": 1198,
+  "bus": 1014,
+  "rail_station": 837,
+  "water": 43108,
+  "waterway": 7148,
+  "public_facilities": 12385
+ }
+}

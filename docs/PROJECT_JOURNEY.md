@@ -1743,3 +1743,48 @@ the reason the approach changed.
   - Saved reports predate the check until analysed again.
   - Stores exist only for Tamil Nadu and Andhra Pradesh.
 - **Status:** fixed and verified (mapping and decision rules); official verification remains manual.
+
+## J-65 All-India data: verified extract, nationwide non-road store, per-layer status, Bhuvan decision
+
+- **Date / problem (2026-10-26):** only Tamil Nadu, Puducherry and Andhra Pradesh had local map data. In the other 33
+  regions every map layer was missing, and nothing distinguished "not installed" from "nothing mapped".
+- **Constraints measured:** C: is the only drive and had 5.1 GB free; RAM was 15.4 GB with about 2 GB free. A
+  nationwide store with roads would be about 3 GB plus a temporary copy, so it does not fit.
+- **Changes:**
+  - **Source:** downloaded `india-261025.osm.pbf`, 1,711,981,786 bytes. The MD5 matches Geofabrik's published file
+    and the header is valid (data to 2026-10-25 21:21 UTC). The original is kept unchanged.
+  - **Memory-safe build** (`fetch_data.py --national`): pyosmium `BackReferenceWriter` copies only the non-road
+    features and their referenced nodes into a derived file. The existing builders then made `regions/india/osm.sqlite`
+    (523 MB) and `public_land.sqlite` (69 MB). The derived file was removed. Build time about 23 min; memory stayed
+    within the allocated swap file.
+  - **Stores record their layers** (`store_meta.layers`); `LocalOSM.has_layer`. The ETL emits
+    `infrastructure.layer_status`. A road that is not installed reads "not installed (unknown)" in the evidence, the
+    facilities table and the scoring. Accessibility becomes unavailable (never scored from schools alone), so the
+    decision is INSUFFICIENT DATA.
+  - **Region choice:** the smallest covering store wins, so a state store with roads beats the all-India store. One
+    store per parcel, so regional and national features are never combined or double-counted.
+  - **Registry** (`dataset_registry.py`): tests a sample point in each of the 36 regions and writes
+    `docs/DATASET_REGISTRY.md` and `docs/datasets/registry.json`.
+  - **Bhuvan:** the live terms make content "for viewing purposes only"; reuse through other means or derivative works
+    needs written authorization from DOS/ISRO/NRSC. Only metadata (GetCapabilities) was requested. Nothing is
+    integrated; candidate layers are documented in `DATASETS.md`.
+- **Verification:**
+  - Both stores pass `integrity_check`; feature counts match their indexes; extent is 68.0-97.6°E, 6.8-36.0°N.
+    Features fall inside every one of the 36 regions (`docs/datasets/national_store_counts.json`).
+  - Registry: all 36 regions resolve to the correct state. Schools/hospitals/transport, water and public facilities
+    are installed for all 36; roads for TN, PY and AP only.
+  - **End to end, disposable copy:** test boundaries in Patna, Pune, Guwahati, Delhi, Kochi and Leh read the all-India
+    store.
+    - Roads show "not installed" → INSUFFICIENT DATA; schools, hospitals, water and public facilities are real.
+    - Guwahati: WALK AWAY from the JRC 1-in-50-year river flood, with source and date.
+    - Coimbatore read the Tamil Nadu store with roads → WAIT.
+    - All 96 pre-existing reports opened via the API with no failures.
+  - **Defects caught and fixed:**
+    - the schema rejected `layer_status` (every new analysis failed);
+    - the national stores had no data date.
+  - The user store is row-identical to the new backup `backup-2026-10-26-national`.
+- **Limits:**
+  - Roads outside TN/PY/AP need about 3 GB more disk.
+  - Bhuvan needs written permission.
+  - OSM completeness varies widely by state (Kerala has 15,109 schools mapped, Mizoram 8).
+- **Status:** fixed and verified, except nationwide roads (blocked by disk space).
