@@ -20,6 +20,11 @@ from __future__ import annotations
 from typing import Any
 
 GOVERNMENT = {"government_non_transferable", "government_transfer_documented"}
+# Land a buyer cannot normally acquire: a material mapped overlap with one of these makes the answer RESTRICTED and the
+# report stops there (user decision, 2026-10-26). Stadiums, government schools and hospitals stay "potential" (WAIT):
+# their owner is not implied by the facility type.
+RESTRICTED_CATEGORIES = {"defence", "protected_area", "railway_land", "railway_track", "water_body", "court",
+                         "government_office", "park", "burial_ground"}
 LABEL = {
     "confirmed_government": "Confirmed government-owned (official record)",
     "restricted": "Restricted: the official record prohibits this use",
@@ -30,6 +35,7 @@ LABEL = {
     "private_per_record": "Private according to the record checked",
     "records_unavailable": "Records unavailable",
     "ownership_unverified": "Ownership unverified",
+    "restricted_mapped": "Restricted land: the boundary overlaps mapped restricted property",
 }
 
 
@@ -52,8 +58,9 @@ def government_land_status(record: dict[str, Any]) -> dict[str, Any]:
                 "That is not an ownership finding." if contacts else "")
     outcomes = set(by_outcome)
 
-    def result(status, *, walk_away=False, hold=False, warning="", would_change=None, checks=None):
-        return {"status": status, "label": LABEL[status], "walk_away": walk_away, "hold": hold, "warning": warning,
+    def result(status, *, walk_away=False, hold=False, restricted=False, warning="", would_change=None, checks=None):
+        return {"status": status, "label": LABEL[status], "walk_away": walk_away, "hold": hold, "restricted": restricted,
+                "warning": warning,
                 "would_change": would_change or [], "checks": checks or [], "map_contacts": len(contacts),
                 "mapping_status": mapped.get("status") or "not_assessed", "records": len(records)}
 
@@ -98,6 +105,16 @@ def government_land_status(record: dict[str, Any]) -> dict[str, Any]:
                           checks=["Have a licensed surveyor confirm the boundary against the FMB sketch, so the plot is "
                                   "not part of the mapped facility"])
         return result("private_per_record", checks=[f"Private per one record ({cited}); a lawyer still checks the title chain"])
+    blocking = [i for i in contacts if i.get("contact") == "overlap" and i.get("category") in RESTRICTED_CATEGORIES]
+    if blocking and not records:
+        named = ", ".join(dict.fromkeys(
+            f"{i.get('category_label', i['category']).split(' (')[0].lower()}" + (f" ({i['name']})" if i.get("name") else "")
+            + (f", {i['overlap_share']:.0%} of the plot" if (i.get("overlap_share") or 0) >= 0.01 else
+               f", {i['overlap_m2']:,.0f} m² of the plot" if i.get("overlap_m2") else "") for i in blocking[:3]))
+        return result("restricted_mapped", restricted=True, hold=True,
+                      warning=f"RESTRICTED LAND: the boundary overlaps mapped {named} (OpenStreetMap). "
+                              "TerraScope does not assess restricted land for purchase.",
+                      would_change=["The authority's written confirmation that the plot lies outside the restricted land"])
     if contacts:
         return result("records_unavailable" if records else "potential_public", hold=True,
                       warning="WARNING: " + map_note + " Verify government or poramboke status before paying.",

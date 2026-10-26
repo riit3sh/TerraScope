@@ -162,7 +162,7 @@ def test_findings_put_red_flags_first_and_never_call_missing_evidence_ok() -> No
     by_area = {f["area"]: f for f in findings}
     assert by_area["Title and ownership"]["assessment"] == "unknown"  # no land-records source: never ok
     assert by_area["RERA registration"]["assessment"] == "unknown"
-    assert by_area["Rainfall waterlogging and coastal flooding"]["assessment"] == "unknown"
+    assert by_area["Rainfall waterlogging"]["assessment"] == "unknown" and by_area["Coastal flooding"]["assessment"] == "unknown"
     assert all(f["next_step"] for f in findings)
     assert by_area["River flooding"]["as_of"] == "2026-01-12"  # the model release, not today
 
@@ -197,9 +197,61 @@ def test_a_mapped_public_facility_overlap_passes_schema_validation_and_holds_the
 def test_unsupported_flood_types_are_not_assessed_and_every_finding_names_its_source() -> None:
     result = evaluate_snapshot(copy.deepcopy(VIT), SETTINGS)
     findings = result["verdict"]["findings"]
-    rain = next(f for f in findings if f["area"].startswith("Rainfall waterlogging"))
-    assert rain["assessment"] == "unknown" and rain["finding"].startswith("Not assessed")
+    for area in ("Rainfall waterlogging", "Coastal flooding"):
+        row = next(f for f in findings if f["area"] == area)
+        assert row["assessment"] == "unknown" and row["finding"].startswith("NOT ASSESSED"), area
+    assert "not evidence that the plot stays dry" in next(f for f in findings if f["area"] == "Rainfall waterlogging")["finding"]
     for f in findings:
         assert f.get("source") or f["basis"] in ("not_verified", "unavailable", "user_provided"), f["area"]
         assert f["next_step"], f["area"]
     assert result["verdict"]["recommendation"] != "BUY", "no matched land records: never BUY"
+
+
+def test_restricted_land_passes_schema_validation_and_names_the_overlap() -> None:
+    snapshot = copy.deepcopy(VIT)
+    snapshot["public_land"] = {"status": "assessed", "uncertainty_m": 15, "data_as_of": "2026-10-25", "nearby": [],
+                               "overlaps": [{"category": "defence", "category_label": "Defence / military area", "name": "Synthetic Camp",
+                                             "contact": "overlap", "overlap_share": 0.3, "ownership_signal": "government_tagged"}]}
+    result = evaluate_snapshot(snapshot, SETTINGS)
+    assert result["verdict"]["recommendation"] == "RESTRICTED" and "Synthetic Camp" in result["verdict"]["reasoning_summary"]
+    row = next(f for f in result["verdict"]["findings"] if f["area"] == "Government and restricted land")
+    assert row["assessment"] == "red_flag"
+
+
+def _rera_row(state, mine=None):
+    snapshot = copy.deepcopy(VIT)
+    snapshot["location"]["state"] = state
+    if mine:
+        snapshot["user_legal_checks"] = {"rera": {"check": "rera", "source": "state RERA portal", "checked_on": "2026-10-27", **mine}}
+    findings = evaluate_snapshot(snapshot, SETTINGS)["verdict"]["findings"]
+    return next(f for f in findings if f["area"] == "RERA registration"), next(f for f in findings if f["area"] == "Title and ownership")
+
+
+def test_rera_distinguishes_not_verified_no_match_not_applicable_and_recorded_registration() -> None:
+    row, _ = _rera_row("Karnataka")
+    assert row["finding"].startswith("Not verified") and "https://rera.karnataka.gov.in" in row["next_step"]
+    assert "500 m2" in row["finding"], "applicability is explained"
+    row, _ = _rera_row("Karnataka", {"outcome": "not_found"})
+    assert row["finding"].startswith("No matching record") and "not proof the project is unregistered" in row["finding"]
+    row, _ = _rera_row("Karnataka", {"outcome": "not_applicable"})
+    assert row["finding"].startswith("Not applicable") and row["basis"] == "user_provided"
+    row, _ = _rera_row("Karnataka", {"outcome": "confirmed", "reference": "PRM/KA/123"})
+    assert "not verified by TerraScope" in row["finding"] and row["assessment"] == "unknown"
+
+
+def test_regions_without_a_portal_say_so_instead_of_inventing_one() -> None:
+    row, title = _rera_row("Ladakh")
+    assert "Website Not Setup" in row["next_step"] and "http" not in row["next_step"]
+    assert "No checked land-records portal is listed for Ladakh" in title["next_step"]
+    _, title = _rera_row("Maharashtra")
+    assert "https://bhulekh.mahabhumi.gov.in/" in title["next_step"] and "verifies nothing" in title["next_step"]
+    assert "encumbrance certificate" in title["next_step"] and title["assessment"] == "unknown"
+
+
+def test_a_missing_portal_list_reads_as_unknown_not_as_no_portal(monkeypatch) -> None:
+    import official_portals
+
+    monkeypatch.setattr(official_portals, "_regions", lambda: {})
+    row, title = _rera_row("Karnataka")
+    assert "listed by MoHUA" in row["next_step"] and "Website Not Setup" not in row["next_step"]
+    assert "ask the taluk / tehsil office" in title["next_step"]

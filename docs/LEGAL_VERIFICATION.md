@@ -76,3 +76,25 @@ are not official records and are not used.
   region's extract with `python data-pipeline/fetch_data.py <region> --public-land`.
 - **Licence:** OpenStreetMap data, ODbL 1.0. The store is a derived database: fine for local use; publishing it requires
   ODbL attribution and share-alike.
+
+## Official portal links for other states (2026-10-27)
+
+`docs/datasets/official_portals.json` holds the only links TerraScope shows outside Tamil Nadu's detailed guide:
+
+- **RERA:** MoHUA's list of State/UT RERA authorities
+  (https://rera.mohua.gov.in/real-estate-regulatory-authorities-of-states-uts.html).
+  - 30 regions have a portal link, including shared ones: Andaman & Nicobar → Tamil Nadu RERA; Chandigarh → the Delhi
+    RERA website; Dadra & Nagar Haveli and Daman & Diu → MahaRERA; Lakshadweep → Kerala RERA.
+  - Arunachal Pradesh, Manipur, Mizoram, Nagaland, Sikkim and Ladakh are listed as "Website Not Setup", and the report
+    says so.
+- **Land records:** no authoritative national list was reachable (dilrmp.gov.in serves an incomplete certificate
+  chain). A state portal is listed only if, on 2026-10-27, it was on a gov.in / nic.in domain and answered with a
+  land-records or revenue page. That holds for 13 regions: AP, BR, CT, GJ, HR, KA, MH, OR, PB, RJ, TN, TG and UP. The
+  other 23 get "ask the taluk / tehsil office" rather than an unchecked link.
+- **What the report says:**
+  - RERA has four states, never mixed: registered (matched record), recorded by you, no matching record (not proof
+    the project is unregistered), and not applicable.
+  - The applicability rule is RERA Act s. 3(2): projects on up to 500 m² or up to eight apartments are exempt unless
+    the state sets lower limits.
+  - Rainfall waterlogging and coastal flooding are separate rows, each NOT ASSESSED. A link is where to check, never
+    verification.

@@ -25,6 +25,14 @@ LEGAL_REQUIREMENTS = (("title_clear", True, "title"), ("encumbrance_flag", False
                       ("zoning_verified", True, "zoning"), ("approvals_verified", True, "approvals"))
 
 
+def _clip(text: str, limit: int = 500) -> str:
+    """The schema caps the summary at 500 characters: end on the last whole sentence, never mid-word."""
+    if len(text) <= limit:
+        return text
+    end = text.rfind(". ", 0, limit)
+    return text[:end + 1] if end > 0 else text[:limit - 1].rsplit(" ", 1)[0] + "…"
+
+
 def build_verdict(
     record: dict[str, Any],
     evaluation: dict[str, Any],
@@ -85,7 +93,13 @@ def build_verdict(
     legal_pending = ("a lawyer's check of title, a 30-year encumbrance certificate, zoning and approvals against official records"
                      if len(pending) == len(LEGAL_REQUIREMENTS) and not user_checks else
                      "verification of " + ", ".join(pending_text(label) for label in pending) + " against official records")
-    if adverse or user_problems:
+    if government["restricted"] and not (adverse or user_problems):
+        # Mapped restricted property (defence, railway, water body, court...): not assessed for purchase at all.
+        recommendation = "RESTRICTED"
+        summary = government["warning"]
+        would_change = list(government["would_change"])
+        composite = None
+    elif adverse or user_problems:
         # A matched record showing a defect, or the buyer's own finding of one, is material adverse evidence,
         # whatever the location looks like.
         recommendation = "AVOID"
@@ -142,8 +156,9 @@ def build_verdict(
         weakest = min(scored, key=lambda f: f["score"])
         if not strong:
             parts.append(f"Holding it back: {LABEL[weakest['factor']]} {weakest['score']:.0f} of 100.")
-        parts.append(f"Location score {composite:.0f} of 100 (strong from {buy_threshold:.0f}; a rule-based score, not a "
-                     "probability of appreciation), from " + ", ".join(f"{LABEL[f['factor']]} {f['score']:.0f}" for f in scored) + ".")
+        # Second, so the 500-character cap never drops the caveat that the score is not a probability.
+        parts.insert(1, f"Location score {composite:.0f} of 100 (strong from {buy_threshold:.0f}; a rule-based score, not a "
+                        "probability of appreciation), from " + ", ".join(f"{LABEL[f['factor']]} {f['score']:.0f}" for f in scored) + ".")
         summary = " ".join(parts)
         would_change = []
         if not due_diligence_done:
@@ -154,7 +169,7 @@ def build_verdict(
                 "near the plot, with its sanction order (a resident's or broker's claim alone is not enough)")
 
     checks = checks + government["checks"]
-    if government["hold"] and recommendation != "AVOID":
+    if government["hold"] and recommendation not in ("AVOID", "RESTRICTED"):
         if recommendation == "BUY":  # mapped or recorded government / restricted land is never bought on a score
             recommendation = "WAIT"
             summary = ("WAIT: the location evidence is strong and the legal checks are verified, but government or "
@@ -175,7 +190,7 @@ def build_verdict(
         "recommendation": recommendation,
         # Percentage confidence is deliberately not emitted: no figure here is a probability of anything.
         "confidence": None,
-        "reasoning_summary": summary[:500],
+        "reasoning_summary": _clip(summary),
         "red_flags": flags,
         "pre_purchase_checks": checks,
         "would_change": would_change,

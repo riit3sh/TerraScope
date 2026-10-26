@@ -182,11 +182,12 @@ def _record(outcome, source="TN e-Services poramboke verification"):
 def test_mapped_overlap_with_a_high_court_or_stadium_warns_and_holds_a_strong_buy_at_wait() -> None:
     profile = _evidenced_profile("investor")
     assert compute_evaluation(parcel(), profile)["recommendation"] == "BUY", "baseline: strong and legally verified"
-    for category, name in (("court", "High Court"), ("sports", "City Stadium")):
-        result = compute_evaluation(parcel(public_land=_mapped(category, "overlap", name)), profile)
-        assert result["recommendation"] == "WAIT", f"{category}: never bought on a score"
-        assert result["reasoning_summary"].startswith("WARNING:") and "not an ownership finding" in result["reasoning_summary"]
-        assert result["government_land"]["status"] == "potential_public"
+    stadium = compute_evaluation(parcel(public_land=_mapped("sports", "overlap", "City Stadium")), profile)
+    assert stadium["recommendation"] == "WAIT", "never bought on a score"
+    assert stadium["reasoning_summary"].startswith("WARNING:") and "not an ownership finding" in stadium["reasoning_summary"]
+    assert stadium["government_land"]["status"] == "potential_public"
+    court = compute_evaluation(parcel(public_land=_mapped("court", "overlap", "High Court")), profile)
+    assert court["recommendation"] == "RESTRICTED", "a court is restricted land (2026-10-26)"
 
 
 def test_a_parcel_near_a_stadium_but_outside_it_is_not_held() -> None:
@@ -245,3 +246,32 @@ def test_missing_road_data_makes_accessibility_unknown_not_scored_from_schools()
     assert access["score"] is None and access["status"] == "unavailable"
     assert "road data is not installed for Karnataka" in access["basis"] and "fetch-data karnataka" in access["basis"]
     assert result["recommendation"] == "INSUFFICIENT_EVIDENCE"
+
+
+def test_a_material_overlap_with_mapped_restricted_land_is_restricted_and_not_scored() -> None:
+    """User decision (2026-10-26): defence, railway, water body, court... land is not assessed for purchase."""
+    profile = _evidenced_profile("investor")
+    defence = _mapped("defence", "overlap", "Kalina Camp")
+    defence["overlaps"][0]["overlap_share"] = 0.01
+    result = compute_evaluation(parcel(public_land=defence), profile)
+    assert result["recommendation"] == "RESTRICTED" and result["composite_score"] is None
+    assert result["reasoning_summary"].startswith("RESTRICTED LAND") and "Kalina Camp" in result["reasoning_summary"]
+
+
+def test_restricted_needs_a_material_overlap_of_a_restricted_category() -> None:
+    profile = _evidenced_profile("investor")
+    assert compute_evaluation(parcel(public_land=_mapped("sports", "overlap", "Stadium")), profile)["recommendation"] == "WAIT", \
+        "a stadium's owner is not implied: potential overlap, not restricted"
+    assert compute_evaluation(parcel(public_land=_mapped("defence", "edge")), profile)["recommendation"] == "WAIT", \
+        "within the ±15 m uncertainty only: not restricted"
+    defect = compute_evaluation(parcel(public_land=_mapped("defence", "overlap"), land_records={"title_clear": False}), profile)
+    assert defect["recommendation"] == "AVOID", "a recorded legal defect still decides first"
+
+
+def test_the_summary_is_clipped_at_a_sentence_never_mid_word() -> None:
+    from scoring_engine._verdict import _clip
+
+    text = "First sentence. " * 40
+    clipped = _clip(text)
+    assert len(clipped) <= 500 and clipped.endswith("sentence.")
+    assert _clip("short") == "short"

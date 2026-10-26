@@ -1,0 +1,406 @@
+{
+ "_about": "Official portals TerraScope may link to. RERA: MoHUA's list of State/UT RERA authorities (https://rera.mohua.gov.in/real-estate-regulatory-authorities-of-states-uts.html), read 2026-10-27. Land records: a state portal is listed only if, on 2026-10-27, its address was a gov.in / nic.in domain that answered HTTP 200 with a land-records or revenue page; other states have no link (null). A link is where to check, never verification.",
+ "checked_on": "2026-10-27",
+ "regions": {
+  "IN-AN": {
+   "name": "Andaman and Nicobar Islands",
+   "rera": {
+    "url": "https://rera.tn.gov.in/",
+    "status": "listed",
+    "note": "MoHUA lists Tamil Nadu RERA for this UT"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-AP": {
+   "name": "Andhra Pradesh",
+   "rera": {
+    "url": "https://rera.ap.gov.in/RERA/Views/Home.aspx",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://meebhoomi.ap.gov.in/",
+    "title": "AP Land Records | Mee Bhoomi | Adangal, 1B, Survey Number & LP Map"
+   }
+  },
+  "IN-AR": {
+   "name": "Arunachal Pradesh",
+   "rera": {
+    "url": null,
+    "status": "website_not_set_up"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-AS": {
+   "name": "Assam",
+   "rera": {
+    "url": "https://rera.assam.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-BR": {
+   "name": "Bihar",
+   "rera": {
+    "url": "https://rera.bihar.gov.in/",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://biharbhumi.bihar.gov.in/",
+    "title": ""
+   }
+  },
+  "IN-CH": {
+   "name": "Chandigarh",
+   "rera": {
+    "url": "https://www.rera.delhi.gov.in/",
+    "status": "listed",
+    "note": "MoHUA lists the Delhi RERA website for this UT"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-CT": {
+   "name": "Chhattisgarh",
+   "rera": {
+    "url": "https://rera.cgstate.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://bhuiyan.cg.nic.in/",
+    "title": "Chhattisgarh Revenue and Disaster Management Dept"
+   }
+  },
+  "IN-DH": {
+   "name": "Dadra and Nagar Haveli and Daman and Diu",
+   "rera": {
+    "url": "https://maharera.maharashtra.gov.in/",
+    "status": "listed",
+    "note": "MoHUA lists MahaRERA (Maharashtra) for this UT"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-DL": {
+   "name": "Delhi",
+   "rera": {
+    "url": "https://rera.delhi.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-GA": {
+   "name": "Goa",
+   "rera": {
+    "url": "https://rera.goa.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-GJ": {
+   "name": "Gujarat",
+   "rera": {
+    "url": "https://gujrera.gujarat.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://anyror.gujarat.gov.in/",
+    "title": "-: Any RoR @ Anywhere :- 7"
+   }
+  },
+  "IN-HP": {
+   "name": "Himachal Pradesh",
+   "rera": {
+    "url": "https://hprera.nic.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-HR": {
+   "name": "Haryana",
+   "rera": {
+    "url": "https://haryanarera.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://jamabandi.nic.in/defaultpages/default",
+    "title": "Jamabandi"
+   }
+  },
+  "IN-JH": {
+   "name": "Jharkhand",
+   "rera": {
+    "url": "https://rera.jharkhand.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-JK": {
+   "name": "Jammu and Kashmir",
+   "rera": {
+    "url": "https://rera.jk.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-KA": {
+   "name": "Karnataka",
+   "rera": {
+    "url": "https://rera.karnataka.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://landrecords.karnataka.gov.in/",
+    "title": "Revenue Department Services | Govt of Karnataka | Bhoomi Monitoring Cell"
+   }
+  },
+  "IN-KL": {
+   "name": "Kerala",
+   "rera": {
+    "url": "https://rera.kerala.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-LA": {
+   "name": "Ladakh",
+   "rera": {
+    "url": null,
+    "status": "website_not_set_up"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-LD": {
+   "name": "Lakshadweep",
+   "rera": {
+    "url": "https://rera.kerala.gov.in/",
+    "status": "listed",
+    "note": "MoHUA lists Kerala RERA for this UT"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-MH": {
+   "name": "Maharashtra",
+   "rera": {
+    "url": "https://maharera.maharashtra.gov.in/",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://bhulekh.mahabhumi.gov.in/",
+    "title": "Mahabhulekh v2.0"
+   }
+  },
+  "IN-ML": {
+   "name": "Meghalaya",
+   "rera": {
+    "url": "https://meghrera.org.in/",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-MN": {
+   "name": "Manipur",
+   "rera": {
+    "url": null,
+    "status": "website_not_set_up"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-MP": {
+   "name": "Madhya Pradesh",
+   "rera": {
+    "url": "https://rera.mp.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-MZ": {
+   "name": "Mizoram",
+   "rera": {
+    "url": null,
+    "status": "website_not_set_up"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-NL": {
+   "name": "Nagaland",
+   "rera": {
+    "url": null,
+    "status": "website_not_set_up"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-OR": {
+   "name": "Odisha",
+   "rera": {
+    "url": "https://rera.odisha.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://bhulekh.ori.nic.in/RoRView.aspx",
+    "title": ".:BHULEKH || ODISHA:."
+   }
+  },
+  "IN-PB": {
+   "name": "Punjab",
+   "rera": {
+    "url": "https://rera.punjab.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://jamabandi.punjab.gov.in/",
+    "title": "ਪੰਜਾਬ ਲੈਂਡ ਰਿਕਾਰਡਜ਼/Punjab Land Records"
+   }
+  },
+  "IN-PY": {
+   "name": "Puducherry",
+   "rera": {
+    "url": "http://prera.py.gov.in/",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-RJ": {
+   "name": "Rajasthan",
+   "rera": {
+    "url": "https://rera.rajasthan.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://apnakhata.rajasthan.gov.in/",
+    "title": "Home - Apna Khata"
+   }
+  },
+  "IN-SK": {
+   "name": "Sikkim",
+   "rera": {
+    "url": null,
+    "status": "website_not_set_up"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-TG": {
+   "name": "Telangana",
+   "rera": {
+    "url": "https://rera.telangana.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://bhubharati.telangana.gov.in/homePage?lang=en",
+    "title": "Bhu Bharati - Telangana"
+   }
+  },
+  "IN-TN": {
+   "name": "Tamil Nadu",
+   "rera": {
+    "url": "https://rera.tn.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://eservices.tn.gov.in/",
+    "title": "Commissioner of Land Administration, Govt of Tamil Nadu,India"
+   }
+  },
+  "IN-TR": {
+   "name": "Tripura",
+   "rera": {
+    "url": "https://rera.tripura.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-UP": {
+   "name": "Uttar Pradesh",
+   "rera": {
+    "url": "https://up-rera.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": "https://upbhulekh.gov.in/",
+    "title": "भूलेख"
+   }
+  },
+  "IN-UT": {
+   "name": "Uttarakhand",
+   "rera": {
+    "url": "https://rera.uk.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  },
+  "IN-WB": {
+   "name": "West Bengal",
+   "rera": {
+    "url": "https://hira.wb.gov.in",
+    "status": "listed"
+   },
+   "land_records": {
+    "url": null,
+    "title": null
+   }
+  }
+ }
+}

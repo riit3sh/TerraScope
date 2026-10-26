@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
+import { KpiStrip } from './KpiStrip'
+import { acresToM2, AREA_UNIT_LABEL, AREA_UNITS, AreaUnit, formatArea, useAreaUnit } from '../lib/area'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowLeft, FileText, FlaskConical, History, Printer, RefreshCw, Sparkles, TriangleAlert, Upload, X } from 'lucide-react'
 import { DOC_TYPE_LABEL, DocType, evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, uploadEvidence, AreaNews, NewsItem, getAreaNews, PublicFacility, LegalChecklist, LegalCheckInput, getLegalChecks, recordLegalCheck, DevelopmentClaim, DevelopmentClaimInput, ProjectType, listClaims, addClaim, deleteClaim } from '../lib/api'
@@ -153,7 +155,7 @@ function FindingsTable({ findings }: { findings?: Finding[] | null }) {
 }
 
 /** The four answers in buyer words. The stored codes (AVOID, INSUFFICIENT_EVIDENCE) are unchanged so saved reports still read. */
-const VERDICT_LABEL: Record<string, string> = { BUY: 'BUY', WAIT: 'WAIT', AVOID: 'WALK AWAY', INSUFFICIENT_EVIDENCE: 'INSUFFICIENT DATA', UNAVAILABLE: 'NOT EVALUATED' }
+const VERDICT_LABEL: Record<string, string> = { BUY: 'BUY', WAIT: 'WAIT', AVOID: 'WALK AWAY', INSUFFICIENT_EVIDENCE: 'INSUFFICIENT DATA', RESTRICTED: 'RESTRICTED LAND', UNAVAILABLE: 'NOT EVALUATED' }
 
 const LAYER_OF: Record<string, string> = { Road: 'road', School: 'school', Hospital: 'hospital', 'Bus stop or station': 'bus', 'Railway station': 'rail_station' }
 
@@ -358,7 +360,7 @@ function LegalChecks({ record, onChanged }: { record: ParcelRecord; onChanged: (
   }
   if (!list) return status ? <p className="muted">{status}</p> : null
   return <div className="land-evidence">
-    <div className="field-label">LEGAL CHECKS <span>{list.state_guide === 'available' ? `official sources for ${list.state}` : `no state guide for ${list.state || 'this state'} yet`} · automated verification: none</span></div>
+    <div className="field-label">LEGAL CHECKS <span>{list.state_guide === 'available' ? `official sources for ${list.state}` : list.state_guide === 'partial' ? `official links for ${list.state} (some checks only)` : `no state guide for ${list.state || 'this state'} yet`} · automated verification: none</span></div>
     <p className="field-hint">{list.notice}</p>
     <ul className="doc-list">{list.checks.map(c => <li key={c.check}>
       <strong>{c.label}</strong>{c.mandatory_for_buy ? ' · required for BUY' : ''} · <span className={`finding-badge ${c.record && ADVERSE_OUTCOMES.has(c.record.outcome) ? 'red_flag' : c.record ? 'caution' : 'unknown'}`}>{c.record ? `${OUTCOME_LABEL[c.record.outcome]} · recorded by you ${c.record.checked_on}` : 'Not checked'}</span>
@@ -410,6 +412,7 @@ function ChangeSummary({ record, observations }: { record: ParcelRecord; observa
 
 export function Report({ initialSnapshot, initialSettings, onBack }: { initialSnapshot: ParcelRecord; initialSettings: EvaluationSettings; onBack: () => void }) {
   const [record, setRecord] = useState(initialSnapshot)
+  const [areaUnit, setAreaUnit] = useAreaUnit()
   const [settings, setSettings] = useState(initialSettings)
   const [scenario, setScenario] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -430,6 +433,8 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
   const evidence = record.evidence || []
   const assessedWeight = Math.round(breakdown?.assessed_weight_pct ?? 0)
   const insufficient = verdict === 'INSUFFICIENT_EVIDENCE'
+  // Restricted land is not assessed for purchase: only the reason is shown (user decision, 2026-10-26).
+  const restricted = verdict === 'RESTRICTED'
   const scored = factors.filter(f => f.score != null)
   const unscored = factors.filter(f => f.score == null && f.weight_pct > 0)
   const satelliteIsDemo = evidence.some(item => (item.source_type || '') === 'satellite' && /synthetic/i.test(`${item.source_reference || ''} ${item.title || ''}`))
@@ -467,12 +472,14 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
   return <main className="report-shell">
     <header className="report-topbar"><button className="back-button" onClick={onBack}><ArrowLeft size={16} /> Workspace</button><div className="wordmark"><span className="mark"><Sparkles size={14} /></span> TERRASCOPE</div><div className="report-tools"><button className="quiet-button" onClick={() => setHistoryOpen(true)}><History size={15} /> Scenario history</button><button className="quiet-button" onClick={() => setScenario(true)}><FlaskConical size={15} /> Explore scenarios</button><button className="quiet-button" onClick={() => window.print()}><Printer size={15} /> Print</button></div></header>
     <div className="report-content">
-      <section className="report-heading"><div><div className="eyebrow"><span className="pulse" /> ANALYSIS SNAPSHOT · {(record.metadata.analysis_snapshot_id || '—').slice(0, 8)}</div><h1>{placeName(address)}</h1>{address && <p className="full-address">{address}</p>}<p>{record.geometry_metadata?.area_acres == null ? 'Area unavailable' : `${record.geometry_metadata.area_acres.toFixed(2)} acres`} <span>·</span> {record.metadata.analysis_date_from || '—'} — {record.metadata.analysis_date_to || '—'}</p></div><div className={`verdict-badge ${verdict.toLowerCase()}`}><span>BUY, WAIT OR WALK AWAY?</span><strong>{VERDICT_LABEL[verdict] || verdict}</strong><small>{!record.verdict ? 'not evaluated yet' : insufficient ? 'see what is missing below' : record.verdict.red_flags?.length ? 'red flags in the plot’s history' : 'rule-based · check title before paying'}</small></div></section>
+      <section className="report-heading"><div><div className="eyebrow"><span className="pulse" /> ANALYSIS SNAPSHOT · {(record.metadata.analysis_snapshot_id || '—').slice(0, 8)}</div><h1>{placeName(address)}</h1>{address && <p className="full-address">{address}</p>}<p>{formatArea(record.geometry_metadata?.area_m2 ?? (record.geometry_metadata?.area_acres == null ? null : acresToM2(record.geometry_metadata.area_acres)), areaUnit)} <select className="area-unit" aria-label="Area unit" value={areaUnit} onChange={e => setAreaUnit(e.target.value as AreaUnit)}>{AREA_UNITS.map(u => <option key={u} value={u}>{AREA_UNIT_LABEL[u]}</option>)}</select> <span>·</span> {record.metadata.analysis_date_from || '—'} — {record.metadata.analysis_date_to || '—'}</p></div><div className={`verdict-badge ${verdict.toLowerCase()}`}><span>BUY, WAIT OR WALK AWAY?</span><strong>{VERDICT_LABEL[verdict] || verdict}</strong><small>{!record.verdict ? 'not evaluated yet' : restricted ? 'not assessed for purchase' : insufficient ? 'see what is missing below' : record.verdict.red_flags?.length ? 'red flags in the plot’s history' : 'rule-based · check title before paying'}</small></div></section>
+      {!restricted && record.verdict && <KpiStrip record={record} />}
       {olderEvaluation && <div className="older-note" role="note"><TriangleAlert size={15} /><span>This saved evaluation was made with an earlier version of TerraScope, so it lacks the current checks (the findings list, the buy / wait rules and what would change the answer). Re-evaluating uses the same evidence; nothing is collected again.</span><button className="quiet-button" disabled={busy} onClick={() => rerun(settings).catch(() => undefined)}><RefreshCw size={14} /> {busy ? 'Re-evaluating…' : 'Re-evaluate with current methods'}</button></div>}
       {scenarioError && !scenario && <div className="older-note error-note" role="alert"><TriangleAlert size={15} /><span>{scenarioError}</span></div>}
       {record.verdict?.reasoning_summary && <p className="decision-lede">{record.verdict.reasoning_summary}</p>}
-      <Highlights findings={record.verdict?.findings} />
+      {!restricted && <Highlights findings={record.verdict?.findings} />}
       <GovernmentLand record={record} />
+      {!restricted && <>
       <DecisionPanel record={record} growth={factorOf('growth')} />
       <FacilitiesTable record={record} />
       <FindingsTable findings={record.verdict?.findings} />
@@ -512,6 +519,7 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
         {record.satellite?.collection?.selection && <p className="muted window-note">{record.satellite.collection.selection}; {record.satellite.collection.scenes_matched} scenes matched under {record.satellite.collection.max_cloud_cover_pct ?? 35}% cloud, {record.satellite.collection.observations_rejected ?? 0} read but rejected (under {Math.round((record.satellite.collection.min_clear_fraction ?? 0.5) * 100)}% of the parcel cloud-free){record.satellite.collection.anchors_without_observation?.length ? `; no usable scene near ${record.satellite.collection.anchors_without_observation.length} season anchor(s)` : ''}. Method {record.satellite.collection.algorithm_version}.</p>}
       </section>
       <section className="evidence-section"><div className="section-head"><div><div className="section-label">EVIDENCE LEDGER</div><h2>Sources behind the findings</h2></div></div><div className="tabs">{(['Satellite', 'Infrastructure', 'Flood indicators', 'RERA', 'Uploaded Documents', 'Derived Scores'] as EvidenceTab[]).map(tab => <button className={tab === activeEvidenceTab ? 'active' : ''} key={tab} onClick={() => setActiveEvidenceTab(tab)}>{tab}</button>)}</div><div className="source-legend ledger-legend"><span><i className="dot live" /> LIVE</span><span><i className="dot cached" /> CACHED</span><span><i className="dot user_upload" /> YOUR UPLOAD</span><span><i className="dot derived" /> DERIVED</span><span><i className="dot seed" /> SEED DATA</span></div>{visibleEvidence.length ? visibleEvidence.map(item => <EvidenceRow key={item.evidence_id || item.title} title={item.title || item.source_type || 'Evidence'} refName={item.source_reference || 'TerraScope'} freshness={item.freshness || 'derived'} summary={item.summary || 'Collected evidence used in the evaluation.'} observedAt={item.observed_at} details={[item.observation_period && `observed ${item.observation_period}`, item.resolution, item.licence].filter(Boolean).join(' · ')} />) : <p className="muted evidence-empty">No {activeEvidenceTab.toLowerCase()} evidence is available for this parcel.</p>}</section>
+      </>}
     </div>
     {scenario && <Scenario settings={settings} verdict={verdict} before={breakdown?.composite_score ?? null} accessibility={breakdown?.accessibility_score ?? null} busy={busy} error={scenarioError} onClose={() => setScenario(false)} onRun={(next, changed) => rerun(next, changed).catch(() => undefined)} />}
     {historyOpen && <div className="drawer-backdrop" onClick={() => setHistoryOpen(false)}><aside className="history-drawer" onClick={event => event.stopPropagation()}><div className="drawer-header"><div><div className="panel-kicker">DECISION TRAIL</div><h2>Scenario history</h2></div><button className="icon-button" aria-label="Close" onClick={() => setHistoryOpen(false)}><X size={18} /></button></div><div className="history-list">{history.length ? history.map((item, index) => <div className="history-item" key={index}><div><strong>{item.profile}</strong><span>{item.changed}</span></div><b>{VERDICT_LABEL[item.verdict] || item.verdict}</b></div>) : <p className="muted">No alternate lenses explored yet. The immutable evidence stays fixed while you test assumptions.</p>}</div></aside></div>}

@@ -236,7 +236,9 @@ def test_legal_checks_are_guided_per_state_and_recorded_as_the_buyers_statement(
     assert client.post("/api/v1/parcels/p1/legal-checks", json={**first, "checked_on": "yesterday"}).status_code == 422
     store.save_snapshot({"parcel_id": "p3", "metadata": {"analysis_snapshot_id": "s3"}, "location": {"state": "Goa"}})
     goa = client.get("/api/v1/parcels/p3/legal-checks").json()
-    assert goa["state_guide"] == "not_yet" and all(c["guide"] is None for c in goa["checks"]), "no state implied covered"
+    assert goa["state_guide"] == "partial", "Goa: only the MoHUA RERA link, no checked land-records portal"
+    by = {c["check"]: c["guide"] for c in goa["checks"]}
+    assert by["rera"]["url"] == "https://rera.goa.gov.in" and by["title"] is None and by["zoning"] is None
 
 
 def test_government_land_records_need_a_survey_number_and_keep_each_source(client) -> None:
@@ -252,3 +254,13 @@ def test_government_land_records_need_a_survey_number_and_keep_each_source(clien
     assert len(gov["records"]) == 2 and gov["verification"] == "user_recorded", "both sources kept: the conflict stays visible"
     from routers.legal_checks import latest_checks
     assert "government_land" not in latest_checks("p1")
+
+
+def test_a_region_with_no_listed_portal_gets_no_guide_and_no_invented_link(client) -> None:
+    store.save_snapshot({"parcel_id": "p4", "metadata": {"analysis_snapshot_id": "s4"}, "location": {"state": "Ladakh"}})
+    ladakh = client.get("/api/v1/parcels/p4/legal-checks").json()
+    assert ladakh["state_guide"] == "not_yet" and all(c["guide"] is None for c in ladakh["checks"])
+    store.save_snapshot({"parcel_id": "p5", "metadata": {"analysis_snapshot_id": "s5"}, "location": {"state": "Maharashtra"}})
+    mh = {c["check"]: c["guide"] for c in client.get("/api/v1/parcels/p5/legal-checks").json()["checks"]}
+    assert mh["title"]["url"] == "https://bhulekh.mahabhumi.gov.in/" and "verifies nothing" in mh["title"]["access"]
+

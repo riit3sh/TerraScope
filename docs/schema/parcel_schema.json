@@ -1065,7 +1065,8 @@
             "WAIT",
             "AVOID",
             "INSUFFICIENT_EVIDENCE",
-            null
+            null,
+            "RESTRICTED"
           ]
         },
         "confidence": {

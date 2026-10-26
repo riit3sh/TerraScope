@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from official_portals import for_state
 from scoring_engine._government_land import government_land_status
 from scoring_engine._assessment import (
     RIVER_FLAG_MAX_RETURN_PERIOD,
@@ -58,8 +59,16 @@ def _legal(record: dict[str, Any], factors: dict[str, dict[str, Any]], state: st
     supplied = _section(record, "user_land_details")
     documents = supplied.get("documents") or []
     tamil_nadu = (state or "").casefold() == "tamil nadu"
+    portal = ((for_state(state) or {}).get("land_records") or {}).get("url")
     where = ("In Tamil Nadu: patta / chitta from eservices.tn.gov.in and the encumbrance certificate from "
-             "tnreginet.gov.in. " if tamil_nadu else "")
+             "tnreginet.gov.in. " if tamil_nadu else
+             f"{state}'s land-records portal: {portal} (record of rights; opening it verifies nothing). " if portal else
+             f"No checked land-records portal is listed for {state or 'this state'}: ask the taluk / tehsil office "
+             "for the record of rights. ")
+    documents_needed = ("Documents to collect: the sale deeds for at least 30 years (the title chain), the current "
+                        "record of rights and mutation entries, an encumbrance certificate for the same period from the "
+                        "sub-registrar, recent property-tax receipts, and, for a layout plot, the approved layout plan "
+                        "(and a land-use conversion order if it was farmland). ")
     if factors.get("legal_safety", {}).get("score") is not None:
         legal = factors["legal_safety"]
         return _row("Title and ownership", legal["basis"], "ok" if legal["score"] >= 70 else "caution", "measured",
@@ -80,24 +89,54 @@ def _legal(record: dict[str, Any], factors: dict[str, dict[str, Any]], state: st
     if documents:
         finding += f" {len(documents)} document(s) uploaded; they are your claims, not verification."
     return _row("Title and ownership", finding, "unknown", "user_provided" if supplied or mine else "not_verified",
-                where + "Get a 30-year encumbrance certificate and the parent documents, and have a lawyer check "
-                "the title chain and any loans or court cases on the land.",
-                source="No permitted land-records source is integrated")
+                where + documents_needed + "Have a lawyer check the title chain and any loans or court cases on "
+                "the land.", source="No permitted land-records source is integrated")
+
+
+RERA_APPLIES = ("RERA covers a promoter's project (a plotted layout, building or apartments); projects on up to "
+                "500 m2 or with up to eight apartments are exempt unless the state sets lower limits (RERA Act "
+                "s. 3(2)). An individual owner's resale plot is usually outside RERA.")
 
 
 def _rera(rows: dict[str, dict[str, Any]], record: dict[str, Any], state: str | None) -> dict[str, Any]:
+    """Four states, never mixed: registered (matched record), recorded by you, no matching record, not applicable."""
     rera = _section(record, "rera")
     evidence = rows.get("rera")
-    portal = " (Tamil Nadu: rera.tn.gov.in)" if (state or "").casefold() == "tamil nadu" else ""
+    authority = (for_state(state) or {}).get("rera") or {}
+    where = (f"{state} RERA portal: {authority['url']}" + (f" ({authority['note']})" if authority.get("note") else "")
+             if authority.get("url") else
+             f"MoHUA lists no RERA website for {state} (\"Website Not Setup\"): ask the state housing department"
+             if authority.get("status") == "website_not_set_up" else
+             "the state RERA portal (listed by MoHUA at rera.mohua.gov.in)")
     if rera.get("is_rera_project") is True:
-        return _row("RERA registration", f"Registered: {rera.get('rera_registration_number')}.", "ok", "measured",
-                    "Check the registration details and completion date on the state RERA portal. Registration does "
+        return _row("RERA registration", f"Registered (matched record): {rera.get('rera_registration_number')}.", "ok",
+                    "measured", f"Check the registration details and completion date on {where}. Registration does "
                     "not prove title.", evidence)
-    return _row("RERA registration",
-                "Not checked: the RERA authority for this state is not integrated. RERA applies to plots sold in "
-                "a promoter's layout or project.", "unknown", "not_verified",
-                f"If a developer is selling this plot in a layout, look it up on the state RERA portal{portal}. "
-                "Registration does not prove clear title.", evidence)
+    mine = _section(record, "user_legal_checks").get("rera")
+    mine = mine if isinstance(mine, dict) else {}
+    cite = f"({mine.get('source')}, {mine.get('checked_on')})"
+    if mine.get("outcome") == "problem":
+        return _row("RERA registration", f"Problem recorded by you {cite}.", "red_flag", "user_provided",
+                    "Do not pay until the authority confirms the project's status.", source="Your recorded legal checks")
+    if mine.get("outcome") == "confirmed":
+        return _row("RERA registration", f"Registration found by you {cite}"
+                    + (f", number {mine['reference']}" if mine.get("reference") else "")
+                    + "; not verified by TerraScope.", "unknown", "user_provided",
+                    f"Keep the registration certificate; check the completion date on {where}. Registration does "
+                    "not prove title.", source="Your recorded legal checks")
+    if mine.get("outcome") == "not_found":
+        return _row("RERA registration", f"No matching record found by you {cite}. That is not proof the project is "
+                    "unregistered: it may be listed under another name, or RERA may not apply. " + RERA_APPLIES,
+                    "unknown", "user_provided", f"Ask the seller for the registration number and search it on {where}.",
+                    source="Your recorded legal checks")
+    if mine.get("outcome") == "not_applicable":
+        return _row("RERA registration", f"Not applicable, as recorded by you {cite}. " + RERA_APPLIES, "unknown",
+                    "user_provided", "If the seller is a developer selling layout plots, check again: RERA would apply.",
+                    source="Your recorded legal checks")
+    return _row("RERA registration", "Not verified: TerraScope cannot read the RERA registers. " + RERA_APPLIES,
+                "unknown", "not_verified",
+                f"If a developer is selling this plot in a layout, search the project on {where}. Registration does "
+                "not prove clear title.", evidence)
 
 
 def _river(rows: dict[str, dict[str, Any]], flood: dict[str, Any]) -> dict[str, Any]:
@@ -217,7 +256,7 @@ def _access(rows: dict[str, dict[str, Any]], factors: dict[str, dict[str, Any]],
 def _government_land(record: dict[str, Any]) -> dict[str, Any]:
     status = government_land_status(record)
     mapped = _section(record, "public_land")
-    assessment = ("red_flag" if status["walk_away"] else "caution" if status["hold"] else "unknown")
+    assessment = ("red_flag" if status["walk_away"] or status.get("restricted") else "caution" if status["hold"] else "unknown")
     mapping = ("" if status["warning"] else
                f" No mapped public facility, railway, defence area or water body touches the boundary (OpenStreetMap, "
                f"data as of {mapped.get('data_as_of')}); that does not show the land is private." if mapped.get("status") == "assessed"
@@ -239,9 +278,15 @@ def build_findings(record: dict[str, Any], factors: list[dict[str, Any]]) -> lis
         _rera(rows, record, state),
         _river(rows, flood),
         _surface_water(rows, flood),
-        _row("Rainfall waterlogging and coastal flooding", "Not assessed: no rainfall-drainage or coastal dataset is "
-             "integrated.", "unknown", "not_verified",
-             "Ask neighbours whether the plot or its road floods after heavy rain."),
+        _row("Rainfall waterlogging", "NOT ASSESSED: no rainfall-drainage or waterlogging dataset is integrated. "
+             "The river flood maps above do not cover rainwater pooling, so their result says nothing about it, and "
+             "missing data is not evidence that the plot stays dry.", "unknown", "not_verified",
+             "Ask neighbours and the local body whether the plot or its access road waterlogs after heavy rain; look "
+             "for water marks on nearby walls."),
+        _row("Coastal flooding", "NOT ASSESSED: no storm-surge or sea-level dataset is integrated, so coastal flooding "
+             "is unknown for every plot, coastal or not.", "unknown", "not_verified",
+             "Near the coast, ask the local body about cyclone and storm-surge flooding history and any coastal "
+             "regulation zone (CRZ) on the plot."),
         _growth(rows, by_factor),
         _plot_history(rows, record),
         _access(rows, by_factor, record),

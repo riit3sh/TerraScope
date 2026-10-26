@@ -10,6 +10,10 @@ A state without a guide gets the generic checklist and an explicit "no state gui
 
 from __future__ import annotations
 
+import json
+import unicodedata
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
@@ -135,13 +139,50 @@ def government_land_records(parcel_id: str) -> list[dict[str, Any]]:
     return list(latest.values())
 
 
+@lru_cache(maxsize=1)
+def _official_portals() -> dict[str, dict[str, Any]]:
+    """docs/datasets/official_portals.json: MoHUA's RERA list and checked land-record portals. Missing file: no links."""
+    path = Path(__file__).resolve().parents[2] / "docs" / "datasets" / "official_portals.json"
+    return json.loads(path.read_text(encoding="utf-8"))["regions"] if path.exists() else {}
+
+
+def _fold(value: str | None) -> str:
+    return unicodedata.normalize("NFKD", value or "").encode("ascii", "ignore").decode().casefold().strip()
+
+
+def portal_guide(state: str | None) -> dict[str, dict[str, Any]]:
+    """Title and RERA guides for a state without a researched guide: official links only, nothing else claimed."""
+    entry = next((e for e in _official_portals().values() if _fold(e["name"]) == _fold(state)), None) if state else None
+    if entry is None:
+        return {}
+    guide: dict[str, dict[str, Any]] = {}
+    land = entry.get("land_records") or {}
+    if land.get("url"):
+        guide["title"] = {"authority": f"{entry['name']} land-records portal ({land.get('title') or 'state revenue department'})",
+                          "url": land["url"],
+                          "how": "Look up the record of rights for the survey number and check the owner named is the seller; "
+                                 "get the encumbrance certificate from the sub-registrar and the 30-year sale-deed chain.",
+                          "access": "Checked reachable on 2026-10-27; not researched in detail, never automated. Opening the "
+                                    "portal verifies nothing."}
+    rera = entry.get("rera") or {}
+    if rera.get("url"):
+        guide["rera"] = {"authority": f"RERA authority for {entry['name']} (as listed by MoHUA)" + (f"; {rera['note']}" if rera.get("note") else ""),
+                         "url": rera["url"],
+                         "how": "If a promoter sells the plot in a layout or project, search the project or ask the seller for "
+                                "its registration number. A project you cannot find is not proof it is unregistered.",
+                         "access": "From MoHUA's list of State/UT RERA authorities (read 2026-10-27); no API, never automated."}
+    return guide
+
+
 def checklist(parcel_id: str, state: str | None) -> dict[str, Any]:
     guide = STATE_GUIDES.get((state or "").strip().casefold())
+    researched = guide is not None
+    guide = guide or portal_guide(state) or None
     latest = latest_checks(parcel_id)
     government = government_land_records(parcel_id)
     return {
         "state": state,
-        "state_guide": "available" if guide else "not_yet",
+        "state_guide": "available" if researched else "partial" if guide else "not_yet",
         "automated_sources": [],  # no permitted automated land-record source is integrated for any state
         "notice": ("TerraScope does not read official land records. A check you record here is your statement, shown "
                    "as yours: a recorded problem leads to WALK AWAY, but a recorded confirmation never makes the "
