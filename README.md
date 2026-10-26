@@ -2,6 +2,9 @@
 
 TerraScope is a local-first land due-diligence tool for India. You search a place, draw the plot, and it collects one
 immutable evidence snapshot, then answers one question for a buyer: **BUY, WAIT, WALK AWAY or INSUFFICIENT DATA**.
+The report is evidence-first: it separates measured observations, mapped warnings and official checks that still need
+to be performed. An optional Groq call explains the already-computed result; it never creates scores or fills missing
+land records.
 
 **What the snapshot holds:**
 - the area's development history (built-up land around the plot, 2017-2023);
@@ -44,12 +47,13 @@ Each rule is checked in order, and the first that applies decides:
 4. **WAIT** otherwise. The report names what holds it back and what would change the answer.
    - A mapped overlap with public land, conflicting records or a conditional restriction always holds the answer at
      WAIT, with the warning first.
-5. **RESTRICTED LAND** when the boundary materially overlaps mapped defence, railway, water-body, court or other
-   restricted land: the report stops at the reason.
+5. **VERIFY RESTRICTION** when the boundary materially overlaps mapped defence, railway, water-body, court or other
+   restricted land: purchase scoring is blocked until the boundary and official records are checked. This is a map
+   signal, not proof of ownership or a legal restriction.
 
-**Development outlook:** the 2017-2023 built-up trend within 1 km, projected to 2026 and 2030 with a 95 % range (a
-straight-line fit). It projects building on the ground, never prices, and carries a disclaimer. Every report states
-that TerraScope's answer is an estimate, not perfect, and not legal or financial advice.
+**Development history:** the report uses the measured 2017-2023 built-up trend within 1 km (and, where available,
+the 1-3 km ring). It describes past modelled land cover, not prices, approvals or guaranteed future construction.
+Every report states that TerraScope's answer is an estimate, not perfect, and not legal or financial advice.
 
 ## Data and coverage (all 28 states and 8 UTs: [docs/DATASET_REGISTRY.md](docs/DATASET_REGISTRY.md))
 
@@ -167,6 +171,11 @@ geoBoundaries gbOpen IND ADM1 (DataMeet India / Election Commission of India, CC
 It is not a Survey of India boundary, and its coastline and borders are generalised. A parcel
 crossing a state border lists every state it touches, with its share.
 
+For the Vellore/Tamil Nadu demo, run `terrascope.cmd fetch-data tamil-nadu` once before starting the services.
+This builds a local Tamil Nadu/Puducherry index for roads, schools, hospitals, rail, water and mapped public
+facilities, plus local DEM and surface-water tiles. The cache is machine-local and is not committed to Git. Other
+states can be prepared with their own slug; place search and the India-wide raster layers work without a state cache.
+
 **What works everywhere in India:** land cover 2017-2023, Sentinel-2, JRC river flood maps, JRC surface water and
 Copernicus DEM (read remotely, window by window, where no local tiles are installed); and, from the all-India store
 (`python data-pipeline/fetch_data.py --national`, built from the Geofabrik India extract), schools, hospitals, bus and
@@ -244,10 +253,11 @@ supply them in `.env`:
 - **Satellite:** none needed. Sentinel-2 comes from Planetary Computer without an account.
   The default is `SATELLITE_PROVIDER=planetary`; AppEEARS is opt-in only when you explicitly
   set `SATELLITE_PROVIDER=appeears` and configure its credentials.
-- **AI explanations:** `GROQ_API_KEY`. Without it the report shows the rule-based
+- **AI explanations:** `GROQ_API_KEY` and optional `GROQ_MODEL` (default `llama-3.3-70b-versatile`). Without it the report shows the rule-based
   "Assessment summary", which still cites the evidence rows behind each figure, and uploaded
   documents are still searched for the survey number and village you enter (cited by page).
-  The label says "AI explanation" only when an AI call actually succeeded.
+  The label says **AI explanation** only when the Groq call actually succeeded. Existing saved reports do not
+  change retroactively: re-evaluate the same evidence or run a new analysis after adding the key.
 
 RERA evidence additionally needs a seed CSV — see
 [data-pipeline/data/raw/README.md](data-pipeline/data/raw/README.md).
@@ -262,6 +272,21 @@ GeoJSON polygon and date range reuses the evidence caches and should be much fas
 No live-data configuration can guarantee a few-second first run when public providers
 are still responding over the network.
 
+
+## Report interpretation and map providers
+
+- **OpenStreetMap, not Google Maps:** nearby roads, schools, hospitals, rail and public-facility overlays come from
+  the local OpenStreetMap/Geofabrik cache. Distances are straight-line proximity measurements, not driving routes
+  and not proof of legal access. A missing OSM feature means unknown, not absent.
+- **Mapped restriction:** if a parcel overlaps a mapped lake, park, railway, defence area or similar feature, the
+  report shows `VERIFY RESTRICTION` and blocks purchase scoring. Redraw the boundary around the actual land under
+  consideration, then compare it with the seller's survey sketch/FMB and verify the survey number with official Tamil
+  Nadu records. The map overlap alone is never an ownership conclusion.
+- **Restricted reports still show evidence:** collected facilities, satellite evidence, the evidence ledger and the
+  AI/rule-based explanation remain visible. Only purchase scoring is withheld.
+- **Groq's role:** the rule engine owns the recommendation, numbers and citations. Groq receives those facts and may
+  write a short explanation. It must say when evidence is unavailable and cannot invent title, RERA, flood or
+  ownership results.
 
 ## Land prices: not in this version
 
