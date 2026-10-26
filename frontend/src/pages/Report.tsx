@@ -142,15 +142,16 @@ const BASIS_LABEL: Record<Finding['basis'], string> = { measured: 'measured', mo
 
 function FindingsTable({ findings }: { findings?: Finding[] | null }) {
   if (!findings?.length) return <section className="findings-section"><div className="section-label">WHAT WE FOUND</div><p className="muted">This evaluation predates the findings list. Use “Re-evaluate with current methods” above to add it.</p></section>
-  const rows = findings
+  const rows = findings.filter(f => f.assessment !== 'unknown')
+  const unknownCount = findings.length - rows.length
   const counts = rows.reduce<Record<string, number>>((n, f) => ({ ...n, [f.assessment]: (n[f.assessment] || 0) + 1 }), {})
   return <section className="findings-section">
-    <div className="section-head"><div><div className="section-label">WHAT WE FOUND · EVERY CHECK, ITS SOURCE AND YOUR NEXT STEP</div><h2>{counts.red_flag ? `${counts.red_flag} red flag${counts.red_flag > 1 ? 's' : ''}` : 'No red flags'}{counts.caution ? `, ${counts.caution} to check` : ''}{counts.unknown ? `, ${counts.unknown} not verifiable here` : ''}</h2></div></div>
-    <div className="finding-list">{rows.map(f => <div className={`finding ${f.assessment}`} key={f.area}>
+    <div className="section-head"><div><div className="section-label">EVIDENCE-BACKED FINDINGS</div><h2>{counts.red_flag ? `${counts.red_flag} red flag${counts.red_flag > 1 ? 's' : ''}` : 'No red flags'}{counts.caution ? `, ${counts.caution} to check` : ''}</h2><p className="muted">Only findings supported by collected evidence are shown here.{unknownCount ? ` ${unknownCount} unverified checks are listed below under what you still need to verify.` : ''}</p></div></div>
+    {rows.length ? <div className="finding-list">{rows.map(f => <div className={`finding ${f.assessment}`} key={f.area}>
       <div className="finding-what"><strong>{f.area}</strong><span className={`finding-badge ${f.assessment}`}>{ASSESSMENT_LABEL[f.assessment]}</span></div>
       <div className="finding-body"><p>{f.finding}</p><small>{BASIS_LABEL[f.basis]}{f.source ? ` · ${f.source}` : ''}{f.as_of ? ` · as of ${f.as_of}` : ''}</small></div>
       <div className="finding-next"><span>NEXT STEP</span><p>{f.next_step}</p></div>
-    </div>)}</div>
+    </div>)}</div> : <p className="muted">No collected finding is strong enough to report yet.</p>}
   </section>
 }
 
@@ -487,8 +488,6 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
       <DecisionPanel record={record} growth={factorOf('growth')} />
       <FacilitiesTable record={record} />
       <FindingsTable findings={record.verdict?.findings} />
-      {record.parcel_id && <LocalNews parcelId={record.parcel_id} />}
-      {record.parcel_id && <FutureDevelopment parcelId={record.parcel_id} />}
       <div className="section-label suitability-divider">SUITABILITY FOR YOU — scored from your weights</div>
       <section className="score-strip"><Bar label="Legal Safety" value={breakdown?.legal_safety_score ?? null} color="#77d8ff" status={factorOf('legal_safety')?.status} /><Bar label="Accessibility" value={breakdown?.accessibility_score ?? null} color="#f8c15c" status={factorOf('accessibility')?.status} /><Bar label="Flood Safety" value={breakdown?.flood_safety_score ?? null} color="#d49aff" status={factorOf('flood_safety')?.status} /><Bar label="Area growth" value={breakdown?.growth_score ?? null} color="#b8f36a" status={factorOf('growth')?.status} /></section>
       <section className="evidence-status"><div className="section-head"><div><div className="section-label">EVIDENCE BEHIND EACH FACTOR</div><h2>What is measured, and what is scored</h2></div></div>
