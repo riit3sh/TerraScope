@@ -14,6 +14,7 @@ from ._assessment import (
     red_flags,
 )
 from ._government_land import government_land_status
+from ._outlook import OUTLOOK_WORDS, development_outlook
 
 LABEL = {"legal_safety": "legal safety", "flood_safety": "flood safety", "growth": "area growth",
          "accessibility": "accessibility"}
@@ -81,6 +82,7 @@ def build_verdict(
     due_diligence_done = bool(records) and not pending and not adverse
     # Decided before any score: a high location or development score can never override it.
     government = government_land_status(record)
+    outlook = development_outlook(record)
     if government["walk_away"]:
         user_problems.append(government["warning"])
 
@@ -132,12 +134,15 @@ def build_verdict(
         growth, access = factors[3], factors[1]
         strong = composite >= buy_threshold
         # BUY means strong location evidence AND completed due diligence. Unknown title is never treated as safe,
-        # and history alone never makes a BUY: without verified legal checks the answer is WAIT, naming them.
-        recommendation = "BUY" if strong and due_diligence_done else "WAIT"
-        if recommendation == "BUY":
+        # A strong, developing location is a BUY (user decision, 2026-10-27), conditional on the legal checks: they are
+        # never treated as done, they stay the first thing to do before paying, and any defect found is WALK AWAY.
+        recommendation = "BUY" if strong else "WAIT"
+        trend_words = OUTLOOK_WORDS.get(outlook.get("status"), "")
+        if recommendation == "BUY" and due_diligence_done:
             lead = "the location evidence is strong and the legal checks are verified from matched land records."
-        elif strong:
-            lead = "the location evidence is strong, but the required legal checks are not done: " + legal_pending + "."
+        elif recommendation == "BUY":
+            lead = (f"the location evidence is strong{' and the area is ' + trend_words if trend_words else ''}. Buy only "
+                    "after the legal checks: " + legal_pending + ".")
         else:
             lead = "there is potential, but the location evidence is not strong enough yet."
         parts = [f"{recommendation}: {lead}"]
@@ -161,7 +166,10 @@ def build_verdict(
                         "probability of appreciation), from " + ", ".join(f"{LABEL[f['factor']]} {f['score']:.0f}" for f in scored) + ".")
         summary = " ".join(parts)
         would_change = []
-        if not due_diligence_done:
+        if recommendation == "BUY" and not due_diligence_done:
+            would_change.append("A problem found in the legal checks (an unclear title, an encumbrance, an unapproved "
+                                "layout) would change this to WALK AWAY")
+        elif not due_diligence_done:
             would_change.append("Completed legal checks: " + legal_pending)
         if not strong:
             would_change.append(
@@ -172,8 +180,7 @@ def build_verdict(
     if government["hold"] and recommendation not in ("AVOID", "RESTRICTED"):
         if recommendation == "BUY":  # mapped or recorded government / restricted land is never bought on a score
             recommendation = "WAIT"
-            summary = ("WAIT: the location evidence is strong and the legal checks are verified, but government or "
-                       "restricted land must be ruled out first.")
+            summary = "WAIT: the location evidence is strong, but government or restricted land must be ruled out first."
         summary = government["warning"] + " " + summary
         would_change = government["would_change"] + would_change
 
@@ -195,4 +202,5 @@ def build_verdict(
         "pre_purchase_checks": checks,
         "would_change": would_change,
         "government_land": government,
+        "development_outlook": outlook,
     }

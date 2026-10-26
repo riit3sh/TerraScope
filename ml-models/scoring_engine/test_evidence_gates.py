@@ -251,13 +251,14 @@ def _decide(history: dict, **changes):
     return compute_evaluation(_with(land_cover_history=history, **changes), evaluation)
 
 
-def test_strong_historical_growth_with_unknown_legal_status_is_wait_not_buy() -> None:
-    """History alone never makes a BUY: unknown title, encumbrance, zoning and approvals are never treated as safe."""
+def test_strong_growth_is_a_conditional_buy_that_never_treats_legal_status_as_safe() -> None:
+    """User decision (2026-10-27): a strong, developing area is BUY, but only after the legal checks, which stay unknown."""
     result = _decide(_history(0.63, 0.73, 1.92))
     assert result["growth_score"] == 96.0 and result["composite_score"] >= 75
-    assert result["recommendation"] == "WAIT"
-    assert "location evidence is strong, but the required legal checks are not done" in result["reasoning_summary"]
-    assert any(item.startswith("Completed legal checks") for item in result["would_change"])
+    assert result["recommendation"] == "BUY"
+    assert "Buy only after the legal checks" in result["reasoning_summary"]
+    assert any("would change this to WALK AWAY" in item for item in result["would_change"])
+    assert result["development_outlook"]["status"] in ("unavailable", "growing_fast"), "projection needs the yearly series"
     assert "past development, 2017-2023" in result["reasoning_summary"]
     assert "63.0% (2017) to 73.0% (2023) built within 1 km, trend +1.9 points a year" in result["reasoning_summary"]
     assert any("Ownership record" in check for check in result["pre_purchase_checks"]), "legal is a check, never verified"

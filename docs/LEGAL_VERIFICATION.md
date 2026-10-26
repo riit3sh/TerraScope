@@ -1,8 +1,8 @@
 # Legal verification: official sources, what TerraScope does, and the manual workflow
 
-Researched 2026-10-26. Tamil Nadu first. **No legal check is automated for any state.** BUY still requires all four
-mandatory checks (title, encumbrance, zoning, approvals) positively verified by a matched official record, and no such
-record source is integrated, so live analyses never reach BUY.
+Researched 2026-10-26. Tamil Nadu first. **No legal check is automated for any state.** Since 2026-10-27 a strong
+location is "BUY only after the legal checks": title, encumbrance, zoning and approvals are never treated as verified
+without a matched official record, they stay the first thing to do before paying, and a defect found is WALK AWAY.
 
 ## Tamil Nadu sources
 

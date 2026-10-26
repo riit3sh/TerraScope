@@ -38,13 +38,18 @@ Each rule is checked in order, and the first that applies decides:
      water seen on the plot in at least 10 % of satellite passes.
 2. **INSUFFICIENT DATA** when a weighted location factor (area growth, accessibility) has no evidence, for example
    when roads are not installed for the region. No score is shown.
-3. **BUY** only when the location score is at least 75 **and** title, encumbrance, zoning and approvals are all
-   positively verified in matched official records. No such record source is integrated, so live analyses do not
-   reach BUY.
+3. **BUY** when the location score is at least 75 (strong access and a developing area). Unless matched official
+   records verify title, encumbrance, zoning and approvals, it is **BUY only after the legal checks**: they are listed
+   first and are never treated as done, and a defect found in them is WALK AWAY.
 4. **WAIT** otherwise. The report names what holds it back and what would change the answer.
    - A mapped overlap with public land, conflicting records or a conditional restriction always holds the answer at
      WAIT, with the warning first.
-   - Past development is shown as history (2017-2023), not as a forecast. No prices are shown.
+5. **RESTRICTED LAND** when the boundary materially overlaps mapped defence, railway, water-body, court or other
+   restricted land: the report stops at the reason.
+
+**Development outlook:** the 2017-2023 built-up trend within 1 km, projected to 2026 and 2030 with a 95 % range (a
+straight-line fit). It projects building on the ground, never prices, and carries a disclaimer. Every report states
+that TerraScope's answer is an estimate, not perfect, and not legal or financial advice.
 
 ## Data and coverage (all 28 states and 8 UTs: [docs/DATASET_REGISTRY.md](docs/DATASET_REGISTRY.md))
 
@@ -275,7 +280,7 @@ earlier comparable-price module stays, unused, in `valuation/` for a later versi
 - **Land records** — there is no land-records connector, so title and
   encumbrance are unknown, and the scoring treats unknown as unverified rather
   than as safe. Checks you record (source, date, reference) are shown as yours: a recorded problem means WALK
-  AWAY; a recorded confirmation never makes the answer BUY. You can record survey details (state, district, taluk, village,
+  AWAY; a recorded confirmation is shown as yours and never counts as verification. You can record survey details (state, district, taluk, village,
   survey and subdivision numbers) and typed documents (patta, EC, sale deed,
   approvals) on the report; they stay "user-provided, not verified" and never
   produce a legal score.
@@ -285,9 +290,8 @@ earlier comparable-price module stays, unused, in `valuation/` for a later versi
 - **Area growth** — the built-up share of the land within 1 km of the plot (or 1-3 km away, if the inner
   ring was already built out), 2017-2023, from a 10 m modelled land-cover map. The trend is scored: +2 points
   a year scores 100 (a rule, not calibrated). It measures building on the ground, not prices or approvals.
-- **Buy / wait / walk away** — see "Decision logic" above. BUY needs a location score of at least 75 and all four
-  legal checks verified in matched official records. Unverified title is never treated as clear: it keeps the answer at
-  WAIT and appears on the "before you pay" list.
+- **Buy / wait / walk away** — see "Decision logic" above. A strong location is BUY only after the legal checks;
+  unverified title is never treated as clear and stays first on the "before you pay" list.
 - **Satellite change** — one Sentinel-2 scene per season anchor across the whole
   window, compared same season against same season a year apart. The result is
   "no material change", a change class, or "inconclusive", with no confidence

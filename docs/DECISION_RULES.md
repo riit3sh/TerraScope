@@ -17,17 +17,19 @@ codes are kept so saved reports still read.
 3. **INSUFFICIENT DATA** when a weighted location factor (area growth or road/school access) has no evidence.
 4. Otherwise the **location score** = weighted mean of the scored location factors (your profile's weights). It is a
    rule-based score, not a probability of success or appreciation.
-5. **BUY only when the location score is 75 or more AND all four legal checks are positively verified** in matched land
-   records: title clear, no encumbrance, zoning verified, approvals verified. A missing value is pending, never clean.
+5. **BUY when the location score is 75 or more** (changed 2026-10-27 at the user's direction). If matched land records
+   verify title, encumbrance, zoning and approvals, the BUY says so; otherwise it is **BUY only after the legal checks**,
+   naming them, and a defect found in them is WALK AWAY. A missing value is pending, never clean.
    A matched record showing an unclear title or an encumbrance is **WALK AWAY**. A check the buyer records
    (source, date, evidence) is their statement: a recorded problem is **WALK AWAY**; a recorded confirmation is named
    but never satisfies a BUY requirement (see `LEGAL_VERIFICATION.md`).
    **Government and restricted land** is decided before any score: an official record of non-transferable government
    land, or a restriction prohibiting the use, is WALK AWAY. A mapped overlap with public land, conflicting records, a
    documented lawful transfer or a conditional restriction hold the answer at WAIT. Missing records or an absent map
-   feature never mean private or unrestricted. History alone never makes a BUY. Unknown legal status is never
-   treated as safe: a strong location with unverified legal checks is **WAIT**, naming the pending checks. No land-records
-   source is integrated today, so in practice the best answer is "WAIT: location strong, legal checks pending".
+   feature never mean private or unrestricted. Unknown legal status is never treated as safe: it is the condition on
+   the BUY. Mapped restricted land (defence, railway, water body, court, government office, park, burial ground) is
+   **RESTRICTED LAND**. The development outlook (2017-2023 trend projected to 2026 and 2030, 95 % range) is shown with
+   a disclaimer and never predicts prices.
 6. A WAIT names what holds it back. Every answer lists **what would change it** (`verdict.would_change`).
 
 Unverified legal safety appears on every report as "before you pay" checks.

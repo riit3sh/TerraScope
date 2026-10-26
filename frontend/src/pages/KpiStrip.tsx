@@ -21,13 +21,17 @@ export function tiles(record: ParcelRecord): Tile[] {
   const records = record.land_records as unknown as Record<string, unknown> | null | undefined
   const verifiedChecks = records ? [records.title_clear === true, records.encumbrance_flag === false, records.zoning_verified === true, records.approvals_verified === true].filter(Boolean).length : 0
   const gov = record.verdict?.government_land
+  const outlook = record.verdict?.development_outlook
+  const y2030 = outlook?.projections?.find(p => p.year === 2030)
+  const pct = (v: number) => `${Math.round(v * 100)}%`
   return [
     { label: 'LOCATION SCORE', value: score == null ? 'Not scored' : `${Math.round(score)}`, meter: score ?? undefined,
       sub: score == null ? 'missing evidence withholds it' : `of 100 · strong from 75 · rule-based, not a probability`,
       tone: score == null ? 'unknown' : score >= 75 ? 'ok' : 'caution' },
-    { label: 'AREA DEVELOPMENT', value: trend ? `${(trend.last_share * 100).toFixed(0)}% built` : 'Unknown',
-      sub: trend ? `within 1 km in ${trend.last_year}; ${trend.slope_pts_per_year >= 0 ? '+' : ''}${trend.slope_pts_per_year.toFixed(1)} pts a year since ${trend.first_year} (history)` : 'no land-cover history in this report',
-      tone: trend ? 'ok' : 'unknown' },
+    { label: 'AREA DEVELOPMENT', value: trend ? (y2030 ? `${pct(trend.last_share)} → ~${pct(y2030.share)}` : `${pct(trend.last_share)} built`) : 'Unknown',
+      sub: trend ? (y2030 ? `built within 1 km: ${trend.last_year} measured, 2030 projected (${pct(y2030.low)}–${pct(y2030.high)}); a trend, not a guarantee`
+                          : `within 1 km in ${trend.last_year}; ${trend.slope_pts_per_year >= 0 ? '+' : ''}${trend.slope_pts_per_year.toFixed(1)} pts a year since ${trend.first_year} (history)`) : 'no land-cover history in this report',
+      tone: trend ? (outlook?.status === 'flat' ? 'caution' : 'ok') : 'unknown' },
     { label: 'ROAD AND SCHOOL', value: roadsMissing ? 'Roads unknown' : road != null ? `Road ${metres(road)}` : 'No road mapped',
       sub: roadsMissing ? 'road data not installed for this region' : `${school != null ? `school ${metres(school)}` : 'no school mapped nearby'} · straight line, not legal access`,
       tone: roadsMissing ? 'unknown' : road != null && road <= 500 ? 'ok' : 'caution' },

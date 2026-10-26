@@ -1245,6 +1245,13 @@
             "null"
           ],
           "description": "Government / restricted-land status decided before any score: status, label, walk_away, hold, warning, map_contacts, records. Mapping alone never confirms ownership."
+        },
+        "development_outlook": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "The 2017-2023 built-up share within 1 km projected to 2026 and 2030 (linear trend, 95 % prediction interval). A projection of building on the ground, never of prices; carries its own disclaimer."
         }
       }
     },

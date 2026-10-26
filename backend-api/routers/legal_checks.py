@@ -3,7 +3,7 @@
 No Indian state publishes a permitted API for title, encumbrance, zoning or approvals (researched 2026-10-26: the
 Tamil Nadu portals are interactive web forms, some behind a captcha or a login, and are never scraped). So every state
 guide here is manual, and a recorded check is the buyer's statement, shown as theirs. A recorded problem can make the
-answer WALK AWAY; a recorded "confirmed" never makes it BUY, because only a matched official record is verification.
+answer WALK AWAY; a recorded "confirmed" never counts as verification, because only a matched official record is.
 
 A state without a guide gets the generic checklist and an explicit "no state guide yet"; nothing implies it is covered.
 """
@@ -185,8 +185,8 @@ def checklist(parcel_id: str, state: str | None) -> dict[str, Any]:
         "state_guide": "available" if researched else "partial" if guide else "not_yet",
         "automated_sources": [],  # no permitted automated land-record source is integrated for any state
         "notice": ("TerraScope does not read official land records. A check you record here is your statement, shown "
-                   "as yours: a recorded problem leads to WALK AWAY, but a recorded confirmation never makes the "
-                   "answer BUY. A record you could not find is not a clearance."),
+                   "as yours: a recorded problem leads to WALK AWAY; a recorded confirmation is never treated as "
+                   "official verification. A record you could not find is not a clearance."),
         "checks": [{
             "check": key,
             "label": label,

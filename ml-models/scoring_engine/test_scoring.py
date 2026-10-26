@@ -147,20 +147,20 @@ def test_buy_needs_all_four_legal_checks_and_a_defect_is_walk_away() -> None:
                                                       "zoning_verified": True, "approvals_verified": True}), profile)
     assert unclear["recommendation"] == "AVOID"
     partial = compute_evaluation(parcel(land_records={"title_clear": True, "encumbrance_flag": False}), profile)
-    assert partial["recommendation"] == "WAIT", "zoning and approvals not verified: never BUY"
-    assert "verification of zoning, approvals" in partial["reasoning_summary"]
+    assert partial["recommendation"] == "BUY", "a strong location is BUY, conditional on the remaining checks"
+    assert "Buy only after the legal checks: verification of zoning, approvals" in partial["reasoning_summary"]
     complete = compute_evaluation(parcel(), profile)
     assert complete["recommendation"] == "BUY"
 
 
-def test_recorded_legal_checks_never_make_buy_but_a_recorded_problem_is_walk_away() -> None:
+def test_recorded_legal_checks_are_never_verification_and_a_recorded_problem_is_walk_away() -> None:
     """The buyer's own records (2026-10-26): statements, not verification."""
     profile = _evidenced_profile("investor")
     mine = {k: {"outcome": "confirmed", "source": "portal", "checked_on": "2026-10-24"}
             for k in ("title", "encumbrance", "zoning", "approvals")}
     recorded = compute_evaluation(parcel(land_records=None, user_legal_checks=mine), profile)
-    assert recorded["recommendation"] == "WAIT", "only matched official records verify"
-    assert "you recorded it as checked on 2026-10-24" in recorded["reasoning_summary"]
+    assert recorded["recommendation"] == "BUY", "strong location: conditional BUY"
+    assert "you recorded it as checked on 2026-10-24; TerraScope cannot verify that" in recorded["reasoning_summary"],         "only matched official records verify: recorded checks stay named as pending"
     problem = dict(mine, encumbrance={"outcome": "problem", "source": "TNREGINET", "checked_on": "2026-10-24"})
     walk = compute_evaluation(parcel(land_records=None, user_legal_checks=problem), profile)
     assert walk["recommendation"] == "AVOID" and "you recorded a problem with the encumbrance check" in walk["reasoning_summary"]
@@ -232,7 +232,7 @@ def test_no_mapped_facility_or_missing_map_data_is_never_read_as_private_land() 
                    {"status": "unavailable", "overlaps": [], "nearby": [], "reason": "not built"}, None):
         result = compute_evaluation(parcel(land_records=None, public_land=public), profile)
         assert result["government_land"]["status"] == "ownership_unverified"
-        assert result["recommendation"] == "WAIT" and "private" not in result["reasoning_summary"].lower()
+        assert "private" not in result["reasoning_summary"].lower() and "Buy only after the legal checks" in result["reasoning_summary"]
     other_state = compute_evaluation(parcel(land_records=None, location={"state": "Goa"}), profile)
     assert not any("Tamil Nadu" in c for c in other_state["pre_purchase_checks"]), "no state's portal is implied for another"
 
@@ -275,3 +275,17 @@ def test_the_summary_is_clipped_at_a_sentence_never_mid_word() -> None:
     clipped = _clip(text)
     assert len(clipped) <= 500 and clipped.endswith("sentence.")
     assert _clip("short") == "short"
+
+
+def test_the_development_outlook_projects_with_a_range_and_a_disclaimer() -> None:
+    from scoring_engine._outlook import development_outlook
+
+    series = [(2017, 0.4378), (2018, 0.4486), (2019, 0.4987), (2020, 0.524), (2021, 0.5195), (2022, 0.5474), (2023, 0.5492)]
+    out = development_outlook({"land_cover_history": {"surroundings": [{"year": y, "built_share_within_1km": s} for y, s in series]}})
+    y2030 = out["projections"][-1]
+    assert out["status"] == "growing_fast" and y2030["low"] < y2030["share"] < y2030["high"] <= 1.0
+    assert 0.65 < y2030["share"] < 0.75 and "not a prediction of prices" in out["disclaimer"]
+    full = development_outlook({"land_cover_history": {"surroundings": [{"year": y, "built_share_within_1km": 0.97} for y, _ in series]}})
+    assert full["status"] == "built_out" and full["projections"][-1]["share"] <= 1.0
+    assert development_outlook({})["status"] == "unavailable"
+

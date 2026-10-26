@@ -1788,3 +1788,21 @@ the reason the approach changed.
   - Bhuvan needs written permission.
   - OSM completeness varies widely by state (Kerala has 15,109 schools mapped, Mizoram 8).
 - **Status:** fixed and verified, except nationwide roads (blocked by disk space).
+
+## J-66 Conditional BUY with a development outlook and a disclaimer (2026-10-27)
+
+- **Decision (user):** a strong, developing location should be BUY, with a clear disclaimer.
+- **Changes:**
+  - **Rule:** location score ≥ 75 → BUY; otherwise WAIT. Unless matched records verify the four legal checks, the
+    BUY reads "Buy only after the legal checks: …", and "what would change it" says a defect found in them means WALK
+    AWAY.
+  - **Unchanged:** restricted land, legal defects, flood red flags and potential public land still decide first.
+  - **`_outlook.py`:** a straight-line fit of the seven yearly built-up shares within 1 km, projected to 2026 and 2030
+    with a 95 % prediction interval (Student t). Saturated areas (≥ 85 % built) are "built out". It projects building,
+    never prices. Shown in the panel as "20% → ~32% (22%–41%)".
+  - A disclaimer on every report: an estimate, not perfect, not legal or financial advice.
+- **Verification:**
+  - Tests updated to the new rule: ml-models 88, backend-api 30, data-pipeline 96, valuation 52, integration 13 passed.
+  - Disposable copy: Senjeri → BUY (score 90, 2030 projection 32 %, range 22-41 %). Mamillapalli → WAIT (stadium
+    overlap).
+- **Limits:** a linear trend cannot foresee new projects or policy; the range only reflects past scatter.
