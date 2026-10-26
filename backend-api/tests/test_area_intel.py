@@ -264,3 +264,34 @@ def test_a_region_with_no_listed_portal_gets_no_guide_and_no_invented_link(clien
     mh = {c["check"]: c["guide"] for c in client.get("/api/v1/parcels/p5/legal-checks").json()["checks"]}
     assert mh["title"]["url"] == "https://bhulekh.mahabhumi.gov.in/" and "verifies nothing" in mh["title"]["access"]
 
+
+
+def test_rera_records_use_their_own_outcomes_keep_history_and_never_verify_by_format(client) -> None:
+    base = {"check": "rera", "source": "Karnataka RERA portal", "checked_on": "2026-10-27", "rera_state": "Karnataka"}
+    assert client.post("/api/v1/parcels/p1/legal-checks", json={**base, "outcome": "confirmed"}).status_code == 422, "RERA uses its own outcomes"
+    assert client.post("/api/v1/parcels/p1/legal-checks", json={**base, "outcome": "problem"}).status_code == 422, "no RERA 'problem'"
+    assert client.post("/api/v1/parcels/p1/legal-checks", json={**base, "outcome": "registration_found"}).status_code == 422, \
+        "a match needs the number or the project name"
+    assert client.post("/api/v1/parcels/p1/legal-checks", json={**base, "check": "title", "outcome": "confirmed", "project_name": "X"}).status_code == 422
+    first = client.post("/api/v1/parcels/p1/legal-checks", json={**base, "outcome": "unable_to_verify", "notes": "portal down"})
+    assert first.status_code == 200
+    second = client.post("/api/v1/parcels/p1/legal-checks", json={**base, "outcome": "registration_found", "reference": "PRM/KA/RERA/1251/123",
+                                                                 "project_name": "Green Acres", "promoter_name": "ABC Developers"}).json()
+    rera = next(c for c in second["checks"] if c["check"] == "rera")
+    assert rera["record"]["outcome"] == "registration_found" and rera["record"]["project_name"] == "Green Acres"
+    assert rera["verification"] == "user_recorded" and second["history_count"] == 2, "the earlier record is kept"
+    assert set(rera["outcomes"]) == {"registration_found", "not_found_in_search", "unable_to_verify", "not_applicable"}
+
+
+def test_the_seller_answer_is_stored_with_the_land_details(client) -> None:
+    saved = client.put("/api/v1/parcels/p1/land-details", json={"state": "Tamil Nadu", "seller_type": "developer"}).json()
+    assert saved["details"]["seller_type"] == "developer" and saved["verification_status"] == "user_provided_unverified"
+    assert client.put("/api/v1/parcels/p1/land-details", json={"seller_type": "broker"}).status_code == 422
+
+
+def test_rera_authorities_cover_all_36_regions_from_the_official_list(client) -> None:
+    data = client.get("/api/v1/rera-authorities").json()
+    by = {a["state"]: a for a in data["authorities"]}
+    assert len(by) == 36 and "MoHUA" in data["source"]
+    assert by["Karnataka"]["url"] == "https://rera.karnataka.gov.in" and by["Ladakh"]["url"] is None
+    assert by["Ladakh"]["status"] == "website_not_set_up" and sum(1 for a in by.values() if a["url"]) == 30

@@ -98,3 +98,40 @@ are not official records and are not used.
     the state sets lower limits.
   - Rainfall waterlogging and coastal flooding are separate rows, each NOT ASSESSED. A link is where to check, never
     verification.
+
+## RERA verification workflow (2026-10-27)
+
+- **Who is selling.** The report asks; the answer is stored with the land details (`seller_type`).
+  - **Developer / promoter:** the finding flags that registration is likely required unless the project is exempt.
+  - **Individual resale:** the finding says RERA may not apply to an ordinary resale, but it is never marked exempt
+    automatically.
+  - **Not sure:** the status stays unknown, with how to find out.
+- **Official portal.** The RERA state is prefilled from the parcel and can be changed. "Verify on official portal"
+  opens the authority's site from `docs/datasets/official_portals.json` (MoHUA's list, all 36 regions). Where MoHUA lists
+  "Website Not Setup", the report says so and points to the state housing department. Opening a portal verifies
+  nothing.
+- **What the buyer records** (append-only, alongside the other legal checks): registration number, project, promoter,
+  RERA state, the portal used, the date, notes and evidence. The outcome is one of:
+
+  | Outcome | Meaning | Effect |
+  |---|---|---|
+  | Matching registration found | The buyer reports a matching project record | "Recorded by you, not verified by TerraScope"; a registration does not prove clear title |
+  | Registration not found in search | No matching record appeared | Never "not registered". Flagged (caution) when a promoter is selling, to verify before paying |
+  | Unable to verify | Portal unavailable or inconclusive | Status unknown |
+  | Not applicable | The buyer records that RERA does not apply, with an optional reason | Recorded as theirs, with the statutory explanation |
+
+- **What the outcomes never do.** RERA never decides BUY or WALK AWAY on its own. A registration number's format is
+  never treated as verification. Only a matched record from an integrated official source would show "Registered
+  (matched record)", and none exists today. Records made before 2026-10-27 ("confirmed", "not found") still read.
+- **Statute (RERA Act 2016).**
+  - s. 3(1): a promoter may not advertise or sell plots or apartments in a project without registration.
+  - s. 3(2): exempt are land up to 500 m² or up to eight apartments (a state may lower these), and projects with a
+    completion certificate before the Act.
+
+### Future work: automated RERA verification
+
+Not attempted: thirty-odd separate portal scrapers would be fragile and are not permitted. Automated verification
+becomes possible if MoHUA's unified RERA portal (rera.mohua.gov.in), or an individual authority, provides a permitted
+API or an official downloadable dataset of registered projects. Matching a drawn plot to a project would further need
+project boundaries or survey numbers in usable form. No authority has been contacted, and no account or credential has
+been requested.
