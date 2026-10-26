@@ -189,7 +189,7 @@ def assess_flood(record: dict[str, Any]) -> dict[str, Any]:
             ),
             # What is still missing, not a generic list that includes what was just measured.
             "checklist": [MISSING_FLOOD_EVIDENCE[c["mechanism"]] for c in components
-                          if c.get("status") not in ("assessed", "partial") and c.get("mechanism") in MISSING_FLOOD_EVIDENCE],
+                          if c.get("status") not in ("assessed", "partial", "not_applicable") and c.get("mechanism") in MISSING_FLOOD_EVIDENCE],
         }
     return {
         "factor": "flood_safety",

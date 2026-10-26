@@ -535,6 +535,13 @@
       ],
       "description": "Mapped public facilities and possibly restricted land touching or near the parcel (OpenStreetMap): facility type, overlap measured on the parcel geometry, and any operator/ownership tag. Mapping evidence only, never ownership."
     },
+    "coast": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Distance from the boundary to the OpenStreetMap coastline; 'coastal' within the 10 km band. Decides only whether coastal flooding is relevant; never a hazard assessment."
+    },
     "risk": {
       "type": [
         "object",

@@ -255,3 +255,28 @@ def test_a_missing_portal_list_reads_as_unknown_not_as_no_portal(monkeypatch) ->
     row, title = _rera_row("Karnataka")
     assert "listed by MoHUA" in row["next_step"] and "Website Not Setup" not in row["next_step"]
     assert "ask the taluk / tehsil office" in title["next_step"]
+
+
+def _coastal_rows(coast_info, elevation=None):
+    snapshot = copy.deepcopy(VIT)
+    snapshot["coast"] = coast_info
+    if coast_info and coast_info.get("status") == "assessed" and not coast_info.get("coastal"):  # as the pipeline marks it
+        for c in snapshot["flood_indicators"]["components"]:
+            if c["mechanism"] == "coastal_flooding":
+                c["status"] = "not_applicable"
+    if elevation is not None:
+        snapshot.setdefault("risk", {})["elevation_m"] = elevation
+    result = evaluate_snapshot(snapshot, SETTINGS)
+    return [f for f in result["verdict"]["findings"] if f["area"] == "Coastal flooding"], result
+
+
+def test_coastal_flooding_appears_only_for_plots_near_the_sea() -> None:
+    inland, result = _coastal_rows({"status": "assessed", "coastal": False, "distance_m": None, "beyond_m": 50000, "band_m": 10000})
+    assert inland == [], "inland: no coastal-flooding row at all"
+    flood = next(f for f in result["score_breakdown"]["factors"] if f["factor"] == "flood_safety")
+    assert not any("Storm-surge" in c for c in flood["checklist"]), "and no missing-coastal-data checklist item"
+    coastal, _ = _coastal_rows({"status": "assessed", "coastal": True, "distance_m": 560.0, "band_m": 10000, "data_as_of": "2026-10-25"}, elevation=4.0)
+    assert coastal[0]["finding"].startswith("NOT ASSESSED: the plot is 0.6 km from the sea at about 4 m elevation")
+    assert coastal[0]["assessment"] == "caution"
+    unknown, _ = _coastal_rows(None)
+    assert unknown and "distance to the sea is unknown" in unknown[0]["finding"], "old reports: unknown, never 'inland'"

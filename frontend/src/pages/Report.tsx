@@ -70,7 +70,7 @@ function floodGlance(ind: FloodIndicators): { mechanism: string; status: string;
   ].filter(Boolean)
   if (terrainParts.length) lines.push({ mechanism: 'terrain_and_nearby_water', status: byMechanism.terrain_and_nearby_water?.status || 'assessed', text: `${terrainParts.join('; ')}.` })
   else if (byMechanism.terrain_and_nearby_water) lines.push({ mechanism: 'terrain_and_nearby_water', status: byMechanism.terrain_and_nearby_water.status, text: sentence(byMechanism.terrain_and_nearby_water.summary) })
-  for (const mechanism of ['rainfall_waterlogging', 'coastal_flooding']) if (byMechanism[mechanism]) lines.push({ mechanism, status: byMechanism[mechanism].status, text: byMechanism[mechanism].status === 'not_assessed' ? 'No dataset integrated. Unknown, not safe.' : sentence(byMechanism[mechanism].summary) })
+  for (const mechanism of ['rainfall_waterlogging', 'coastal_flooding']) if (byMechanism[mechanism] && byMechanism[mechanism].status !== 'not_applicable') lines.push({ mechanism, status: byMechanism[mechanism].status, text: byMechanism[mechanism].status === 'not_assessed' ? 'No dataset integrated. Unknown, not safe.' : sentence(byMechanism[mechanism].summary) })
   return lines
 }
 

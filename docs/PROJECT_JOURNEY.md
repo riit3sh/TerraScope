@@ -1806,3 +1806,23 @@ the reason the approach changed.
   - Disposable copy: Senjeri → BUY (score 90, 2030 projection 32 %, range 22-41 %). Mamillapalli → WAIT (stadium
     overlap).
 - **Limits:** a linear trend cannot foresee new projects or policy; the range only reflects past scatter.
+
+## J-67 Coastal flooding only near the sea (2026-10-27)
+
+- **Problem:** every report, including inland plots like Coimbatore or Patna, listed coastal flooding as "not assessed".
+- **Changes:**
+  - `fetch_data.py --coastline`: the OSM coastline (3,299 ways, 6.5 MB, 19 s), built from the India extract with the
+    same memory-safe filter.
+  - `connectors/coast.py`: distance from the drawn boundary to the sea, with a 10 km coastal band.
+    - **Inland:** the coastal mechanism is "not_applicable", so there is no finding and no missing-data checklist item.
+    - **Coastal:** the finding is still NOT ASSESSED, naming the distance and elevation; caution below 10 m.
+    - **Unknown distance** (old reports, missing file): the generic NOT ASSESSED row, never "inland".
+- **Verification:**
+  - Distances at real places: Chennai Marina 0.56 km, Puri 1.8 km, Mumbai Kalina 4.2 km, Kochi 4.6 km; Coimbatore and
+    Patna beyond 50 km.
+  - Tests: data-pipeline 99, ml-models 89, backend-api 30, valuation 52, integration 13.
+  - **Defect caught end to end:** the coastline was looked up in the regional folder (Tamil Nadu), so reports read
+    "unknown". It is national and is now always read from `regions/india`.
+  - Disposable copy: Chennai → 0.7 km, 4 m, caution; Coimbatore → no coastal row.
+- **Limits:** the 10 km band is a rule of thumb, not a hazard line; tidal rivers and backwaters can carry sea water
+  further inland.

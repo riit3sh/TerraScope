@@ -267,6 +267,28 @@ def _government_land(record: dict[str, Any]) -> dict[str, Any]:
                 as_of=mapped.get("data_as_of"), source="OpenStreetMap (mapping only) and your recorded checks")
 
 
+def _coastal(record: dict[str, Any]) -> dict[str, Any] | None:
+    """Only near the sea. Inland (beyond the 10 km band) there is no row; an unknown distance keeps the generic row."""
+    info = _section(record, "coast")
+    if info.get("status") == "assessed" and not info.get("coastal"):
+        return None
+    elevation = _section(record, "risk").get("elevation_m")
+    if info.get("status") == "assessed":
+        finding = (f"NOT ASSESSED: the plot is {info['distance_m'] / 1000:.1f} km from the sea"
+                   + (f" at about {elevation:.0f} m elevation" if isinstance(elevation, (int, float)) else "")
+                   + ", but no storm-surge or sea-level dataset is integrated. Distance and height alone do not show "
+                   "it is safe.")
+        assessment = "caution" if isinstance(elevation, (int, float)) and elevation < 10 else "unknown"
+    else:
+        finding = ("NOT ASSESSED: the distance to the sea is unknown for this report and no storm-surge or sea-level "
+                   "dataset is integrated.")
+        assessment = "unknown"
+    return _row("Coastal flooding", finding, assessment, "not_verified",
+                "Ask the local body about cyclone and storm-surge flooding history and whether a coastal regulation zone "
+                "(CRZ) covers the plot.", as_of=info.get("data_as_of"),
+                source="OpenStreetMap coastline (distance only)" if info.get("status") == "assessed" else None)
+
+
 def build_findings(record: dict[str, Any], factors: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Every row a buyer should read, red flags first."""
     rows, by_factor = _rows(record), {f["factor"]: f for f in factors}
@@ -283,10 +305,7 @@ def build_findings(record: dict[str, Any], factors: list[dict[str, Any]]) -> lis
              "missing data is not evidence that the plot stays dry.", "unknown", "not_verified",
              "Ask neighbours and the local body whether the plot or its access road waterlogs after heavy rain; look "
              "for water marks on nearby walls."),
-        _row("Coastal flooding", "NOT ASSESSED: no storm-surge or sea-level dataset is integrated, so coastal flooding "
-             "is unknown for every plot, coastal or not.", "unknown", "not_verified",
-             "Near the coast, ask the local body about cyclone and storm-surge flooding history and any coastal "
-             "regulation zone (CRZ) on the plot."),
+        _coastal(record),
         _growth(rows, by_factor),
         _plot_history(rows, record),
         _access(rows, by_factor, record),

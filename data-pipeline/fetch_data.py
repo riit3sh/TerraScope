@@ -701,6 +701,45 @@ def build_national(root: Path) -> None:
     log(f"National store ready: {directory}")
 
 
+def build_coastline(root: Path) -> None:
+    """regions/india/coastline.sqlite: OSM natural=coastline lines from the India extract (memory-safe, original unchanged)."""
+    import osmium
+    import shapely
+    from shapely import wkb as shapely_wkb
+
+    extracts = sorted((root / "downloads").glob("india-*.osm.pbf"))
+    if not extracts:
+        raise SystemExit("No India extract on disk (downloads/india-*.osm.pbf).")
+    pbf = extracts[-1]
+    directory = root / "regions" / NATIONAL
+    check_disk(root, 300_000_000)
+    filtered, target = directory / "source-coastline.osm.pbf", directory / "coastline.sqlite"
+    log(f"Filtering {pbf.name} to natural=coastline (original unchanged) ...")
+    with osmium.BackReferenceWriter(str(filtered), ref_src=str(pbf), overwrite=True) as writer:
+        for obj in osmium.FileProcessor(str(pbf), osmium.osm.WAY).with_filter(osmium.filter.TagFilter(("natural", "coastline"))):
+            writer.add(obj)
+    tmp = target.with_suffix(".building")
+    tmp.unlink(missing_ok=True)
+    connection = create_store(tmp)
+    factory, batch = osmium.geom.WKBFactory(), []
+    for obj in osmium.FileProcessor(str(filtered), osmium.osm.NODE | osmium.osm.WAY).with_locations():
+        if obj.is_way() and obj.tags.get("natural") == "coastline":
+            try:
+                batch.append(("coastline", "coastline", None, f"w{obj.id}", {}, shapely_wkb.loads(factory.create_linestring(obj), hex=True)))
+            except Exception:  # incomplete way at the extract edge
+                continue
+    write_features(connection, batch)
+    as_of = osmium.io.Reader(str(pbf), osmium.osm.osm_entity_bits.NOTHING).header().get("osmosis_replication_timestamp") or ""
+    connection.executemany("INSERT OR REPLACE INTO store_meta VALUES (?, ?)", [
+        ("source", "OpenStreetMap natural=coastline, Geofabrik India extract"), ("extract_file", pbf.name),
+        ("data_as_of", as_of), ("licence", "ODbL 1.0 - (c) OpenStreetMap contributors"), ("layers", json.dumps(["coastline"]))])
+    connection.commit()
+    connection.close()
+    tmp.replace(target)
+    filtered.unlink()
+    log(f"Coastline store: {len(batch):,} ways, {target.stat().st_size / 1e6:.1f} MB")
+
+
 def list_regions(root: Path) -> None:
     catalogue = region_catalogue(root)
     installed = {path.name for path in (root / "regions").glob("*") if (path / REGION_STORE).exists()}
@@ -718,10 +757,15 @@ def main() -> None:
                         help="only (re)build the public-facility store of an installed region, from the extract on disk")
     parser.add_argument("--national", action="store_true",
                         help="build the all-India store (no roads) from downloads/india-*.osm.pbf")
+    parser.add_argument("--coastline", action="store_true",
+                        help="build regions/india/coastline.sqlite (coastline lines) from downloads/india-*.osm.pbf")
     args = parser.parse_args()
     root = (args.data_dir or data_root()).resolve()
     if args.national:
         build_national(root)
+        return
+    if args.coastline:
+        build_coastline(root)
         return
     if args.public_land and args.region:
         build_public_land(args.region, root)

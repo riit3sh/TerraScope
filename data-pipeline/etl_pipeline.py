@@ -18,11 +18,11 @@ import pandas as pd
 from jsonschema import Draft202012Validator, FormatChecker
 from shapely.geometry import shape
 
-from connectors import flood_indicators, public_land
+from connectors import coast, flood_indicators, public_land
 from connectors.elevation_dem import ElevationClient, ElevationError
 from connectors import land_cover_history, river_flood
 from connectors.local_osm import LocalOSM
-from connectors.regions import LocalDataMissing, india_coverage, region_for, slug
+from connectors.regions import LocalDataMissing, data_root, india_coverage, region_for, slug
 from connectors.osm_infrastructure import InfrastructureClient, InfrastructureError
 from connectors.rera_ingest import load_rera_seed_dataset, match_parcel_to_rera
 from connectors.satellite_provider import get_satellite_client
@@ -195,7 +195,7 @@ def _river_summary(river: dict[str, Any] | None, error: str | None) -> str:
     return (head + (". " + "; ".join(flags) if flags else "") + ". Modelled scenarios, not observed floods.")
 
 
-def _flood_components(river, river_error, flood) -> list[dict[str, Any]]:
+def _flood_components(river, river_error, flood, coast_info: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """What each flood mechanism's evidence is, kept separate and never merged into a score."""
     sw, terrain, water = flood.get("surface_water"), flood.get("terrain"), flood.get("water_distances")
     errors = flood.get("errors") or {}
@@ -230,11 +230,24 @@ def _flood_components(river, river_error, flood) -> list[dict[str, Any]]:
          "resolution": None, "coverage_share": None,
          "summary": "Not assessed: no rainfall, drainage-capacity or pluvial flood dataset is integrated. Urban "
                     "waterlogging can occur where no river flooding is modelled."},
-        {"mechanism": "coastal_flooding", "status": "not_assessed", "source": None, "period": None,
-         "resolution": None, "coverage_share": None,
-         "summary": "Not assessed: no storm-surge or sea-level dataset is integrated. Distance from the sea or "
-                    "elevation alone is not used as evidence of safety."},
+        _coastal_component(coast_info or {}),
     ]
+
+
+def _coastal_component(info: dict[str, Any]) -> dict[str, Any]:
+    """Coastal flooding only where the sea is near: inland plots get "not_applicable", not a missing-data warning."""
+    base = {"mechanism": "coastal_flooding", "source": info.get("source"), "period": info.get("data_as_of"),
+            "resolution": "OpenStreetMap coastline" if info.get("status") == "assessed" else None, "coverage_share": None}
+    if info.get("status") == "assessed" and not info.get("coastal"):
+        far = (f"{info['distance_m'] / 1000:.0f} km" if info.get("distance_m") is not None
+               else f"more than {info.get('beyond_m', 50000) / 1000:.0f} km")
+        return {**base, "status": "not_applicable",
+                "summary": f"Not applicable: the plot is {far} from the sea, beyond the {info['band_m'] / 1000:.0f} km coastal band."}
+    near = (f"The plot is {info['distance_m'] / 1000:.1f} km from the sea (OpenStreetMap coastline). "
+            if info.get("status") == "assessed" else "")
+    return {**base, "status": "not_assessed",
+            "summary": near + "Not assessed: no storm-surge or sea-level dataset is integrated. Distance from the sea "
+                       "or elevation alone is not used as evidence of safety."}
 
 
 def _public_land_summary(public: dict[str, Any]) -> str:
@@ -752,7 +765,12 @@ def build_evidence_snapshot(
     except Exception as error:  # a damaged store must not cost the whole report
         LOGGER.warning("Public-facility map unreadable: %s", error)
         public = {"status": "unavailable", "overlaps": [], "nearby": [], "reason": f"the public-facility map could not be read: {error}"}
-    components = _flood_components(river, river_error, flood)
+    try:
+        # One national coastline file, whichever regional store this parcel reads.
+        coast_info = coast.coast_distance(geojson_polygon, data_root() / "regions" / "india" / coast.STORE_NAME)
+    except Exception as error:  # a damaged store must not cost the report: the distance is then unknown
+        coast_info = {"status": "unavailable", "reason": f"the coastline map could not be read: {error}"}
+    components = _flood_components(river, river_error, flood, coast_info)
     usable = [c for c in components if c["status"] in ("assessed", "partial")]
 
     rera_df, rera_seed_path, rera_seed_loaded = _load_rera_or_empty()
@@ -944,6 +962,7 @@ def build_evidence_snapshot(
         "land_cover_history": land_cover,
         "infrastructure": amenities,
         "public_land": public,
+        "coast": coast_info,
         "risk": {
             # No flood hazard dataset is integrated, so flood risk stays unknown.
             # The elevation comparison below is a terrain indicator, not flooding:
