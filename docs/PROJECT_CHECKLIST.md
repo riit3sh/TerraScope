@@ -1,6 +1,6 @@
 # TerraScope project checklist
 
-The single current progress checklist. Last updated 2026-10-19 on `main` after merging NSB PR #1.
+The single current progress checklist. Last updated 2026-10-26 (all-India data, J-65; government and restricted land, J-64; blur, timeline, legal checks, J-63; review readiness, J-62; due diligence gate, charts, satellite basemap, news, claims, speed, J-61; decision clarity and Andhra Pradesh data, J-60; area-development display fix and dataset audit, J-59; land prices removed, J-58; completion pass, J-57; buy/wait decision, J-56).
 
 Rules: an item is "verified" only when a recorded check exercised the real behaviour (real services, real
 data, or the browser), not because code exists, a mocked test passes or a page loads. "Implemented" without
@@ -13,6 +13,50 @@ only read.
 
 ## 1. Fixed and verified
 
+- [x] **All-India data (J-65)**: verified India extract; nationwide store of every non-road layer and public facilities
+  for all 36 regions; per-layer "not installed" status; registry tested in every region. Roads outside TN/PY/AP are
+  blocked by disk space; Bhuvan needs written permission.
+- [x] **Government and restricted land (J-64)**: mapped overlaps hold at WAIT; an official non-transferable record is
+  WALK AWAY; Tamil Nadu and Andhra Pradesh maps built; official checks stay manual.
+- [x] **Satellite blur diagnosed (J-63)**: 10 m source; no enlarged tiles fetched; zoom note.
+- [x] **Legal-check workflow (J-63)**: Tamil Nadu guide; manual records; a recorded problem gives WALK AWAY; never BUY.
+- [x] **News timeline from 2017 (J-63)**: year grouping and reported status. The live results path is untested
+  (GDELT 429).
+- [x] **Review readiness (J-62)**: BUY needs all four legal checks; a defective title is WALK AWAY; stale evaluations
+  flagged; news search capped at 45 s; fresh-start demo rehearsed on the real store with no data change.
+- [x] **BUY needs verified due diligence (J-61)**: strong location + unverified legal = WAIT with the pending checks;
+  "what would change this" on every answer; unmapped roads/schools are unknown, not absent.
+- [x] **Plain-language charts (J-61)**: titles, axes, findings and "What do these graphs mean?" explainers.
+- [x] **Satellite basemap (J-61)**: EOxCloudless 2023, attributed, labelled as 2023 orientation imagery.
+- [x] **Development claims (J-61)**: recorded per parcel, never scored, never assumed complete.
+- [x] **Speed (J-61)**: report list 149 → 24 ms; first analysis after restart 8.8 → 2.4 s.
+- [ ] **Local news (J-61)**: implemented and tested with a fake provider; live GDELT mostly rate-limited (HTTP 429)
+  during testing, so a live results case is not yet demonstrated.
+- [x] **Decision clarity (J-60)**: BUY / WAIT / WALK AWAY / INSUFFICIENT DATA in buyer words; a plain explanation
+  first; strongest positives and negatives; evidence completeness; nearby facilities with distances; an established,
+  dense area is described but not scored for or against. Rules in [DECISION_RULES.md](DECISION_RULES.md).
+- [x] **Andhra Pradesh regional data (J-60)**: built and verified in the pipeline on the Vijayawada plot.
+- [x] **Area-development display (J-59)**: no "-0.0"; shares to one decimal; the trend is named as the all-years fit;
+  dense areas are not called empty; missing regional data names the exact install command. Dataset audit in
+  [DATASETS.md](DATASETS.md).
+- [x] **Land prices removed from this version (J-58)**: no price section, price finding, price import page,
+  workspace property box or valuation API. Price never affected BUY / WAIT / AVOID. The module stays unused in
+  `valuation/`.
+- [x] **Findings with sources and next steps (J-57)**
+  - One row per check (title, RERA, river flooding, water history, rainfall/coastal, area development, the plot
+    itself, access) with status, how it is known, source, date and next step. Missing evidence is "unknown".
+  - Evidence: full browser workflow on 2026-10-25 (search, draw, analyse, report, re-evaluate, scenario).
+- [x] **Failure handling (J-57)**: a stopped service is named with the fix ("terrascope.cmd start"); failed re-runs
+  can be retried; uploads refuse empty files and unknown parcels.
+- [x] **Buy or wait from the history of the plot and its surroundings (J-56)**
+  - Behaviour:
+    - Land cover 2017-2023 (10 m, India-wide, no account) for the plot, within 1 km and 1-3 km. The built-up
+      trend scores Area growth.
+    - BUY at composite 75 or more, else WAIT. AVOID only on proven legal risk or red flags from the plot's
+      history (frequent modelled river flooding, a likely tank or lake bed).
+    - Unverifiable title is a "before you pay" checklist, not a blocker.
+  - Evidence (2026-10-20, audit copy): VIT BUY 94; Kelambakkam AVOID (91% flooded at 1-in-10); rural
+    Tiruvannamalai WAIT 19. Before this, all 58 saved evaluations were "insufficient evidence".
 - [x] **Accessibility limits work and are visible (J-46)**
   - Behaviour:
     - Road and school distance limits are in the evaluation drawer and in Scenario mode.
@@ -57,7 +101,7 @@ only read.
   - "Scored: 25% of your weighting" vs "Measured: 9 of 12 evidence fields", with the denominators.
   - Short place-name heading; one price reason plus a next step; a price-basis selector.
   - A re-evaluation banner on older evaluations; reports reopen after a browser refresh.
-- [x] **Price import workflow (J-52)**
+- [x] **Price import workflow (J-52)**: removed from the app in J-58; history below
   - Preview with per-line reasons, duplicates, stale and coarse flags and groups; commit with backup and
     re-validation; a "Price data" page; comparables listed under estimates.
   - Verified with a synthetic CSV against an audit-only price file, which was then deleted.
@@ -86,9 +130,11 @@ only read.
 - [x] **AI explanation path**: verified 2026-10-19 with the configured Groq key and the VIT fixture; the
   merged evaluation path returned a non-empty model-generated explanation. Groq explains the deterministic
   scores and recommendation; it does not change them.
+- [ ] **Buy/wait thresholds** (J-56): +2 points a year for full growth, BUY at 75, flood flag at 25% of the
+  plot at 1-in-100, water bed at 10% occurrence. All are rules, not calibrated against sale prices.
 - [ ] **Change-test thresholds**: ±0.05 for stable and 0.10 for change are fixed rules, not calibrated against
   labelled change data.
-- [ ] **Prediction quality**: the evaluation harness exists; zero real observations, so no metric is quoted
+- [ ] **Prediction quality** (valuation module, unused since J-58): the evaluation harness exists; zero real observations, so no metric is quoted
   (J-42).
 - [ ] **Docker Compose path**: unverified (J-04, J-05).
 - [ ] **Screen-reader and contrast audit**: not done. Labels were added where checks found gaps.
@@ -98,7 +144,7 @@ only read.
 
 ## 3. Blocked by missing external data or access
 
-- [ ] **Live land prices: no permitted dataset.** The verified terms and the smallest input needed are in
+- [ ] **Land prices: out of scope for this version (J-58); no permitted dataset.** The verified terms and the smallest input needed are in
   [SETUP_VALUATION.md](SETUP_VALUATION.md).
   - **TNREGINET guideline values:** reproduction needs the Registration Department's permission (verified in
     its copyright policy).
@@ -107,9 +153,8 @@ only read.
 - [ ] **Land records, encumbrance and approvals:** no permitted source is integrated, so Legal Safety stays
   unscored.
 - [ ] **Tamil Nadu RERA (TNRERA) data:** not integrated.
-- [ ] **Growth:** needs economic and planning data (registered sale counts by village or sub-registrar office,
-  master-plan zoning, committed infrastructure, population/employment). None is integrated; no growth score
-  is produced.
+- [ ] **Growth, economic side:** area growth is now scored from observed development (J-56). Registered sale
+  counts, master-plan zoning, committed infrastructure and population/employment are still not integrated.
 - [ ] **Flood:**
   - Rainfall/pluvial and coastal datasets are not integrated.
   - NRSC historical footprints: no permitted machine-readable source found (J-32).

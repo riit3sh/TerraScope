@@ -164,3 +164,13 @@ def test_survey_details_and_typed_documents_travel_as_unverified_claims(client, 
     assert sent["user_land_details"]["documents"] == [
         {"filename": "ec.txt", "doc_type": "encumbrance_certificate", "text_extracted": True, "pages": None}]
     assert "land_records" not in sent  # claims never become a matched land record
+
+
+def test_empty_uploads_and_unknown_parcels_are_refused(client) -> None:
+    """Regression (2026-10-25): an empty file, or any file for a parcel that does not exist, was stored."""
+    parcel_id, _ = _saved()
+    assert client.post(f"/api/v1/parcels/{parcel_id}/documents",
+                       files={"file": ("empty.txt", b"", "text/plain")}).status_code == 400
+    assert client.post("/api/v1/parcels/no-such-parcel/documents",
+                       files={"file": ("x.txt", b"hello", "text/plain")}).status_code == 404
+    assert client.get(f"/api/v1/parcels/{parcel_id}/land-details").json()["documents"] == []

@@ -85,6 +85,12 @@ class LocalOSM:
         # Read-only URI: analyses can never modify the built data.
         self.connection = sqlite3.connect(f"file:{self.path.as_posix()}?mode=ro", uri=True, check_same_thread=False)
         self.meta = dict(self.connection.execute("SELECT key, value FROM store_meta").fetchall())
+        # Stores built before 2026-10-26 hold every layer; newer ones list theirs (the all-India store has no roads).
+        self.layers = set(json.loads(self.meta["layers"])) if "layers" in self.meta else None
+
+    def has_layer(self, layer: str) -> bool:
+        """False means the layer is not installed here: "unknown", never "nothing mapped"."""
+        return self.layers is None or layer in self.layers
 
     def close(self) -> None:
         self.connection.close()

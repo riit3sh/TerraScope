@@ -64,6 +64,38 @@ def read_manifest(directory: Path) -> dict[str, Any]:
 
 # --- India coverage ---------------------------------------------------------------
 
+def _load_states(states_path: Path) -> list[dict[str, Any]]:
+    """The 36 state polygons. Parsing the 44 MB GeoJSON took 4.0 s (2026-10-25); a WKB sidecar written on first load,
+    tied to the source's size and modification time, loads in well under a second and is rebuilt if the source changes."""
+    sidecar = states_path.with_suffix(".wkb.json")
+    stamp = [states_path.stat().st_size, int(states_path.stat().st_mtime)]
+    try:
+        cached = json.loads(sidecar.read_text(encoding="utf-8"))
+        if cached.get("source") == stamp:
+            return [{"name": item["name"], "iso": item["iso"], "geometry": shapely.from_wkb(bytes.fromhex(item["wkb"]))}
+                    for item in cached["states"]]
+    except (OSError, ValueError, KeyError):
+        pass
+    collection = json.loads(states_path.read_text(encoding="utf-8"))
+    states = [
+        {
+            "name": feature["properties"].get("shapeName"),
+            "iso": feature["properties"].get("shapeISO"),
+            "geometry": shape(feature["geometry"]),
+        }
+        for feature in collection["features"]
+    ]
+    try:
+        temporary = sidecar.with_suffix(".tmp")
+        temporary.write_text(json.dumps({"source": stamp, "states": [
+            {"name": item["name"], "iso": item["iso"], "wkb": shapely.to_wkb(item["geometry"]).hex()} for item in states]}),
+            encoding="utf-8")
+        temporary.replace(sidecar)
+    except OSError:
+        pass  # a cache that cannot be written only costs speed
+    return states
+
+
 class IndiaCoverage:
     def __init__(self, states: list[dict[str, Any]], india, properties: dict[str, Any]) -> None:
         self.states = states
@@ -80,15 +112,7 @@ class IndiaCoverage:
             raise LocalDataMissing(
                 f"The India coverage boundary is not installed ({directory}). Run: terrascope.cmd fetch-data"
             )
-        collection = json.loads(states_path.read_text(encoding="utf-8"))
-        states = [
-            {
-                "name": feature["properties"].get("shapeName"),
-                "iso": feature["properties"].get("shapeISO"),
-                "geometry": shape(feature["geometry"]),
-            }
-            for feature in collection["features"]
-        ]
+        states = _load_states(states_path)
         india = shapely.from_wkb(union_path.read_bytes())
         return cls(states, india, read_manifest(directory))
 
@@ -181,7 +205,8 @@ def _scan_regions(root: Path) -> list[Region]:
         shapely.prepare(geometry)
         meta = read_manifest(directory)
         regions.append(Region(directory.name, directory, meta.get("label") or directory.name, geometry, meta))
-    return regions
+    # Smallest first: a state's own store (with roads) wins over the all-India store (without them).
+    return sorted(regions, key=lambda region: region.coverage.area)
 
 
 def region_for(geojson_polygon: dict[str, Any], root: Path | None = None) -> Region | None:

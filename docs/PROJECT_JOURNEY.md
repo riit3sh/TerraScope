@@ -1364,3 +1364,465 @@ the reason the approach changed.
   - Earlier on the same day, before J-51, cold runs hit the 35 s deadline with satellite dropped.
   - 2026-10-11 reference: cold 12.4 s, warm 0.66 s.
 - **Status:** measured.
+
+## J-56 Buy or wait: a decision from the history of the plot and its surroundings
+
+- **Date / problem:** 2026-10-20. The product's aim is to tell a buyer whether to buy now or wait, from the
+  history of the plot and the land around it. It never did: all 58 saved evaluations in the user's store were
+  `INSUFFICIENT_EVIDENCE`. Legal and growth always carried weight with no possible score (no land-records
+  source; growth was refused from NDVI/NDBI, J-53), so every verdict was withheld.
+- **Root cause (confirmed):** a weighted factor with no score withheld the verdict, and two of the four could
+  never be scored. Growth had no evidence about the *surroundings*: only the plot's own Sentinel-2 indices.
+- **Changes:**
+  - **New evidence, India-wide, no account:** `data-pipeline/connectors/land_cover_history.py` reads Impact
+    Observatory / Esri 10 m Annual Land Use Land Cover v2 (2017-2023, CC BY 4.0) from Planetary Computer. Per
+    year it records the plot's own class shares and the built-up share within 1 km of the plot edge and 1-3 km
+    away, then fits a least-squares trend (points a year) so one misclassified year cannot swing it. Years
+    where cloud or a tile edge hides more than half a zone are dropped. Tiles are read in parallel; results go
+    into the existing 30-day parcel-result cache. One collection token is reused (per-file signing returned
+    429), and 429/5xx responses are retried, honouring Retry-After.
+  - **Area growth is scored** from the 1 km trend: +2 points of built land a year scores 100 (a rule, not
+    calibrated). A ring already 90% built in 2017 uses the 1-3 km ring; if both are, the factor is
+    `built_out`: not scored, and it does not withhold the decision.
+  - **Decision rules** (`ml-models/scoring_engine/_verdict.py`):
+    - AVOID only on hard evidence: proven legal risk (unchanged), or a red flag from the plot's history:
+      modelled river flooding over 25% of the plot at 1-in-100 or more often; open water seen on the plot in
+      at least 10% of Landsat passes 1984-2021 on average (a likely tank or lake bed); or the plot mapped as
+      water / flooded vegetation in any year 2017-2023.
+    - Otherwise BUY at a composite of 75 or more, else WAIT. The composite is shared over the scored factors.
+      The WAIT summary names the weakest factor.
+    - Unscored legal safety no longer withholds the decision. It becomes the "before you pay" checklist
+      (`verdict.pre_purchase_checks`); title is still never verified. A change in the plot's own class
+      between 2017 and 2023 is added there too.
+    - An unscored *location* factor (area growth, accessibility) still withholds the decision.
+  - **Report:** the badge asks "Buy now or wait?". A new section under it shows red flags, the built-up
+    chart for both rings, the plot's own class each year, and the checklist. Old reports say to analyse the
+    boundary again. The land-cover row is in the evidence ledger (Satellite tab) and is cited in the summary.
+  - **Schema:** `land_cover_history`, `verdict.red_flags`, `verdict.pre_purchase_checks`, factor status
+    `built_out`.
+  - **Bugs found and fixed in passing:** at 375 px the report scrolled sideways (620 px): the accessibility
+    table widened its grid track. The ETL tests reached the network for the new collector; they now stub it.
+- **Verification (2026-10-20, audit copy `.local-ui-check/audit/backend-audit-2026-10-20.sqlite3`):**
+  - **Land cover, cold reads:** 2.2-3.8 s per parcel. Rural Tiruvannamalai fields +0.11 points a year;
+    Kelambakkam (OMR) +1.81; Oragadam +1.03; T Nagar 100% built (built out); rural Kadapa 0.
+  - **Real analyses through the API, homebuyer lens:**
+    - VIT acceptance plot: BUY, composite 94. Accessibility 92; area growth 96 (63% to 73% built within 1 km,
+      2017-2023). Four title checks listed.
+    - Kelambakkam: AVOID. Area growth 90, but modelled river flooding covers 91% of the plot at 1-in-10.
+    - Rural Tiruvannamalai: WAIT, composite 19 (growth 6, accessibility 31).
+  - **Timings:** a repeat analysis took 2.5 s. Evaluation p50 0.27 s (n=12), the same as J-55's 0.26 s.
+    Requests to `localhost` cost about 2 s each on this machine (IPv6 first) against 18 ms for `127.0.0.1`.
+    The services already call each other on 127.0.0.1, and the first 2.4 s figure came from the test script.
+  - **Browser:** the VIT, Kelambakkam and an old report at desktop and 375 px. No console errors, no sideways
+    scroll after the fix.
+  - **Tests:** ml-models 59, data-pipeline 80, backend-api 11, valuation 52. Integration: 17 passed, 1
+    skipped. The integration run first caught `built_out` missing from the schema enum (central Chennai
+    parcels); fixed, with a schema-validated regression test. Frontend type-check and build pass.
+  - **Your store:** byte-identical before and after (93 snapshots, 58 evaluations, 9 documents); a normal
+    start serves it.
+- **Limitations:**
+  - Every threshold (2 points a year, 75, 25%, 10%, 90%) is a rule, not calibrated against prices or sales.
+  - Built-up land is a proxy for demand. It does not show prices, approvals or planned infrastructure, and the
+    maps stop at 2023.
+  - The classification is modelled; small plots (a few hundred 10 m pixels) inherit its errors.
+  - The 58 saved evaluations keep their old verdicts. A re-evaluation without re-analysis stays "no decision
+    yet", because those snapshots have no area history.
+- **Status:** fixed and verified. This supersedes J-53's position that growth stays unscored: growth is now
+  scored from the area's observed development, not from the plot's NDVI/NDBI. The thresholds are still open
+  (checklist section 2).
+
+## J-57 Completion pass: findings with next steps, failure messages, upload validation
+
+- **Date / problem:** 2026-10-25, before the demo deadline.
+  - The answer and its reasons were spread over many sections. There was no single place listing each check with its
+    status, source, date and next step.
+  - With a service stopped, the report said "Evaluation timed out: " (504) with an empty reason. On Windows a refused
+    loopback connection arrives as a connect timeout after ~2 s.
+  - After a failed scenario re-run, Apply was greyed out (the settings were saved before the request succeeded), and
+    a failed "Re-evaluate with current methods" showed nothing (its error went to the closed scenario drawer).
+  - The upload endpoint stored empty files and files for parcels that do not exist.
+- **Changes:**
+  - **Findings** (`ml-models/findings.py`, `verdict.findings` in the schema): one row each for title, RERA, river
+    flooding, water on the plot 1984-2021, rainfall/coastal flooding, area development, the plot itself, and road and
+    school access. Each row has status `red_flag | caution | ok | unknown` and basis
+    `measured | modelled | user_provided | not_verified | unavailable`, plus source, date and next step. Rows are
+    sorted red flags first. Missing evidence is `unknown`, never `ok`. The report adds the existing price result as
+    a final row (shown, not computed). Re-evaluate shows on any evaluation without findings.
+  - **Errors** (`backend-api/routers/parcels.py`): a connect timeout goes to the existing unreachable-service message,
+    which now names the service and address and says to run `terrascope.cmd start` (502). Real read timeouts keep 504.
+  - **Report:** settings change only after a successful re-run; a failed banner re-evaluation shows an alert.
+  - **Uploads:** an empty file returns 400; an unknown parcel returns 404.
+  - **README:** a five-minute demo guide.
+- **Verification (2026-10-25, audit copy `backend-audit-2026-10-25.sqlite3`):**
+  - **API:** 30/30 checks of valid, invalid and missing inputs on every public endpoint (`scratch` script, not in the
+    repo). This covered bad polygons, reversed dates, outside India, bad preferences, unknown parcels, empty and wrong
+    file types, and the valuation refusal.
+  - **Browser, full workflow:** search "Katpadi", draw a 16 ha plot, analyse (about 20 s), open the report: WAIT,
+    steady development (2% to 9% built within 1 km), school 4.6 km. Re-evaluate added the findings: "No red flags,
+    1 to check, 4 not verifiable here". Desktop and 375 px, no sideways scroll; no console errors in a fresh tab (the
+    `createRoot` warnings seen earlier came from Vite hot reloads).
+  - **Service down:** with ml-models stopped, the API returned the new 502 message, the scenario drawer showed it,
+    Apply stayed enabled, and after restarting ml-models the same Apply succeeded (road limit 1,500 m applied).
+  - **Tests:** ml-models 60, data-pipeline 80, backend-api 13, valuation 52; integration 17 passed, 1 skipped (needs real
+    price data); frontend type-check and build pass.
+- **Limitations:** saved reports cannot be deleted from the app. The findings' assessment cut-offs (access 60/100,
+  growth 50/100) are rules, not calibrated.
+- **Status:** fixed and verified.
+
+## J-58 Land prices removed from this version
+
+- **Date / decision:** 2026-10-25, the user's decision. No reliable, permitted, verified price data exists (J-52), so
+  the report and the demo show no land price, range, placeholder or "No price estimate" message.
+- **Changes:**
+  - **Frontend:** removed the price section, the price row in "What we found", the "Price data" import page and its
+    start-page button, the workspace property box (land use, price basis, plot area: used only for prices), the
+    valuation call in the analysis flow and on reopening a report, and their styles and API client calls.
+  - **Backend:** the `/api/v1/valuation/*` routes are no longer served (`routers/valuation_routes.py` deleted).
+  - **Findings:** area-development next steps no longer mention prices.
+  - **Config and tooling:** `VALUATION_OBSERVATIONS_PATH` removed from `.env.example` and `docker-compose.yml`;
+    `scripts/benchmark.py` no longer times a valuation request.
+  - **Tests:** the six price integration tests are gone (one was always skipped); a new test checks the price
+    endpoints return 404. The file is renamed `test_evidence_and_reports.py`.
+  - **Docs:** README ("Land prices: not in this version"), the demo guide and the checklist. The `valuation/` package
+    and `docs/SETUP_VALUATION.md` stay, marked unused, for a later version.
+  - **Decision logic:** unchanged. Price never fed BUY / WAIT / AVOID (it was a separate service); nothing in
+    `ml-models/scoring_engine` referenced it.
+- **Verification (2026-10-25):** ml-models 60, data-pipeline 80, backend-api 13, valuation (unused module) 52;
+  integration 13 passed (was 17 + 1 skipped: minus 6 price tests, plus the 404 guard). Frontend type-check and build
+  pass. Browser, read-only views on the user's store: start page, a saved report and the workspace show no price
+  wording (whole-word check) and no console errors.
+- **Status:** done and verified.
+
+## J-59 Area development read "88% to 89% (-0.0 points a year)"; dataset audit
+
+- **Date / problem:** 2026-10-25. A Vijayawada report (VJ Polytechnic, Krishna district) said built-up land within 1 km
+  went from 88% in 2017 to 89% in 2023 at "-0.0 points a year", under "Little or no development". It also gave no
+  decision with only "no infrastructure was retrieved".
+- **Root cause (confirmed from the stored values):**
+  - Shares were correct (0.8822 to 0.8858, i.e. 88.2% to 88.6%). Whole-percent rounding printed them as 88% and 89%.
+  - The trend is a least-squares fit across all seven years. The series dipped in 2020-2022 (0.8803, 0.8782, 0.8783), so
+    the fit was ~-3e-15, float noise. `round(..., 2)` kept it as -0.0, which printed as "-0.0". Any slope between -0.05
+    and 0 would also have printed "-0.0".
+  - "Little or no development" described an 88%-built ring as if it were empty.
+  - No decision was correct: Andhra Pradesh has no regional OpenStreetMap data, so accessibility was unscored. The
+    message did not say that, although the snapshot held the exact install command.
+- **Changes:**
+  - `connectors/land_cover_history.py`: the stored slope adds `+ 0.0`, so it can never be -0.0.
+  - `scoring_engine/_assessment.py`: one formatter (`points_a_year`) rounds before formatting. Shares print to one
+    decimal. The text names the all-years trend separately from the first and last year. A ring at least 75% built
+    reads "Little new building in an already dense area" (wording only: the score rule is unchanged). Missing regional
+    data names the state and the exact `terrascope.cmd fetch-data <region>` command.
+  - `findings.py`: the dense-area next step and the exact install command.
+  - `etl_pipeline.py`: the land-cover ledger line uses the same format for new snapshots. Existing snapshots keep their
+    saved line until the boundary is analysed again (snapshots are immutable).
+  - `docs/DATASETS.md`: the dataset audit, gaps, download plan with measured sizes, and researched sources.
+- **Verification (2026-10-25):** the Vijayawada snapshot re-evaluated on an audit copy now reads "88.2% in 2017 and 88.6%
+  in 2023; the trend across all 7 years is 0.0 points a year" under "Little new building in an already dense area", and
+  "Install it with terrascope.cmd fetch-data andhra-pradesh". Regression tests for the -0.0 slope (connector and
+  assessment) and the install command. ml-models 62, data-pipeline 81, backend-api 13; integration 13 passed.
+  Dry run of `fetch-data andhra-pradesh` (metadata only): OSM and surface-water tiles reused, 37 DEM tiles = 1.41 GB.
+- **Open:** a flat trend in a dense area still scores 0 for area growth; whether an established area should count
+  against BUY is a product decision, not a bug. Nothing was downloaded; Andhra Pradesh needs the user's go-ahead.
+- **Status:** fixed and verified.
+
+## J-60 Decision clarity, level vs rate, and Andhra Pradesh regional data
+
+- **Date / problem:** 2026-10-25.
+  - The decision was not stated in buyer words (AVOID, INSUFFICIENT EVIDENCE), and the summary opened with a composite
+    figure.
+  - An already-dense area with little new building scored 0 for area growth, as if it were empty land. Level of
+    development and rate of new development were conflated.
+  - Andhra Pradesh had no regional data, so the Vijayawada plot had no decision.
+- **Changes:**
+  - **Level vs rate** (`_assessment.py`): a 1 km ring at least 75% built gaining under 0.5 points a year is an
+    *established* area. It is described, not scored for or against, and does not block. A dense area still building
+    fast is scored as before. Both thresholds are provisional and disclosed. This was not tuned toward BUY.
+  - **Wording** (`_verdict.py`, report): BUY / WAIT / WALK AWAY / INSUFFICIENT DATA (stored codes unchanged). The
+    summary starts with a plain sentence built from the findings, then the development figures, the road and school
+    distances, what holds a WAIT back, the composite, and the unverified legal checks.
+  - **Report:** the explanation first; strongest positives and negatives and an evidence-completeness count (from the
+    findings); a nearby-facilities table (road, school, hospital, bus, rail) with distances, names, source and data
+    date. Colleges, markets and shops are stated as not collected.
+  - **`docs/DECISION_RULES.md`:** every rule with its evidence, reason, effect, missing-evidence behaviour and
+    validation status.
+  - **Andhra Pradesh:** `terrascope.cmd fetch-data andhra-pradesh` reused the OSM extract and the surface-water tiles.
+    It downloaded the DEM tiles: the build's own list needed 54 (11 already on disk); 11 were downloaded by the build and 32 by a parallel helper
+    using the same source and file names, with sizes checked. The store took 329 s to build (204 MB). Throughput was
+    about 0.1-0.35 MB/s per connection; one HTTP 504 on signing was retried.
+- **Verification (2026-10-25, audit copy `backend-audit-2026-10-25c.sqlite3`):**
+  - **Vijayawada,** the exact saved boundary re-analysed in 8 s with regional data `andhra-pradesh`. Road 1 m, school
+    326 m, hospital 309 m, bus 408 m, rail 2.1 km, canal 1.4 km, elevation +7.1 m above water, no surface water, no
+    modelled river flooding. Land cover was 88.2% to 88.6% (all 7 years); the area is established.
+  - **Decision: BUY, composite 96.** It rests on accessibility alone, because the established area is not scored and
+    legal and flood have no score. Title, RERA, rainfall waterlogging and coastal flooding remain Unknown.
+  - **Tamil Nadu:** VIT BUY 94 (fast growth); Kelambakkam WALK AWAY (91% flooded at 1-in-10, despite growth 90).
+  - **Tests:** ml-models 65, data-pipeline 81, backend-api 13, valuation 52, integration 13; frontend type-check and
+    build pass.
+  - **Browser:** the new report has the badge, explanation, highlights, five facility distances and no "-0.0"; no
+    console errors in a fresh tab; no sideways scroll at 375 px.
+  - **User store:** byte-identical before and after (`8e84f611…`); backups intact.
+- **Open:** a BUY can rest on a single scored factor when the others are established or unscored, as for Vijayawada.
+  Whether a BUY should need at least two scored location factors or full flood coverage is a product decision, not
+  made here.
+- **Status:** fixed and verified.
+
+## J-61 BUY needs due diligence; plain-language charts; satellite basemap; local news; claims; measured speed-ups
+
+- **Date / problem:** 2026-10-26.
+  - A strong location gave BUY although title, encumbrance, zoning and approvals were unverified (Vijayawada BUY 96).
+  - An unmapped school scored 0, as if confirmed absent (Senjeri: accessibility 32).
+  - The charts assumed the reader knew NDVI and NDBI.
+  - There was no satellite view, no local news, and no way to record a resident's information.
+  - The report list parsed every snapshot (N+1), and the first analysis after a restart waited 5 s for the India boundary.
+- **Changes:**
+  - **Decision** (`_verdict.py`): BUY only with location score ≥ 75 AND verified legal checks (matched land records).
+    Otherwise a strong location is WAIT, naming the pending checks. Every answer lists `verdict.would_change`. The
+    score is labelled "location score, rule-based, not a probability". Past development is labelled 2017-2023 history.
+  - **Unmapped is not absent** (`scoring.py`, `findings.py`): a road or school OpenStreetMap has not mapped is left out
+    of the score; the report says "not confirmed absent" and asks for a local check. If nothing is mapped,
+    accessibility is unknown and the answer is INSUFFICIENT DATA.
+  - **Charts** (`Report.tsx`): titles, plain subtitles, axis labels and units, a one-sentence finding (inconclusive
+    spelled out), "What does this graph mean?" explainers (NDVI, NDBI, land cover, change detection, cloud, season,
+    resolution, mixed pixels), and a too-few-images note.
+  - **Satellite basemap** (`ParcelWorkspace.tsx`): "Map" or "Satellite (2023)" from EOxCloudless 2023 (Sentinel-2
+    composite, 10 m, CC BY-NC-SA 4.0), with attribution. A note says it is 2023 imagery, not today's and not analysis
+    data, and failed tiles show a message with no substitute imagery. Esri World Imagery was not used: its licence
+    terms for this use are unclear.
+  - **Local news** (`backend-api/routers/area_intel.py`): a provider interface with GDELT DOC 2.0 (free, no key) as
+    the only provider.
+    - Three searches (hazards, legal/planning, development), each requiring the locality (with spelling variants) and
+      the district.
+    - Duplicates and syndicated copies are merged. Each event is labelled official source, 2+ outlets or single
+      report, with speculative and older-than-2-years flags.
+    - Searches are spaced at 6 s, with a 15 s back-off after HTTP 429. A per-locality lock means concurrent requests
+      search once.
+    - Results are cached 24 h with their retrieval time; failures are never cached. News never changes the decision.
+  - **Development claims:** a per-parcel table and form (claim, type, source, distance, expected date as claimed,
+    evidence link, date checked). Claims stay "not verified", with an effect sentence that assumes nothing is
+    completed.
+  - **Performance:** the report list is one SQL query reading only the fields shown, with indexes on per-parcel
+    lookups. The India state polygons get a WKB sidecar tied to the source's size and modification time, preloaded in
+    the background at start-up. Geocoding is kept on disk (30 days, successes only).
+- **Measurements (same machine):**
+  - Report list (95 reports): 149 ms → 24 ms median.
+  - India boundary load: 4.8 s → 0.31 s.
+  - First analysis after a restart: 8.8 s → 2.4 s. A warm re-analysis is 1.4 s.
+  - Report reopen: 12-22 ms (unchanged).
+- **Verification (2026-10-26, audit copy `backend-audit-2026-10-26.sqlite3`):**
+  - Senjeri re-evaluated: WAIT, location score 90 ("location strong, legal checks pending"; the school is unmapped,
+    not absent; satellite signal inconclusive, explained).
+  - Browser: decision, would-change list, both charts with titles, axes, findings and explainers, the score label,
+    news (no indexed results, cached) and a recorded resident claim. The satellite basemap loads 2023 tiles with the
+    drawn boundary kept and the attribution shown. No sideways page scroll at 375 px.
+  - **Live news:** one successful search (Senjeri + Coimbatore: no indexed results). All other live attempts returned
+    GDELT HTTP 429 and were shown as "unavailable". The results path is verified with a fake provider only.
+  - **Tests:** ml-models 67, data-pipeline 84, backend-api 25, valuation 52, integration 13; frontend type-check and
+    build pass. There is no frontend unit-test runner (none added); tile failure was checked by code only.
+  - **User store:** byte-identical before the normal start. A new backup `backup-2026-10-26` was taken first; the
+    start added the empty `development_claims` and `news_cache` tables and four indexes; all existing rows are
+    identical to the backup.
+- **Limits:**
+  - BUY is unreachable until a land-records source exists (by design).
+  - GDELT is headline-level, rate-limited and has no stated licence page; conflicting reports cannot be detected from
+    headlines.
+  - The 2023 basemap is 10 m; there is no historical imagery picker.
+  - The parcel-result cache is one JSON file (fine at 48 entries, linear in size).
+- **Status:** fixed and verified, except a live news "results" case (blocked by provider rate limiting).
+
+## J-62 Review readiness: legal gate, stale-evaluation banner, news time budget, demo rehearsal
+
+- **Date / problem (2026-10-26):**
+  - A decision-engine scenario check found that a matched record showing an unclear title and an encumbrance summed
+    to exactly the 70-point limit and gave WAIT. It also found that any matched record (even a defective one) counted
+    as completed due diligence for BUY. Zoning and approvals could not be represented at all.
+  - Saved evaluations made under older rules (no `would_change`) showed no re-evaluate banner.
+  - A rate-limited news search kept the buyer waiting 189 s before "unavailable".
+  - A high location score could sit next to WAIT or WALK AWAY with no explanation.
+- **Changes:**
+  - `_verdict.py`: BUY only when title clear, no encumbrance, zoning verified and approvals verified are all positively
+    recorded; a missing value is pending. An unclear title or an encumbrance is WALK AWAY. WAIT names the specific
+    pending checks.
+  - Schema: `land_records.zoning_verified` and `approvals_verified` (additive, null by default).
+  - Report:
+    - a note under the location score ("describes the location only; never overrides red flags or pending legal
+      checks");
+    - the re-evaluate banner on any evaluation without `would_change`;
+    - "none mapped" explained as not confirmed absence;
+    - the news failure text says "temporarily unavailable".
+  - Satellite note: "It cannot show ownership, legal access, title, zoning or safety."
+  - `area_intel.py`: a 45 s budget for the whole news search; waits, timeouts and the 429 back-off are clipped to it.
+  - `DATASETS.md`: academic vs commercial licensing, and licensed alternatives.
+- **Verification (2026-10-26):**
+  - **Decision scenarios:** 8/8 through the full evaluation path on the VIT fixture: legal unknown → WAIT; all four
+    verified → BUY; defective title → WALK AWAY; flood red flag → WALK AWAY; no infrastructure → INSUFFICIENT DATA;
+    unmapped school left out; weak growth → WAIT naming the cause; no area history → INSUFFICIENT DATA. No price,
+    appreciation, guarantee or clearance wording in any output.
+  - **Tests:** ml-models 68, data-pipeline 84, backend-api 26, valuation 52, integration 13; frontend type-check and
+    production build pass.
+  - **Browser, disposable copy:** Senjeri re-evaluated (WAIT 90, legal pending). Both explainers cover every required
+    concept. Readable at 1366x768. Satellite toggle: 12 EOX tiles; boundary kept; attribution and date shown; forced
+    tile failures showed the fallback note and the map kept working; switching back to Map restored OSM tiles.
+  - **Fresh start on the user's store** with `terrascope.cmd start`: four services healthy; the saved Senjeri report
+    opened from the list with the stale-evaluation banner; news reported "unavailable" (GDELT 429) within about 25 s;
+    a browser refresh reopened the same snapshot; the satellite view loaded over Senjeri; no console errors; service
+    logs clean.
+  - **User store:** byte-identical to the pre-review baseline (`4590829b…`, 96/63/9) after the rehearsal; a verified
+    backup `backup-2026-10-26-review` was taken first.
+- **Limits:** no land-records, RERA, rainfall-flood or coastal source; GDELT is rate-limited from this network, so the
+  news results path is demonstrated with recorded test fixtures only; the basemaps are not licensed for commercial use.
+- **Status:** fixed and verified.
+
+## J-63 Satellite blur, news timeline, legal-check workflow, licensing evidence
+
+- **Date / problem (2026-10-26):**
+  - The satellite view looked blurred when zoomed in.
+  - News covered only 3 years.
+  - There was no place to record official legal checks.
+  - Map licensing was asserted rather than verified.
+- **Diagnosis:**
+  - EOX tiles above zoom 14 add 1-3 grey levels of detail versus 8 at zoom 14; Esri adds about 11 at every level to
+    18. The blur is the 10 m source.
+  - GDELT's DOC API searches from 2017-01-01 (verified with a 2018 query; its blog posts disagree).
+- **Changes:**
+  - Satellite `maxNativeZoom` 14, plus a note when zoomed past it.
+  - News timeline from 2017 (at most 10 years): grouped by year, with the headline's reported project status, evidence
+    type, and a flag when the headline does not name the locality. 250 records per topic, with a notice when that limit
+    is reached. A 2-minute pause after a GDELT 429.
+  - Legal checks: Tamil Nadu state guide, append-only manual records. A recorded problem gives WALK AWAY and a red-flag
+    finding; a recorded confirmation never gives BUY. Schema field `user_legal_checks`.
+  - Local date for check dates; the old UTC default showed yesterday in the Indian morning.
+  - Docs: `LEGAL_VERIFICATION.md`; measured sharpness and verified licence terms in `DATASETS.md`.
+- **Verification:**
+  - **Tests:** ml-models 70, backend-api 28.
+  - **Browser, user's store (view only):** at zoom 16 only zoom-14 EOX tiles load and the note shows.
+  - **Browser, disposable copy:** recorded an EC and a title check → WAIT naming both as "recorded by you". Recorded a
+    zoning problem → WALK AWAY, no score, "1 red flag". RERA "not applicable" is offered only for RERA. 4 rows stored,
+    one per action.
+  - **Two defects caught by the browser run and fixed:**
+    - the schema rejected `user_legal_checks`;
+    - the findings disagreed with WALK AWAY.
+  - **Live GDELT:** rate-limited (HTTP 429) for both attempts. The timeline is verified with test fixtures only.
+- **Limits:**
+  - No automated land-record, EC, zoning or approval source for any state.
+  - Rainfall and coastal flooding not assessed.
+  - Event dates and distances are not derivable from headlines.
+- **Status:** fixed and verified, except the live news results path (blocked by the rate limit).
+
+## J-64 Government, public-facility and restricted-land detection
+
+- **Date / problem (2026-10-26):** nothing checked whether a plot lies on a court, stadium, railway, defence area,
+  water body or other public land. A buyer could see a strong score for land that cannot lawfully be sold.
+- **Changes:**
+  - **Map store:** a public-facility store per region, built from the extract on disk (no download). Tamil Nadu: 5.0 MB
+    in 86 s; Andhra Pradesh: 3.1 MB in 97 s. `osm.sqlite` is untouched.
+  - **Contact measurement:** overlap vs touch vs nearby, measured on the parcel polygon with a ±15 m uncertainty.
+    Facility type is kept apart from any operator/ownership tag.
+  - **Official checks:** a `government_land` record type (outcome, source, survey number, date), kept per source so
+    conflicts stay visible. Tamil Nadu guide: the e-Services poramboke verification, A-register, FMB sketch and
+    taluk office.
+  - **Decision engine:** the government-land status is decided before scores (WALK AWAY / hold at WAIT / no hold), and
+    a "Government and restricted land" finding is added.
+  - **Report and map:** a new report section (mapped facilities, ownership signal, nearby, data date, limits); overlap
+    polygons and markers in the workspace Layers.
+  - **Schema:** `public_land`, `user_government_land`, `verdict.government_land`, and a `mapped` basis.
+- **Verification:**
+  - **Unit tests, synthetic geometry only:** 7 connector tests and 7 decision tests covering the 9 required scenarios,
+    plus a pipeline test with schema validation and a backend test.
+  - **Real map data (read-only):** test boundaries inside the Madurai Bench of the Madras High Court and inside MA
+    Chidambaram Stadium each report an overlap with ownership unknown. The saved Senjeri boundary has no mapped
+    facility within 2 km.
+  - **End to end, disposable copy:** a test boundary over the stadium gave WAIT with the warning first.
+    - Adding a TEST "private per record" kept WAIT with a boundary-check requirement.
+    - Adding a TEST A-register "non-transferable" from a second source gave "Official records conflict", WAIT.
+  - **Defect caught and fixed:** the schema rejected the new `mapped` basis.
+  - The user store is row-identical to the backup afterwards.
+- **Limits:**
+  - No authoritative public-land geometry for any state.
+  - Official checks are manual.
+  - OSM coverage is incomplete and ±15 m.
+  - Saved reports predate the check until analysed again.
+  - Stores exist only for Tamil Nadu and Andhra Pradesh.
+- **Status:** fixed and verified (mapping and decision rules); official verification remains manual.
+
+## J-65 All-India data: verified extract, nationwide non-road store, per-layer status, Bhuvan decision
+
+- **Date / problem (2026-10-26):** only Tamil Nadu, Puducherry and Andhra Pradesh had local map data. In the other 33
+  regions every map layer was missing, and nothing distinguished "not installed" from "nothing mapped".
+- **Constraints measured:** C: is the only drive and had 5.1 GB free; RAM was 15.4 GB with about 2 GB free. A
+  nationwide store with roads would be about 3 GB plus a temporary copy, so it does not fit.
+- **Changes:**
+  - **Source:** downloaded `india-261025.osm.pbf`, 1,711,981,786 bytes. The MD5 matches Geofabrik's published file
+    and the header is valid (data to 2026-10-25 21:21 UTC). The original is kept unchanged.
+  - **Memory-safe build** (`fetch_data.py --national`): pyosmium `BackReferenceWriter` copies only the non-road
+    features and their referenced nodes into a derived file. The existing builders then made `regions/india/osm.sqlite`
+    (523 MB) and `public_land.sqlite` (69 MB). The derived file was removed. Build time about 23 min; memory stayed
+    within the allocated swap file.
+  - **Stores record their layers** (`store_meta.layers`); `LocalOSM.has_layer`. The ETL emits
+    `infrastructure.layer_status`. A road that is not installed reads "not installed (unknown)" in the evidence, the
+    facilities table and the scoring. Accessibility becomes unavailable (never scored from schools alone), so the
+    decision is INSUFFICIENT DATA.
+  - **Region choice:** the smallest covering store wins, so a state store with roads beats the all-India store. One
+    store per parcel, so regional and national features are never combined or double-counted.
+  - **Registry** (`dataset_registry.py`): tests a sample point in each of the 36 regions and writes
+    `docs/DATASET_REGISTRY.md` and `docs/datasets/registry.json`.
+  - **Bhuvan:** the live terms make content "for viewing purposes only"; reuse through other means or derivative works
+    needs written authorization from DOS/ISRO/NRSC. Only metadata (GetCapabilities) was requested. Nothing is
+    integrated; candidate layers are documented in `DATASETS.md`.
+- **Verification:**
+  - Both stores pass `integrity_check`; feature counts match their indexes; extent is 68.0-97.6°E, 6.8-36.0°N.
+    Features fall inside every one of the 36 regions (`docs/datasets/national_store_counts.json`).
+  - Registry: all 36 regions resolve to the correct state. Schools/hospitals/transport, water and public facilities
+    are installed for all 36; roads for TN, PY and AP only.
+  - **End to end, disposable copy:** test boundaries in Patna, Pune, Guwahati, Delhi, Kochi and Leh read the all-India
+    store.
+    - Roads show "not installed" → INSUFFICIENT DATA; schools, hospitals, water and public facilities are real.
+    - Guwahati: WALK AWAY from the JRC 1-in-50-year river flood, with source and date.
+    - Coimbatore read the Tamil Nadu store with roads → WAIT.
+    - All 96 pre-existing reports opened via the API with no failures.
+  - **Defects caught and fixed:**
+    - the schema rejected `layer_status` (every new analysis failed);
+    - the national stores had no data date.
+  - The user store is row-identical to the new backup `backup-2026-10-26-national`.
+- **Limits:**
+  - Roads outside TN/PY/AP need about 3 GB more disk.
+  - Bhuvan needs written permission.
+  - OSM completeness varies widely by state (Kerala has 15,109 schools mapped, Mizoram 8).
+- **Status:** fixed and verified, except nationwide roads (blocked by disk space).
+
+## J-66 Conditional BUY with a development outlook and a disclaimer (2026-10-27)
+
+- **Decision (user):** a strong, developing location should be BUY, with a clear disclaimer.
+- **Changes:**
+  - **Rule:** location score ≥ 75 → BUY; otherwise WAIT. Unless matched records verify the four legal checks, the
+    BUY reads "Buy only after the legal checks: …", and "what would change it" says a defect found in them means WALK
+    AWAY.
+  - **Unchanged:** restricted land, legal defects, flood red flags and potential public land still decide first.
+  - **`_outlook.py`:** a straight-line fit of the seven yearly built-up shares within 1 km, projected to 2026 and 2030
+    with a 95 % prediction interval (Student t). Saturated areas (≥ 85 % built) are "built out". It projects building,
+    never prices. Shown in the panel as "20% → ~32% (22%–41%)".
+  - A disclaimer on every report: an estimate, not perfect, not legal or financial advice.
+- **Verification:**
+  - Tests updated to the new rule: ml-models 88, backend-api 30, data-pipeline 96, valuation 52, integration 13 passed.
+  - Disposable copy: Senjeri → BUY (score 90, 2030 projection 32 %, range 22-41 %). Mamillapalli → WAIT (stadium
+    overlap).
+- **Limits:** a linear trend cannot foresee new projects or policy; the range only reflects past scatter.
+
+## J-67 Coastal flooding only near the sea (2026-10-27)
+
+- **Problem:** every report, including inland plots like Coimbatore or Patna, listed coastal flooding as "not assessed".
+- **Changes:**
+  - `fetch_data.py --coastline`: the OSM coastline (3,299 ways, 6.5 MB, 19 s), built from the India extract with the
+    same memory-safe filter.
+  - `connectors/coast.py`: distance from the drawn boundary to the sea, with a 10 km coastal band.
+    - **Inland:** the coastal mechanism is "not_applicable", so there is no finding and no missing-data checklist item.
+    - **Coastal:** the finding is still NOT ASSESSED, naming the distance and elevation; caution below 10 m.
+    - **Unknown distance** (old reports, missing file): the generic NOT ASSESSED row, never "inland".
+- **Verification:**
+  - Distances at real places: Chennai Marina 0.56 km, Puri 1.8 km, Mumbai Kalina 4.2 km, Kochi 4.6 km; Coimbatore and
+    Patna beyond 50 km.
+  - Tests: data-pipeline 99, ml-models 89, backend-api 30, valuation 52, integration 13.
+  - **Defect caught end to end:** the coastline was looked up in the regional folder (Tamil Nadu), so reports read
+    "unknown". It is national and is now always read from `regions/india`.
+  - Disposable copy: Chennai → 0.7 km, 4 m, caution; Coimbatore → no coastal row.
+- **Limits:** the 10 km band is a rule of thumb, not a hazard line; tidal rivers and backwaters can carry sea water
+  further inland.

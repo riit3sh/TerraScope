@@ -16,6 +16,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from pydantic import BaseModel
 
 from change_detection.statistical_change import detect_change_from_series
+from findings import build_findings
 from citations import PAGE_BREAK, evidence_citations, land_details
 from scoring_engine.scoring import compute_evaluation
 
@@ -229,6 +230,10 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         "confidence": result["confidence"],  # deliberately null: see scoring_engine
         "reasoning_summary": result["reasoning_summary"],
         "citations": [],
+        "red_flags": result["red_flags"],
+        "pre_purchase_checks": result["pre_purchase_checks"],
+        "would_change": result["would_change"],
+        "findings": build_findings(evaluated, result["factors"]),
     }
     # Every figure the assessment relies on, cited to the evidence row that holds it. No LLM needed.
     citations = evidence_citations(evaluated, result["factors"])
@@ -264,6 +269,12 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         # Says who wrote reasoning_summary, so the report never labels rule output as AI.
         "explanation_source": "ai" if ai_text else "deterministic",
         "citations": citations,
+        "red_flags": result["red_flags"],
+        "pre_purchase_checks": result["pre_purchase_checks"],
+        "would_change": result["would_change"],
+        "findings": evaluated["verdict"]["findings"],
+        "government_land": result["government_land"],
+        "development_outlook": result["development_outlook"],
     }
     _validate_snapshot(evaluated)
     return evaluated

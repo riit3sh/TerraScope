@@ -40,3 +40,32 @@ def test_unreachable_service_error_names_the_service_and_host(
     detail = response.json()["detail"]
     assert "data-pipeline" in detail
     assert "no-such-service.invalid:8001" in detail
+
+
+def test_a_stopped_service_is_reported_as_unreachable_not_as_a_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Windows refuses a closed loopback port as a ~2 s connect timeout; that means 'not running', not 'slow'."""
+    from routers import parcels as routes
+    from terrascope_backend_api.main import app
+
+    class Refused:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def post(self, url, **kwargs):
+            raise routes.httpx.ConnectTimeout("", request=routes.httpx.Request("POST", url))
+
+    monkeypatch.setattr(routes.httpx, "AsyncClient", Refused)
+    response = TestClient(app).post(
+        "/api/v1/parcels/analyze",
+        json={"polygon": POLYGON, "analysis_date_from": "2025-01-01", "analysis_date_to": "2025-06-30"},
+    )
+    assert response.status_code == 502
+    detail = response.json()["detail"]
+    assert "could not reach data-pipeline at http://127.0.0.1:8001" in detail and "terrascope.cmd start" in detail
+    assert "timed out" not in detail

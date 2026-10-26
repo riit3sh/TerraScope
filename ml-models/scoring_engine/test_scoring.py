@@ -10,7 +10,7 @@ from scoring_engine.scoring import (
 
 def parcel(**overrides):
     record = {
-        "land_records": {"title_clear": True, "encumbrance_flag": False},
+        "land_records": {"title_clear": True, "encumbrance_flag": False, "zoning_verified": True, "approvals_verified": True},
         "rera": {"is_rera_project": True},
         "satellite": {"change_type": "construction_growth", "change_confidence": 0.95},
         "infrastructure": {
@@ -43,7 +43,8 @@ def test_clean_parcel_is_buy_with_high_explainable_scores():
     assert result["recommendation"] == "BUY"
     assert result["growth_score"] is None, "growth is not derivable from spectral indices"
     assert sum(item["contribution"] for item in result["weighted_contributions"]) == result["composite_score"]
-    assert "composite" in result["reasoning_summary"] and "legal_safety" in result["reasoning_summary"]
+    assert "Location score" in result["reasoning_summary"] and "legal safety" in result["reasoning_summary"]
+    assert "legal checks are verified" in result["reasoning_summary"], "BUY only with verified legal checks"
 
 
 def test_flood_prone_parcel_passes_through_risk_as_low_flood_safety():
@@ -60,7 +61,8 @@ def test_terrain_indicator_alone_never_produces_a_flood_score():
         _evidenced_profile("conservative"),
     )
     assert terrain_only["flood_safety_score"] is None
-    assert terrain_only["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert "flood_safety" in terrain_only["unassessed_factors"]
+    assert "flood_safety" not in {c["factor"] for c in terrain_only["weighted_contributions"]}
 
 
 def test_encumbered_title_triggers_hard_avoid():
@@ -130,6 +132,160 @@ def test_missing_land_records_produce_no_legal_score_at_all() -> None:
     unverified = compute_verdict({"land_records": None}, evaluation)
     assert unverified["legal_safety_score"] is None
     assert unverified["recommendation"] == "INSUFFICIENT_EVIDENCE"
-    assert "insufficient evidence" in unverified["reasoning_summary"] and "legal safety" in unverified["reasoning_summary"]
+    assert any("Ownership record" in check for check in unverified["pre_purchase_checks"])
     verified = compute_verdict({"land_records": {"title_clear": True, "encumbrance_flag": False}}, evaluation)
     assert "land records not provided" not in verified["reasoning_summary"]
+
+
+def test_buy_needs_all_four_legal_checks_and_a_defect_is_walk_away() -> None:
+    """Regression (2026-10-26): an unclear title plus an encumbrance summed to exactly the 70 limit and gave WAIT, and
+    any matched record (even a defective one) counted as completed due diligence."""
+    profile = _evidenced_profile("investor")
+    defective = compute_evaluation(parcel(land_records={"title_clear": False, "encumbrance_flag": True}), profile)
+    assert defective["recommendation"] == "AVOID" and "title is not clear and an encumbrance is recorded" in defective["reasoning_summary"]
+    unclear = compute_evaluation(parcel(land_records={"title_clear": False, "encumbrance_flag": False,
+                                                      "zoning_verified": True, "approvals_verified": True}), profile)
+    assert unclear["recommendation"] == "AVOID"
+    partial = compute_evaluation(parcel(land_records={"title_clear": True, "encumbrance_flag": False}), profile)
+    assert partial["recommendation"] == "BUY", "a strong location is BUY, conditional on the remaining checks"
+    assert "Buy only after the legal checks: verification of zoning, approvals" in partial["reasoning_summary"]
+    complete = compute_evaluation(parcel(), profile)
+    assert complete["recommendation"] == "BUY"
+
+
+def test_recorded_legal_checks_are_never_verification_and_a_recorded_problem_is_walk_away() -> None:
+    """The buyer's own records (2026-10-26): statements, not verification."""
+    profile = _evidenced_profile("investor")
+    mine = {k: {"outcome": "confirmed", "source": "portal", "checked_on": "2026-10-24"}
+            for k in ("title", "encumbrance", "zoning", "approvals")}
+    recorded = compute_evaluation(parcel(land_records=None, user_legal_checks=mine), profile)
+    assert recorded["recommendation"] == "BUY", "strong location: conditional BUY"
+    assert "you recorded it as checked on 2026-10-24; TerraScope cannot verify that" in recorded["reasoning_summary"],         "only matched official records verify: recorded checks stay named as pending"
+    problem = dict(mine, encumbrance={"outcome": "problem", "source": "TNREGINET", "checked_on": "2026-10-24"})
+    walk = compute_evaluation(parcel(land_records=None, user_legal_checks=problem), profile)
+    assert walk["recommendation"] == "AVOID" and "you recorded a problem with the encumbrance check" in walk["reasoning_summary"]
+
+
+# --- government and restricted land (2026-10-26): decided before any score, synthetic inputs only -------------
+
+def _mapped(category, contact, name=None):
+    return {"status": "assessed", "uncertainty_m": 15, "data_as_of": "2026-10-04",
+            "overlaps": [] if contact == "nearby" else [{"category": category, "category_label": category.title(), "name": name,
+                                                          "contact": contact, "ownership_signal": "unknown"}],
+            "nearby": [{"category": category, "contact": "nearby", "distance_m": 120.0}] if contact == "nearby" else []}
+
+
+def _record(outcome, source="TN e-Services poramboke verification"):
+    return {"check": "government_land", "outcome": outcome, "source": source, "survey_number": "123/4A", "checked_on": "2026-10-26"}
+
+
+def test_mapped_overlap_with_a_high_court_or_stadium_warns_and_holds_a_strong_buy_at_wait() -> None:
+    profile = _evidenced_profile("investor")
+    assert compute_evaluation(parcel(), profile)["recommendation"] == "BUY", "baseline: strong and legally verified"
+    stadium = compute_evaluation(parcel(public_land=_mapped("sports", "overlap", "City Stadium")), profile)
+    assert stadium["recommendation"] == "WAIT", "never bought on a score"
+    assert stadium["reasoning_summary"].startswith("WARNING:") and "not an ownership finding" in stadium["reasoning_summary"]
+    assert stadium["government_land"]["status"] == "potential_public"
+    court = compute_evaluation(parcel(public_land=_mapped("court", "overlap", "High Court")), profile)
+    assert court["recommendation"] == "RESTRICTED", "a court is restricted land (2026-10-26)"
+
+
+def test_a_parcel_near_a_stadium_but_outside_it_is_not_held() -> None:
+    result = compute_evaluation(parcel(public_land=_mapped("sports", "nearby")), _evidenced_profile("investor"))
+    assert result["recommendation"] == "BUY" and result["government_land"]["hold"] is False
+
+
+def test_an_official_record_of_non_transferable_government_land_is_walk_away_whatever_the_score() -> None:
+    result = compute_evaluation(parcel(user_government_land=[_record("government_non_transferable")]), _evidenced_profile("investor"))
+    assert result["recommendation"] == "AVOID" and result["composite_score"] is None
+    assert "non-transferable government land" in result["reasoning_summary"]
+    blocked = compute_evaluation(parcel(user_government_land=[_record("restriction_prohibits_use")]), _evidenced_profile("investor"))
+    assert blocked["recommendation"] == "AVOID"
+
+
+def test_potential_public_land_without_an_official_record_holds_at_wait() -> None:
+    result = compute_evaluation(parcel(public_land=_mapped("defence", "edge"), user_government_land=[_record("records_unavailable")]),
+                                _evidenced_profile("investor"))
+    assert result["recommendation"] == "WAIT" and result["government_land"]["status"] == "records_unavailable"
+
+
+def test_conflicting_official_records_hold_at_wait_and_name_both() -> None:
+    result = compute_evaluation(parcel(user_government_land=[_record("government_non_transferable", "A-register"),
+                                                             _record("private_per_record", "Patta copy")]), _evidenced_profile("investor"))
+    assert result["recommendation"] == "WAIT" and result["government_land"]["status"] == "records_conflicting"
+    assert "A-register" in result["reasoning_summary"] and "Patta copy" in result["reasoning_summary"]
+
+
+def test_a_documented_lawful_auction_or_transfer_is_not_rejected_for_being_government_land() -> None:
+    result = compute_evaluation(parcel(user_government_land=[_record("government_transfer_documented", "Auction order G.O. 12")]),
+                                _evidenced_profile("investor"))
+    assert result["recommendation"] == "WAIT", "verify the order's conditions, but do not walk away"
+    assert any("auction or assignment order" in c for c in result["pre_purchase_checks"])
+    conditions = compute_evaluation(parcel(user_government_land=[_record("restriction_with_conditions", "Railway NOC rule")]),
+                                    _evidenced_profile("investor"))
+    assert conditions["recommendation"] == "WAIT"
+
+
+def test_no_mapped_facility_or_missing_map_data_is_never_read_as_private_land() -> None:
+    profile = _evidenced_profile("investor")
+    for public in ({"status": "assessed", "overlaps": [], "nearby": []},
+                   {"status": "unavailable", "overlaps": [], "nearby": [], "reason": "not built"}, None):
+        result = compute_evaluation(parcel(land_records=None, public_land=public), profile)
+        assert result["government_land"]["status"] == "ownership_unverified"
+        assert "private" not in result["reasoning_summary"].lower() and "Buy only after the legal checks" in result["reasoning_summary"]
+    other_state = compute_evaluation(parcel(land_records=None, location={"state": "Goa"}), profile)
+    assert not any("Tamil Nadu" in c for c in other_state["pre_purchase_checks"]), "no state's portal is implied for another"
+
+
+def test_missing_road_data_makes_accessibility_unknown_not_scored_from_schools() -> None:
+    """All-India store without roads (2026-10-26): never a zero, never a school-only access score."""
+    infra = {"nearest_road_distance_m": None, "nearest_school_distance_m": 400.0, "search_radius_m": 5000,
+             "layer_status": {"road": "not_installed", "school": "installed"}}
+    result = compute_evaluation(parcel(infrastructure=infra, location={"state": "Karnataka"}), _evidenced_profile("investor"))
+    access = next(f for f in result["factors"] if f["factor"] == "accessibility")
+    assert access["score"] is None and access["status"] == "unavailable"
+    assert "road data is not installed for Karnataka" in access["basis"] and "fetch-data karnataka" in access["basis"]
+    assert result["recommendation"] == "INSUFFICIENT_EVIDENCE"
+
+
+def test_a_material_overlap_with_mapped_restricted_land_is_restricted_and_not_scored() -> None:
+    """User decision (2026-10-26): defence, railway, water body, court... land is not assessed for purchase."""
+    profile = _evidenced_profile("investor")
+    defence = _mapped("defence", "overlap", "Kalina Camp")
+    defence["overlaps"][0]["overlap_share"] = 0.01
+    result = compute_evaluation(parcel(public_land=defence), profile)
+    assert result["recommendation"] == "RESTRICTED" and result["composite_score"] is None
+    assert result["reasoning_summary"].startswith("RESTRICTED LAND") and "Kalina Camp" in result["reasoning_summary"]
+
+
+def test_restricted_needs_a_material_overlap_of_a_restricted_category() -> None:
+    profile = _evidenced_profile("investor")
+    assert compute_evaluation(parcel(public_land=_mapped("sports", "overlap", "Stadium")), profile)["recommendation"] == "WAIT", \
+        "a stadium's owner is not implied: potential overlap, not restricted"
+    assert compute_evaluation(parcel(public_land=_mapped("defence", "edge")), profile)["recommendation"] == "WAIT", \
+        "within the ±15 m uncertainty only: not restricted"
+    defect = compute_evaluation(parcel(public_land=_mapped("defence", "overlap"), land_records={"title_clear": False}), profile)
+    assert defect["recommendation"] == "AVOID", "a recorded legal defect still decides first"
+
+
+def test_the_summary_is_clipped_at_a_sentence_never_mid_word() -> None:
+    from scoring_engine._verdict import _clip
+
+    text = "First sentence. " * 40
+    clipped = _clip(text)
+    assert len(clipped) <= 500 and clipped.endswith("sentence.")
+    assert _clip("short") == "short"
+
+
+def test_the_development_outlook_projects_with_a_range_and_a_disclaimer() -> None:
+    from scoring_engine._outlook import development_outlook
+
+    series = [(2017, 0.4378), (2018, 0.4486), (2019, 0.4987), (2020, 0.524), (2021, 0.5195), (2022, 0.5474), (2023, 0.5492)]
+    out = development_outlook({"land_cover_history": {"surroundings": [{"year": y, "built_share_within_1km": s} for y, s in series]}})
+    y2030 = out["projections"][-1]
+    assert out["status"] == "growing_fast" and y2030["low"] < y2030["share"] < y2030["high"] <= 1.0
+    assert 0.65 < y2030["share"] < 0.75 and "not a prediction of prices" in out["disclaimer"]
+    full = development_outlook({"land_cover_history": {"surroundings": [{"year": y, "built_share_within_1km": 0.97} for y, _ in series]}})
+    assert full["status"] == "built_out" and full["projections"][-1]["share"] <= 1.0
+    assert development_outlook({})["status"] == "unavailable"
+

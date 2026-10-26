@@ -106,6 +106,10 @@ def evidence_citations(record: dict[str, Any], factors: list[dict[str, Any]]) ->
         cite(f"Accessibility {access['score']:.0f}/100: nearest mapped road {where(road)}, nearest mapped school "
              f"{where(school)} (straight-line).", "osm")
 
+    growth = by_factor.get("growth") or {}
+    if growth.get("status") in ("indicative", "established"):
+        cite(growth["basis"].split(". Further out")[0].rstrip(".") + ".", "land-cover")
+
     flood = _section(record, "flood_indicators")
     river = _section(flood, "river_flood")
     if river.get("status") in ("assessed", "partial"):

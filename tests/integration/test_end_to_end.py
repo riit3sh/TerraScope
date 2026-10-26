@@ -220,13 +220,17 @@ def test_parcel_outside_india_is_refused_without_a_report(client: httpx.Client) 
 
 
 def test_indian_parcel_without_regional_data_is_analysed(client: httpx.Client) -> None:
-    """Missing regional OSM data must not block the India-wide collectors."""
+    """Missing regional road data must not block the India-wide collectors, and must read as unknown."""
     snapshot = analyse(client, NO_REGION_POLYGON)
     assert snapshot["coverage"]["status"] == "inside"
-    assert snapshot["coverage"]["regional_data"] is None
     assert snapshot["infrastructure"]["nearest_road_distance_m"] is None
     osm_row = next(row for row in snapshot["evidence"] if row["source_type"] == "openstreetmap")
-    assert "fetch-data" in osm_row["summary"]
+    if snapshot["coverage"]["regional_data"] is None:  # no all-India store installed
+        assert "fetch-data" in osm_row["summary"]
+    else:  # the all-India store (2026-10-26): every layer but roads, which are "not installed", never "none mapped"
+        assert snapshot["coverage"]["regional_data"] == "india"
+        assert snapshot["infrastructure"]["layer_status"]["road"] == "not_installed"
+        assert "road data not installed" in osm_row["summary"]
     river = next(c for c in snapshot["flood_indicators"]["components"] if c["mechanism"] == "river_flooding")
     assert river["status"] in {"assessed", "partial", "not_modelled", "unavailable"}
     assert snapshot["risk"]["flood_risk_score"] is None

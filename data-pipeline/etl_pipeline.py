@@ -18,11 +18,11 @@ import pandas as pd
 from jsonschema import Draft202012Validator, FormatChecker
 from shapely.geometry import shape
 
-from connectors import flood_indicators
+from connectors import coast, flood_indicators, public_land
 from connectors.elevation_dem import ElevationClient, ElevationError
-from connectors import river_flood
+from connectors import land_cover_history, river_flood
 from connectors.local_osm import LocalOSM
-from connectors.regions import LocalDataMissing, india_coverage, region_for, slug
+from connectors.regions import LocalDataMissing, data_root, india_coverage, region_for, slug
 from connectors.osm_infrastructure import InfrastructureClient, InfrastructureError
 from connectors.rera_ingest import load_rera_seed_dataset, match_parcel_to_rera
 from connectors.satellite_provider import get_satellite_client
@@ -91,11 +91,18 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any]) -> dict[str
     """Nearest road, school, hospital, bus and rail station from the local extract."""
     lon, lat = InfrastructureClient._representative_point(geojson_polygon)
     parcel = shape(geojson_polygon)
-    road = osm.nearest(lon, lat, "road", max_distance_m=POI_SEARCH_M)
-    school = osm.nearest(lon, lat, "school", max_distance_m=POI_SEARCH_M)
+    # A layer the store does not hold is "not installed", reported as unknown: never as "none mapped nearby".
+    layer_status = {layer: "installed" if osm.has_layer(layer) else "not_installed"
+                    for layer in ("road", "school", "hospital", "bus", "rail_station")}
+
+    def near(layer: str, **kwargs):
+        return osm.nearest(lon, lat, layer, max_distance_m=POI_SEARCH_M, **kwargs) if osm.has_layer(layer) else None
+
+    road = near("road")
+    school = near("school")
     # From the drawn edge, too: a road along a big parcel's frontage is far from its centroid.
-    road_edge = osm.nearest(lon, lat, "road", max_distance_m=POI_SEARCH_M, around=parcel)
-    school_edge = osm.nearest(lon, lat, "school", max_distance_m=POI_SEARCH_M, around=parcel)
+    road_edge = near("road", around=parcel)
+    school_edge = near("school", around=parcel)
     road_tags = (road or {}).get("tags", {})
     access_tag = road_tags.get("access")
     return {
@@ -111,10 +118,11 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any]) -> dict[str
         "nearest_road_lat": road["lat"] if road else None,
         "nearest_road_lon": road["lon"] if road else None,
         **_hit_fields("nearest_school", school, with_point=True),
-        **_hit_fields("nearest_hospital", osm.nearest(lon, lat, "hospital", max_distance_m=POI_SEARCH_M)),
-        **_hit_fields("nearest_bus", osm.nearest(lon, lat, "bus", max_distance_m=POI_SEARCH_M), with_class=True),
-        **_hit_fields("nearest_rail_station", osm.nearest(lon, lat, "rail_station", max_distance_m=POI_SEARCH_M), with_class=True),
+        **_hit_fields("nearest_hospital", near("hospital")),
+        **_hit_fields("nearest_bus", near("bus"), with_class=True),
+        **_hit_fields("nearest_rail_station", near("rail_station"), with_class=True),
         "search_radius_m": POI_SEARCH_M,
+        "layer_status": layer_status,
         "distance_measurement": "straight_line_to_nearest_point_on_osm_geometry",
         "road_access_verified": False,
         "road_access_note": (
@@ -187,7 +195,7 @@ def _river_summary(river: dict[str, Any] | None, error: str | None) -> str:
     return (head + (". " + "; ".join(flags) if flags else "") + ". Modelled scenarios, not observed floods.")
 
 
-def _flood_components(river, river_error, flood) -> list[dict[str, Any]]:
+def _flood_components(river, river_error, flood, coast_info: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     """What each flood mechanism's evidence is, kept separate and never merged into a score."""
     sw, terrain, water = flood.get("surface_water"), flood.get("terrain"), flood.get("water_distances")
     errors = flood.get("errors") or {}
@@ -222,11 +230,37 @@ def _flood_components(river, river_error, flood) -> list[dict[str, Any]]:
          "resolution": None, "coverage_share": None,
          "summary": "Not assessed: no rainfall, drainage-capacity or pluvial flood dataset is integrated. Urban "
                     "waterlogging can occur where no river flooding is modelled."},
-        {"mechanism": "coastal_flooding", "status": "not_assessed", "source": None, "period": None,
-         "resolution": None, "coverage_share": None,
-         "summary": "Not assessed: no storm-surge or sea-level dataset is integrated. Distance from the sea or "
-                    "elevation alone is not used as evidence of safety."},
+        _coastal_component(coast_info or {}),
     ]
+
+
+def _coastal_component(info: dict[str, Any]) -> dict[str, Any]:
+    """Coastal flooding only where the sea is near: inland plots get "not_applicable", not a missing-data warning."""
+    base = {"mechanism": "coastal_flooding", "source": info.get("source"), "period": info.get("data_as_of"),
+            "resolution": "OpenStreetMap coastline" if info.get("status") == "assessed" else None, "coverage_share": None}
+    if info.get("status") == "assessed" and not info.get("coastal"):
+        far = (f"{info['distance_m'] / 1000:.0f} km" if info.get("distance_m") is not None
+               else f"more than {info.get('beyond_m', 50000) / 1000:.0f} km")
+        return {**base, "status": "not_applicable",
+                "summary": f"Not applicable: the plot is {far} from the sea, beyond the {info['band_m'] / 1000:.0f} km coastal band."}
+    near = (f"The plot is {info['distance_m'] / 1000:.1f} km from the sea (OpenStreetMap coastline). "
+            if info.get("status") == "assessed" else "")
+    return {**base, "status": "not_assessed",
+            "summary": near + "Not assessed: no storm-surge or sea-level dataset is integrated. Distance from the sea "
+                       "or elevation alone is not used as evidence of safety."}
+
+
+def _public_land_summary(public: dict[str, Any]) -> str:
+    if public.get("status") != "assessed":
+        return f"Public facilities not checked: {public.get('reason')} This is not evidence that the land is private."
+    overlaps = [i for i in public["overlaps"] if i["contact"] in ("overlap", "point_inside")]
+    edges = [i for i in public["overlaps"] if i["contact"] == "edge"]
+    parts = [f"The boundary overlaps a mapped {i['category_label'].lower()}{' (' + i['name'] + ')' if i['name'] else ''}"
+             for i in overlaps[:3]]
+    parts += [f"a mapped {i['category_label'].lower()} touches it or lies within {public['uncertainty_m']:.0f} m" for i in edges[:2]]
+    if not parts:
+        parts = ["No mapped public facility, railway, defence area or water body touches the boundary"]
+    return "; ".join(parts) + ". Mapping evidence only: it does not show who owns the land."
 
 
 def _metres(value: Any) -> str:
@@ -238,7 +272,9 @@ def _local_infrastructure_summary(amenities: dict[str, Any]) -> str:
     road_text = (
         f"road {_metres(road)} ({amenities.get('nearest_road_type') or 'class unrecorded'}"
         + (f", {amenities['nearest_road_name']}" if amenities.get("nearest_road_name") else "") + ")"
-        if road is not None else "road: none mapped within 5 km"
+        if road is not None else
+        "road: road data not installed for this region (unknown, not absent)"
+        if (amenities.get("layer_status") or {}).get("road") == "not_installed" else "road: none mapped within 5 km"
     )
     bus = amenities.get("nearest_bus_distance_m")
     rail = amenities.get("nearest_rail_station_distance_m")
@@ -268,6 +304,22 @@ def _surface_water_summary(sw: dict[str, Any]) -> str:
         "It records where water was seen - mostly tanks, rivers and seasonal water - and is NOT a flood-inundation "
         "history: short floods between revisits, floods under monsoon cloud and urban street flooding are largely missed."
     )
+
+
+def _land_cover_summary(history: dict[str, Any]) -> str:
+    near, far = history.get("trend_within_1km"), history.get("trend_1_to_3km")
+    if not near:
+        return f"Land-cover history unavailable: {history.get('error') or 'too few years were classified around the parcel.'}"
+    def change(trend: dict[str, Any], where: str) -> str:
+        slope = round(trend["slope_pts_per_year"], 1) + 0.0  # never "-0.0"
+        return (f"{where}: built area {trend['first_share']:.1%} ({trend['first_year']}) and {trend['last_share']:.1%} "
+                f"({trend['last_year']}); trend across all {trend['years_used']} years {f'{slope:+.1f}' if slope else '0.0'} "
+                "points a year")
+    plot = history.get("parcel") or []
+    classes = ", ".join(f"{p['year']} {p['dominant'].replace('_', ' ')}" for p in plot)
+    return (f"{change(near, 'Within 1 km')}. " + (f"{change(far, '1-3 km away')}. " if far else "")
+            + (f"The parcel itself: {classes}. " if classes else "")
+            + "A modelled 10 m classification of each year's Sentinel-2 imagery, not a survey.")
 
 
 def _water_summary(water: dict[str, Any], terrain: dict[str, Any] | None, terrain_error: str | None) -> str:
@@ -541,6 +593,13 @@ def build_evidence_snapshot(
         key = ("search", address) if address else ("reverse", round(latitude, 5), round(longitude, 5))
         if key in _GEOCODE_CACHE:
             return _GEOCODE_CACHE[key]
+        # Also kept on disk (30 days, successes only), so a restart does not re-ask Nominatim: measured 2026-10-25,
+        # the first analysis after a restart spent 0.86 s geocoding an already-known point.
+        disk_key = flood_indicators._result_cache_key("geocode", {"key": list(key)})
+        stored = flood_indicators._cached_result(disk_key)
+        if stored is not None:
+            _GEOCODE_CACHE[key] = stored.get("result")
+            return _GEOCODE_CACHE[key]
         try:
             if address:
                 geocoded = infrastructure_client.geocode_address(address)
@@ -551,6 +610,8 @@ def build_evidence_snapshot(
             LOGGER.warning("Geocoding unavailable; falling back to coordinates only: %s", error)
             return None
         _GEOCODE_CACHE[key] = result
+        if result is not None:
+            flood_indicators._cache_result(disk_key, {"result": result})
         return result
 
     def collect_terrain() -> tuple[float | None, dict[str, Any]]:
@@ -603,6 +664,13 @@ def build_evidence_snapshot(
             out["errors"]["water_distances"] = local_osm_error
         return out
 
+    def collect_land_cover() -> dict[str, Any]:
+        try:
+            return land_cover_history.assess(geojson_polygon)
+        except Exception as error:  # noqa: BLE001 - a provider failure is "unavailable", never "no development"
+            LOGGER.warning("Land-cover history unavailable: %s", error)
+            return {"status": "unavailable", "error": str(error)[:300]}
+
     def collect_river_flood() -> tuple[dict[str, Any] | None, str | None]:
         try:
             return river_flood.assess(geojson_polygon), None
@@ -629,7 +697,7 @@ def build_evidence_snapshot(
 
     if hasattr(satellite_client, "give_up_at"):
         satellite_client.give_up_at = time.monotonic() + deadline
-    pool = ThreadPoolExecutor(max_workers=6)
+    pool = ThreadPoolExecutor(max_workers=7)
     try:
         location_future = pool.submit(timed("geocoding", collect_location))
         satellite_future = pool.submit(timed("satellite", satellite_client.get_change_series, geojson_polygon, start, end))
@@ -637,6 +705,7 @@ def build_evidence_snapshot(
         terrain_future = pool.submit(timed("terrain", collect_terrain))
         flood_future = pool.submit(timed("flood_indicators", collect_flood))
         river_future = pool.submit(timed("river_flood", collect_river_flood))
+        land_cover_future = pool.submit(timed("land_cover", collect_land_cover))
 
         started = time.monotonic()
         timed_out: set[str] = set()
@@ -672,6 +741,11 @@ def build_evidence_snapshot(
         river, river_error = finish(
             river_future, (None, f"River flood hazard maps exceeded the {deadline:.0f}s evidence deadline."), "River flood hazard"
         )
+        land_cover = finish(
+            land_cover_future,
+            {"status": "unavailable", "error": f"the land-cover maps were not read within the {deadline:.0f} s evidence deadline."},
+            "Land-cover history",
+        )
     finally:
         # Do not block the response on a request that already missed its deadline.
         pool.shutdown(wait=False)
@@ -683,7 +757,20 @@ def build_evidence_snapshot(
 
     if local_osm is not None:
         local_osm.close()
-    components = _flood_components(river, river_error, flood)
+    # Mapping evidence only (facility type and overlap), never ownership; fast local reads, so not in the pool.
+    try:
+        public = (public_land.assess(geojson_polygon, region.path / public_land.STORE_NAME, region.osm_store)
+                  if region is not None else
+                  {"status": "unavailable", "overlaps": [], "nearby": [], "reason": local_osm_error})
+    except Exception as error:  # a damaged store must not cost the whole report
+        LOGGER.warning("Public-facility map unreadable: %s", error)
+        public = {"status": "unavailable", "overlaps": [], "nearby": [], "reason": f"the public-facility map could not be read: {error}"}
+    try:
+        # One national coastline file, whichever regional store this parcel reads.
+        coast_info = coast.coast_distance(geojson_polygon, data_root() / "regions" / "india" / coast.STORE_NAME)
+    except Exception as error:  # a damaged store must not cost the report: the distance is then unknown
+        coast_info = {"status": "unavailable", "reason": f"the coastline map could not be read: {error}"}
+    components = _flood_components(river, river_error, flood, coast_info)
     usable = [c for c in components if c["status"] in ("assessed", "partial")]
 
     rera_df, rera_seed_path, rera_seed_loaded = _load_rera_or_empty()
@@ -770,6 +857,18 @@ def build_evidence_snapshot(
             "summary": _river_summary(river, river_error),
         },
         {
+            "evidence_id": f"{snapshot_id}:land-cover",
+            "source_type": "land_cover",
+            "source_reference": f"{land_cover_history.DATASET} (Microsoft Planetary Computer, {land_cover_history.COLLECTION})",
+            "title": "Land cover 2017-2023 on the parcel and within 1 km and 3 km of it",
+            "observed_at": "2023-12-31T00:00:00Z",
+            "freshness": "cached" if land_cover.get("cache") == "reused" else "live",
+            "licence": land_cover_history.LICENCE,
+            "resolution": "10 m",
+            "observation_period": "2017 to 2023, one map a year",
+            "summary": _land_cover_summary(land_cover),
+        },
+        {
             "evidence_id": f"{snapshot_id}:surface-water",
             "source_type": "jrc_gsw",
             "source_reference": "JRC Global Surface Water v1.4 (EC JRC/Google)"
@@ -804,6 +903,17 @@ def build_evidence_snapshot(
             ),
         },
         {
+            "evidence_id": f"{snapshot_id}:public-land",
+            "source_type": "osm_public_land",
+            "source_reference": f"OpenStreetMap public facilities ({public.get('source') or 'not available'})",
+            "title": "Mapped public facilities and possibly restricted land (not ownership)",
+            "observed_at": (public.get("data_as_of") + "T00:00:00Z") if public.get("data_as_of") else now,
+            "freshness": "cached",
+            "licence": "ODbL 1.0 - (c) OpenStreetMap contributors",
+            "resolution": f"vector features; positional uncertainty about {public_land.UNCERTAINTY_M:.0f} m",
+            "summary": _public_land_summary(public),
+        },
+        {
             "evidence_id": f"{snapshot_id}:rera",
             "source_type": "maharera_seed" if maharashtra else "rera",
             "source_reference": "MahaRERA static seed dataset" if maharashtra else
@@ -832,6 +942,7 @@ def build_evidence_snapshot(
         "surface_water": flood.get("surface_water"),
         "water_features": flood.get("water_distances"),
         "river_flood_hazard": river,
+        "area_history": land_cover.get("trend_within_1km"),
         "rera_status": rera.get("is_rera_project"),
         "land_records": None,  # no land-records connector exists yet
     }
@@ -848,7 +959,10 @@ def build_evidence_snapshot(
         "land_records": None,
         "rera": rera,
         "satellite": satellite_facts,
+        "land_cover_history": land_cover,
         "infrastructure": amenities,
+        "public_land": public,
+        "coast": coast_info,
         "risk": {
             # No flood hazard dataset is integrated, so flood risk stays unknown.
             # The elevation comparison below is a terrain indicator, not flooding:
@@ -889,7 +1003,7 @@ def build_evidence_snapshot(
             "analysis_snapshot_id": snapshot_id,
             # A collector still running at the deadline has no entry yet: null.
             "collection_timings_ms": {label: timings.get(label) for label in (
-                "geocoding", "satellite", "accessibility", "terrain", "flood_indicators", "river_flood")},
+                "geocoding", "satellite", "accessibility", "terrain", "flood_indicators", "river_flood", "land_cover")},
         },
     }
     _validate_snapshot(snapshot)

@@ -31,6 +31,7 @@ from .store import (
     save_snapshot,
 )
 
+from routers.legal_checks import government_land_records, latest_checks
 
 LOGGER = logging.getLogger(__name__)
 router = APIRouter()
@@ -131,10 +132,12 @@ def _connection_error(action: str, error: httpx.HTTPError) -> HTTPException:
     except RuntimeError:  # no request attached
         return HTTPException(status_code=502, detail=f"{action} failed: {error}")
     service = "data-pipeline" if url.startswith(data_pipeline_url()) else "ml-models"
-    origin = url.split("/", 3)[:3]
+    origin = "/".join(url.split("/", 3)[:3])
+    reason = f" ({error})" if str(error) else ""
     return HTTPException(
         status_code=502,
-        detail=f"{action} failed: could not reach {service} at {'/'.join(origin)}: {error}",
+        detail=f"{action} failed: could not reach {service} at {origin}{reason}. It may not be running: "
+               "restart TerraScope with terrascope.cmd start, or see its log in .local-ui-check\\logs.",
     )
 
 
@@ -242,6 +245,8 @@ async def analyze_parcel(request: AnalyzeRequest) -> dict[str, Any]:
             if not enrich_response.is_success:
                 raise _downstream_error(enrich_response, "ml-models enrichment")
             enriched_snapshot = enrich_response.json()
+    except httpx.ConnectTimeout as error:
+        raise _connection_error("Initial evidence collection", error) from error
     except httpx.TimeoutException as error:
         raise HTTPException(status_code=504, detail=f"Initial evidence collection timed out: {error}") from error
     except httpx.HTTPError as error:
@@ -275,6 +280,12 @@ async def evaluate_parcel(parcel_id: str, request: EvaluationRequest) -> dict[st
             **(supplied or {}),
             "documents": [{key: doc[key] for key in ("filename", "doc_type", "text_extracted", "pages")} for doc in documents],
         }
+    recorded = latest_checks(parcel_id)
+    if recorded:  # the buyer's statements; the verdict treats them as such, never as verification
+        request_snapshot["user_legal_checks"] = recorded
+    government = government_land_records(parcel_id)
+    if government:
+        request_snapshot["user_government_land"] = government
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -292,6 +303,9 @@ async def evaluate_parcel(parcel_id: str, request: EvaluationRequest) -> dict[st
             if not response.is_success:
                 raise _downstream_error(response, "ml-models evaluation")
             result = response.json()
+    except httpx.ConnectTimeout as error:
+        # Windows reports a refused loopback connection as a connect timeout: the service is not running.
+        raise _connection_error("Evaluation", error) from error
     except httpx.TimeoutException as error:
         raise HTTPException(status_code=504, detail=f"Evaluation timed out: {error}") from error
     except httpx.HTTPError as error:
@@ -326,7 +340,11 @@ async def upload_parcel_document(parcel_id: str, file: UploadFile = File(...),
     extension = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
     if extension not in {"pdf", "txt"} and content_type not in {"application/pdf", "text/plain"}:
         raise HTTPException(status_code=400, detail="Only PDF and TXT evidence files are accepted.")
+    if get_latest_for_parcel(parcel_id) is None:
+        raise HTTPException(status_code=404, detail=f"Parcel not found: {parcel_id}")
     content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="The file is empty.")
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Evidence files must be 10 MB or smaller.")
     text_content = _document_text(content, extension, content_type)

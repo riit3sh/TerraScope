@@ -181,6 +181,20 @@
               "null"
             ]
           }
+        },
+        "zoning_verified": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Land-use zoning confirmed against an official record. Null = not verified."
+        },
+        "approvals_verified": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Required layout/building approvals confirmed against official records. Null = not verified."
         }
       }
     },
@@ -305,6 +319,13 @@
           "description": "How scenes were searched and selected (algorithm version, anchors, scenes matched/read/rejected)."
         }
       }
+    },
+    "land_cover_history": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Annual land cover 2017-2023 (Impact Observatory / Esri 10 m) for the parcel and the land within 1 km and 1-3 km of it, with built-area trends. Evidence for the area-growth factor."
     },
     "infrastructure": {
       "type": [
@@ -491,8 +512,35 @@
             "null"
           ],
           "minimum": 0
+        },
+        "layer_status": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "enum": [
+              "installed",
+              "not_installed"
+            ]
+          },
+          "description": "Per OSM layer: installed in the store this parcel was read from, or not installed (unknown, never 'none mapped')."
         }
       }
+    },
+    "public_land": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Mapped public facilities and possibly restricted land touching or near the parcel (OpenStreetMap): facility type, overlap measured on the parcel geometry, and any operator/ownership tag. Mapping evidence only, never ownership."
+    },
+    "coast": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Distance from the boundary to the OpenStreetMap coastline; 'coastal' within the 10 km band. Decides only whether coastal flooding is relevant; never a hazard assessment."
     },
     "risk": {
       "type": [
@@ -854,6 +902,8 @@
                   "unavailable",
                   "not_integrated",
                   "partial",
+                  "built_out",
+                  "established",
                   null
                 ]
               },
@@ -1022,7 +1072,8 @@
             "WAIT",
             "AVOID",
             "INSUFFICIENT_EVIDENCE",
-            null
+            null,
+            "RESTRICTED"
           ]
         },
         "confidence": {
@@ -1097,6 +1148,117 @@
             null
           ],
           "description": "deterministic: TerraScope's rule-based summary; ai: an AI call succeeded and wrote reasoning_summary."
+        },
+        "red_flags": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "History that argues against buying at all (frequent modelled river flooding, a likely water bed)."
+        },
+        "pre_purchase_checks": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "What TerraScope could not check and the buyer must, before paying (title, encumbrance, approvals; changes on the plot)."
+        },
+        "findings": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "description": "One row per thing a buyer needs to know, red flags first. Built from the snapshot; adds no new figures.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "area",
+              "finding",
+              "assessment",
+              "basis",
+              "next_step"
+            ],
+            "properties": {
+              "area": {
+                "type": "string"
+              },
+              "finding": {
+                "type": "string"
+              },
+              "assessment": {
+                "type": "string",
+                "enum": [
+                  "red_flag",
+                  "caution",
+                  "ok",
+                  "unknown"
+                ]
+              },
+              "basis": {
+                "type": "string",
+                "enum": [
+                  "measured",
+                  "modelled",
+                  "mapped",
+                  "user_provided",
+                  "not_verified",
+                  "unavailable"
+                ]
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "evidence_id": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "as_of": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "next_step": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "would_change": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "The specific evidence that would change the recommendation."
+        },
+        "government_land": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Government / restricted-land status decided before any score: status, label, walk_away, hold, warning, map_contacts, records. Mapping alone never confirms ownership."
+        },
+        "development_outlook": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "The 2017-2023 built-up share within 1 km projected to 2026 and 2030 (linear trend, 95 % prediction interval). A projection of building on the ground, never of prices; carries its own disclaimer."
         }
       }
     },
@@ -1387,6 +1549,20 @@
         "null"
       ],
       "description": "Survey/subdivision identifiers and document claims supplied by the user. Never independently verified; never populates land_records."
+    },
+    "user_legal_checks": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "The buyer's own legal-check records (latest per check: outcome, source, date, reference). Statements, never verification: a recorded problem counts against buying, a recorded confirmation never satisfies a legal requirement."
+    },
+    "user_government_land": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "The buyer's records of official government-land checks (latest per source): outcome, source, survey number, date. Statements, never verification by TerraScope."
     }
   },
   "$defs": {

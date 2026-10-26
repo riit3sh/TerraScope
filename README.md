@@ -1,8 +1,119 @@
 # TerraScope
 
-TerraScope is a local-first geospatial intelligence platform for land due diligence. You search a place, draw the parcel boundary, and it collects one immutable evidence snapshot — satellite NDVI/NDBI change, OpenStreetMap infrastructure distances, centroid elevation, RERA seed matches, and any documents you upload — then evaluates that fixed snapshot against your investor profile to produce a BUY / WAIT / AVOID verdict with visible weights and citations.
+TerraScope is a local-first land due-diligence tool for India. You search a place, draw the plot, and it collects one
+immutable evidence snapshot, then answers one question for a buyer: **BUY, WAIT, WALK AWAY or INSUFFICIENT DATA**.
 
-Collection and evaluation are deliberately separate: moving a slider or switching profiles re-runs only the fast evaluation layer and never re-collects evidence. See [docs/architecture.md](docs/architecture.md).
+**What the snapshot holds:**
+- the area's development history (built-up land around the plot, 2017-2023);
+- Sentinel-2 change on the plot;
+- straight-line distances to mapped roads, schools, hospitals and transport;
+- river-flood model results, observed surface water, and terrain relative to mapped water;
+- mapped public facilities touching the plot;
+- your survey details, documents and recorded legal checks.
+
+Every finding names its source and date. Missing data is reported as unknown, never as a clean result.
+
+Collection and evaluation are separate. Changing your priorities re-runs only the fast, deterministic evaluation, never
+the collection. See [docs/architecture.md](docs/architecture.md).
+
+**Stack:**
+
+| Service | Port | Role |
+|---|---|---|
+| React + TypeScript + Vite frontend (Leaflet maps) | 5173 | Map, drawing, reports |
+| FastAPI `backend-api` | 8000 | API; saved reports in SQLite |
+| FastAPI `data-pipeline` | 8001 | Evidence collection: OpenStreetMap stores, rasters, remote services |
+| FastAPI `ml-models` | 8002 | Scoring, findings and the decision (rule-based; an optional AI summary only explains it) |
+
+Runs natively on Windows (`terrascope.cmd`); Docker Compose is optional.
+
+## Decision logic (rule by rule: [docs/DECISION_RULES.md](docs/DECISION_RULES.md))
+
+Each rule is checked in order, and the first that applies decides:
+
+1. **WALK AWAY** if any of these hold; no score can override them:
+   - a matched record or your recorded check shows a legal defect (unclear title, an encumbrance, non-transferable
+     government land, a prohibiting restriction);
+   - a verified red flag: modelled river flooding over a quarter of the plot at 1-in-100 years or more often, or open
+     water seen on the plot in at least 10 % of satellite passes.
+2. **INSUFFICIENT DATA** when a weighted location factor (area growth, accessibility) has no evidence, for example
+   when roads are not installed for the region. No score is shown.
+3. **BUY** when the location score is at least 75 (strong access and a developing area). Unless matched official
+   records verify title, encumbrance, zoning and approvals, it is **BUY only after the legal checks**: they are listed
+   first and are never treated as done, and a defect found in them is WALK AWAY.
+4. **WAIT** otherwise. The report names what holds it back and what would change the answer.
+   - A mapped overlap with public land, conflicting records or a conditional restriction always holds the answer at
+     WAIT, with the warning first.
+5. **RESTRICTED LAND** when the boundary materially overlaps mapped defence, railway, water-body, court or other
+   restricted land: the report stops at the reason.
+
+**Development outlook:** the 2017-2023 built-up trend within 1 km, projected to 2026 and 2030 with a 95 % range (a
+straight-line fit). It projects building on the ground, never prices, and carries a disclaimer. Every report states
+that TerraScope's answer is an estimate, not perfect, and not legal or financial advice.
+
+## Data and coverage (all 28 states and 8 UTs: [docs/DATASET_REGISTRY.md](docs/DATASET_REGISTRY.md))
+
+Every cell of the registry is tested at a sample point in each region (`python data-pipeline/dataset_registry.py`).
+
+| Layer | Coverage |
+|---|---|
+| Boundaries and region resolution (geoBoundaries), place search (GeoNames) | All 36 regions |
+| Schools, hospitals, bus and rail, water bodies, waterways, public facilities (OpenStreetMap, Geofabrik India extract of 2026-10-25) | All 36 regions (all-India store; TN, PY and AP use their own stores) |
+| Roads (OpenStreetMap) | Tamil Nadu, Puducherry and Andhra Pradesh only. Elsewhere roads are "not installed (unknown)" and accessibility is not assessed |
+| Land cover 2017-2023, Sentinel-2, JRC river flood maps, JRC surface water, Copernicus DEM | All of India, read from public services (local tiles for TN, PY and AP) |
+| Land records, EC, zoning, approvals, RERA, poramboke status | Manual checks only (Tamil Nadu guide); none automated |
+
+Files, sizes, licences and dates are in [docs/DATASETS.md](docs/DATASETS.md). Official-record sources and the manual
+workflow are in [docs/LEGAL_VERIFICATION.md](docs/LEGAL_VERIFICATION.md).
+
+## Demo
+
+Start the app (first run: `terrascope.cmd setup` and `terrascope.cmd fetch-data`):
+
+```bat
+terrascope.cmd start
+```
+
+It opens http://localhost:5173. Three plots show the range:
+
+1. **Senjeri, Coimbatore (saved report).** Shows the Tamil Nadu store with roads, the development chart, and WAIT
+   with the legal checks pending. Click "Re-evaluate with current methods": this adds one evaluation, and the old one
+   is kept.
+2. **Mamillapalli, Kadapa (saved report).** The boundary overlaps 97 % of the mapped YS Raja Reddy Cricket Stadium.
+   The answer is WAIT, with a warning that this is a potential spatial overlap, not an ownership finding, and the
+   official poramboke check to do.
+3. **Patna (draw a small plot).** Uses the all-India store: schools, hospitals, water and public facilities, but roads
+   "not installed (unknown)". The answer is INSUFFICIENT DATA, with the reason.
+
+**Automated:** mapping, flood model, land-cover history and the decision rules. **Manual:** title, EC, zoning,
+approvals and government-land status; you record them, and they are never automated clearance.
+
+`terrascope.cmd stop` stops only TerraScope's own services. Saved reports stay in `.local-ui-check\backend.sqlite3`.
+
+## Tests (run 2026-10-26)
+
+| Suite | Command | Result |
+|---|---|---|
+| ML (scoring, verdict, findings) | `cd ml-models && ..\.venv\Scripts\python -m pytest -q` | 80 passed |
+| Backend API | `cd backend-api && ..\.venv\Scripts\python -m pytest -q` | 29 passed |
+| Data pipeline (incl. the 36-region registry) | `cd data-pipeline && ..\.venv\Scripts\python -m pytest -q` | 96 passed |
+| Valuation (unused module) | `cd valuation && ..\.venv\Scripts\python -m pytest -q` | 52 passed |
+| Integration (own temporary store) | `.venv\Scripts\python -m pytest -q tests/integration` | 13 passed |
+| Frontend | `cd frontend && npx tsc --noEmit -p . && npm run build` | passed |
+
+## Known limitations and future work
+
+- **Official verification:** no state publishes a permitted API for title, EC, zoning, approvals or poramboke
+  status, so those checks are manual. Future work: integrate a source if one is opened, or obtain authorization.
+- **Roads outside TN, PY and AP:** a nationwide road store needs about 3 GB more disk than the development machine
+  has. Each state can be built with `terrascope.cmd fetch-data <state>`.
+- **Flooding:** only modelled river flooding is assessed. Rainfall waterlogging and coastal flooding are **not
+  assessed**. Flood Safety is not scored.
+- **OpenStreetMap:** completeness varies widely by state, and positions can be about 15 m off. A missing feature
+  is not proof of absence.
+- **Imagery:** the satellite basemap (EOxCloudless) is for non-commercial use only. Bhuvan layers are viewing-only
+  without written NRSC authorization and are not integrated.
+- **Local news (GDELT):** frequently rate-limited. A failed search is shown as unavailable, never as "no news".
 
 ## Folder Structure
 
@@ -21,7 +132,7 @@ terrascope/
 ├── backend-api/                    # Public API package
 │   ├── routers/
 │   └── src/terrascope_backend_api/
-├── valuation/                      # Land-price import, training and prediction
+├── valuation/                      # Not used in this version (land prices removed)
 │   ├── fixtures/                   # SYNTHETIC demo data (never real evidence)
 │   └── artifacts/                  # Trained model + metadata
 ├── frontend/                       # Vite + React + TypeScript + Tailwind app
@@ -56,38 +167,31 @@ geoBoundaries gbOpen IND ADM1 (DataMeet India / Election Commission of India, CC
 It is not a Survey of India boundary, and its coastline and borders are generalised. A parcel
 crossing a state border lists every state it touches, with its share.
 
-**What works everywhere in India, with no regional download:**
+**What works everywhere in India:** land cover 2017-2023, Sentinel-2, JRC river flood maps, JRC surface water and
+Copernicus DEM (read remotely, window by window, where no local tiles are installed); and, from the all-India store
+(`python data-pipeline/fetch_data.py --national`, built from the Geofabrik India extract), schools, hospitals, bus and
+rail, rivers, canals, tanks and mapped public facilities. River-flood, Sentinel-2, surface-water and DEM parcel results
+are cached; failed provider reads are never cached.
 
-- Sentinel-2 land cover.
-- JRC river flood hazard maps.
-- JRC Global Surface Water.
-- Copernicus DEM elevation.
+**What needs a state store** (`fetch-data <state>`): roads, and therefore accessibility. Without one the report says
+"road data not installed (unknown)", accessibility is not assessed, and the decision is INSUFFICIENT DATA. A state
+store takes precedence over the all-India store, and each parcel reads exactly one store.
 
-These rasters are read remotely, window by window when a local regional cache is not
-installed. River-flood results, Sentinel-2 scene measurements, JRC surface-water
-results, and Copernicus DEM parcel results are cached per parcel. The JRC/DEM result
-cache is versioned and retained for 30 days; failed provider reads are never cached.
-
-**What needs a regional cache** (`fetch-data <region>`):
-
-- accessibility (roads, schools, hospitals, bus, rail)
-- distances to rivers, canals and tanks
-- elevation relative to the nearest mapped water
-
-Without a regional cache, those layers say so and give the install command. The other
-collectors still run. Nothing India-wide is downloaded automatically. A region build checks
-disk space and reuses any extract and tiles already on disk.
+How the decision is made, rule by rule, is in [docs/DECISION_RULES.md](docs/DECISION_RULES.md). Nothing is downloaded
+automatically; a build checks disk space and reuses any extract and tiles already on disk.
 
 | Data (`data-cache\`) | Source and licence | Used for |
 |---|---|---|
 | `india\` | geoBoundaries IND ADM1, CC BY 2.5 IN | coverage check, state attribution |
-| `regions\<slug>\osm.sqlite` | OpenStreetMap via the Geofabrik India zone extract, ODbL 1.0 | accessibility; rivers, canals, tanks |
+| `regions\<slug>\osm.sqlite` | OpenStreetMap via a Geofabrik extract, ODbL 1.0 | roads (state stores only), schools, hospitals, transport; rivers, canals, tanks |
+| `regions\<slug>\public_land.sqlite` | OpenStreetMap, ODbL 1.0 | mapped public facilities touching the plot (never ownership) |
+| `regions\india\` | OpenStreetMap, Geofabrik `india-261025.osm.pbf` (MD5-verified, kept unchanged in `downloads\`), ODbL 1.0 | the all-India store: every layer above except roads |
 | `rasters\gsw\` | JRC Global Surface Water v1.4 (1984-2021), Copernicus, "Source: EC JRC/Google" | surface water seen inside the parcel and within 500 m |
 | `rasters\dem\` | Copernicus DEM GLO-30 via Planetary Computer, Copernicus DEM licence | elevation; height above the nearest mapped water |
+| `flood-indicators-cache.json` | derived from Impact Observatory / Esri 10 m Annual Land Use Land Cover v2 (CC BY 4.0, Planetary Computer), and from JRC GSW / Copernicus DEM | per-parcel results, 30 days: land cover per year on the plot, within 1 km and 1-3 km |
 | `flood-hazard\` | JRC global river flood hazard maps v2.1.2, CC BY 4.0 (doi:10.2905/JRC.VD32YWG) | tile index and cached per-parcel results |
 | `places\places.sqlite` | GeoNames gazetteer and postal codes for India, CC BY 4.0 (credit GeoNames) | search suggestions while typing (no web geocoder is called while typing) |
 | `satellite\sentinel2-cache.sqlite` | derived from Sentinel-2 L2A (Planetary Computer) | reused scene measurements (immutable) and catalogue searches (refreshed after 6 h for recent windows) |
-| `valuation\observations.csv` | yours: licensed or permitted price observations (none today) | comparable-based price ranges |
 
 **Flood evidence is reported per mechanism, with no overall score.** The mechanisms are:
 
@@ -126,7 +230,7 @@ is skipped, and the backend still stores every snapshot.
    Unit tests need no running stack:
 
    ```bash
-   pytest valuation/test_valuation.py ml-models/test_retrieval_cache.py -v
+   pytest ml-models/test_retrieval_cache.py -v
    ```
 
 The first build downloads a CPU build of PyTorch for the RAG embeddings, so
@@ -159,20 +263,13 @@ No live-data configuration can guarantee a few-second first run when public prov
 are still responding over the network.
 
 
-## Land valuation
+## Land prices: not in this version
 
-The report shows a **listing-based estimated price range** (or a sale-based one, or a government
-guideline value) computed only from comparable prices: nearby, recent, similar-size vacant land of the same
-use. Asking prices, sale prices and guideline values are never pooled, and the spread shown is the
-comparables' own spread, not a validated prediction interval. The price is independent of suitability
-weights, flood and legal evidence.
-
-**No permitted price data is loaded today, so every parcel gets "No price estimate".** Owner/broker-supplied or
-licensed rows can be imported from "Price data" on the start page (preview with per-row reasons, then commit).
-The sources checked, their verified reuse terms and the smallest input that would unlock a real estimate are in
-[docs/SETUP_VALUATION.md](docs/SETUP_VALUATION.md). The data contract, cleaning, estimator and the
-prediction-quality harness (`python -m valuation.evaluate`) are in [valuation/README.md](valuation/README.md).
-Prediction quality: **not yet validated**.
+TerraScope shows no land price, price range or placeholder value. No permitted, verified price dataset is available
+(Tamil Nadu guideline values need the Registration Department's permission to reproduce; listing portals need
+licences), and an unverified price would undermine every other check. Price never affects BUY / WAIT / AVOID. The
+earlier comparable-price module stays, unused, in `valuation/` for a later version; the sources checked are in
+[docs/SETUP_VALUATION.md](docs/SETUP_VALUATION.md).
 
 ## What the evidence does and does not claim
 
@@ -182,13 +279,19 @@ Prediction quality: **not yet validated**.
   (unknown) and the match is recorded as candidate evidence.
 - **Land records** — there is no land-records connector, so title and
   encumbrance are unknown, and the scoring treats unknown as unverified rather
-  than as safe. You can record survey details (state, district, taluk, village,
+  than as safe. Checks you record (source, date, reference) are shown as yours: a recorded problem means WALK
+  AWAY; a recorded confirmation is shown as yours and never counts as verification. You can record survey details (state, district, taluk, village,
   survey and subdivision numbers) and typed documents (patta, EC, sale deed,
   approvals) on the report; they stay "user-provided, not verified" and never
   produce a legal score.
 - **Accessibility** — straight-line distances to OpenStreetMap geometry, from the
   drawn boundary (and from the centroid, shown alongside). Your road and school
   distance limits set where each sub-score reaches 0. Proximity is not legal access.
+- **Area growth** — the built-up share of the land within 1 km of the plot (or 1-3 km away, if the inner
+  ring was already built out), 2017-2023, from a 10 m modelled land-cover map. The trend is scored: +2 points
+  a year scores 100 (a rule, not calibrated). It measures building on the ground, not prices or approvals.
+- **Buy / wait / walk away** — see "Decision logic" above. A strong location is BUY only after the legal checks;
+  unverified title is never treated as clear and stays first on the "before you pay" list.
 - **Satellite change** — one Sentinel-2 scene per season anchor across the whole
   window, compared same season against same season a year apart. The result is
   "no material change", a change class, or "inconclusive", with no confidence
