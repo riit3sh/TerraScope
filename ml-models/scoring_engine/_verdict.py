@@ -12,6 +12,7 @@ from ._assessment import (
     plot_history_checks,
     points_a_year,
     red_flags,
+    unassessed_flood,
 )
 from ._government_land import government_land_status
 from ._outlook import OUTLOOK_WORDS, development_outlook
@@ -186,6 +187,20 @@ def build_verdict(
             summary = "WAIT: the location evidence is strong, but government or restricted land must be ruled out first."
         summary = government["warning"] + " " + summary
         would_change = government["would_change"] + would_change
+    flood_unknown = unassessed_flood(record)
+    if flood_unknown and recommendation in ("BUY", "WAIT"):
+        checks = checks + [flood_unknown["check"]]
+        if flood_unknown["strong"]:
+            # Strong local water signs with no river model: never a BUY (user decision, 2026-10-28).
+            reason = ("River flood maps were not read, and " + " and ".join(flood_unknown["signs"])
+                      + ". Rule out flooding before going further.")
+            if recommendation == "BUY":
+                recommendation = "WAIT"
+                summary = "WAIT: the location evidence is strong, but flooding must be ruled out first. " + reason
+            else:
+                summary = summary + " " + reason
+            would_change = ["River flood maps read for this plot, or the local body's flood records, showing it does not "
+                            "flood, and a dry-season and post-rain site visit"] + would_change
 
     return {
         "legal_safety_score": factors[0]["score"],
@@ -205,5 +220,6 @@ def build_verdict(
         "pre_purchase_checks": checks,
         "would_change": would_change,
         "government_land": government,
+        "flood_unknown": flood_unknown,
         "development_outlook": outlook,
     }

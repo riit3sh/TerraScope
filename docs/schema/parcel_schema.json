@@ -1277,6 +1277,13 @@
           ],
           "description": "Government / restricted-land status decided before any score: status, label, walk_away, hold, warning, map_contacts, records. Mapping alone never confirms ownership."
         },
+        "flood_unknown": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "description": "Set when the river flood maps were not read: the flood-history check before paying, and any strong local water signs (ground at or below the nearest mapped water, water seen on 10%+ of the plot) that hold a BUY at WAIT. Null when the maps were read."
+        },
         "development_outlook": {
           "type": [
             "object",

@@ -363,6 +363,10 @@ function GovernmentLand({ record }: { record: ParcelRecord }) {
   const status = record.verdict?.government_land
   const mapped = record.public_land
   const tone = status?.walk_away ? 'red_flag' : status?.hold ? 'caution' : 'unknown'
+  // Edge contacts within the ±15 m map error are listed apart and never presented as an overlap.
+  const minor = new Set(status?.within_map_error || [])
+  const overlaps = (mapped?.overlaps || []).filter(f => !minor.has(f.osm_id))
+  const edges = (mapped?.overlaps || []).filter(f => minor.has(f.osm_id))
   return <section className={`finding ${tone} gov-land`}>
     <div className="section-label">MAPPED RESTRICTION SIGNAL · NOT OWNERSHIP PROOF</div>
     <h2>{status?.walk_away ? 'Mapped overlap requires official verification' : status ? status.label : 'Not assessed in this evaluation: re-evaluate'}</h2>
@@ -370,11 +374,12 @@ function GovernmentLand({ record }: { record: ParcelRecord }) {
     {!mapped ? <p className="muted">This report was analysed before TerraScope checked mapped public facilities. Analyse the same boundary again to add it. Until then, nothing is known either way.</p>
       : mapped.status !== 'assessed' ? <p className="muted">Public facilities not checked: {mapped.reason} This is not evidence that the land is private or unrestricted.</p>
       : <>
-        {mapped.overlaps.length ? <>
+        {overlaps.length ? <>
           <div className="action-card restriction-action"><strong>Before you rely on this result</strong><p>This is a mapped overlap, not a legal ownership decision. First confirm that the drawn boundary does not accidentally include the lake, ground or public facility.</p><ol><li>Compare the boundary with the seller's survey sketch and FMB map.</li><li>Check Tamil Nadu e-Services, the A-register and the local authority for the same survey number.</li><li>Upload the official record and record the result under Legal checks before considering this parcel.</li></ol></div>
-          <ul className="doc-list">{mapped.overlaps.map((f, i) => <li key={`${f.osm_id}-${i}`}><strong>{f.category_label}{f.name ? ` · ${f.name}` : ''}</strong> · {CONTACT_LABEL[f.contact]}{f.contact === 'overlap' && f.overlap_share ? ` (${Math.round(f.overlap_share * 100)}% of the plot)` : ''} · {SIGNAL_LABEL[f.ownership_signal]}{f.osm_id ? <> · <a href={`https://www.openstreetmap.org/${({ n: 'node', w: 'way', r: 'relation' } as Record<string, string>)[f.osm_id[0]]}/${f.osm_id.slice(1)}`} target="_blank" rel="noreferrer">OSM {f.osm_id}</a></> : null}</li>)}</ul>
+          <ul className="doc-list">{overlaps.map((f, i) => <li key={`${f.osm_id}-${i}`}><strong>{f.category_label}{f.name ? ` · ${f.name}` : ''}</strong> · {CONTACT_LABEL[f.contact]}{f.contact === 'overlap' && f.overlap_share ? ` (${Math.round(f.overlap_share * 100)}% of the plot)` : ''} · {SIGNAL_LABEL[f.ownership_signal]}{f.osm_id ? <> · <a href={`https://www.openstreetmap.org/${({ n: 'node', w: 'way', r: 'relation' } as Record<string, string>)[f.osm_id[0]]}/${f.osm_id.slice(1)}`} target="_blank" rel="noreferrer">OSM {f.osm_id}</a></> : null}</li>)}</ul>
         </>
-          : <p className="muted">No mapped court, government office, stadium, park, railway, defence area or water body touches the boundary. That does not show the land is private or unrestricted: mapping is incomplete.</p>}
+          : <p className="muted">No mapped court, government office, stadium, park, railway, defence area or water body {edges.length ? 'overlaps the boundary beyond the map error' : 'touches the boundary'}. That does not show the land is private or unrestricted: mapping is incomplete.</p>}
+        {edges.length > 0 && <p className="field-hint">Touching the drawn boundary only within the ±{mapped.uncertainty_m} m map error, so treated as nearby: {edges.map(f => `${f.category_label.split(' (')[0]}${f.name ? ` ${f.name}` : ''}${f.overlap_m2 ? ` (${Math.round(f.overlap_m2)} m² at the edge)` : ''}`).join(' · ')}. Check the boundary against the survey sketch.</p>}
         {mapped.nearby.length > 0 && <p className="field-hint">Nearby (straight line, proximity only): {mapped.nearby.slice(0, 6).map(f => `${f.category_label.split(' (')[0]}${f.name ? ` ${f.name}` : ''} ${Math.round(f.distance_m)} m`).join(' · ')}.</p>}
         <p className="field-hint">OpenStreetMap ({mapped.licence}), data as of {mapped.data_as_of || 'unknown'}{mapped.stale ? ' (more than a year old)' : ''}; positions can be off by about {mapped.uncertainty_m} m. {mapped.limitations}</p>
       </>}

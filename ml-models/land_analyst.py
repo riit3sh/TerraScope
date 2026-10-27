@@ -320,11 +320,16 @@ def main_reason(snapshot: dict[str, Any]) -> str | None:
     if recommendation in ("WAIT", "INSUFFICIENT_EVIDENCE") and missing:
         return "TerraScope could not measure " + " or ".join(
             "the area's development history" if f == "growth" else "road access" for f in missing)
+    flood = verdict.get("flood_unknown") or {}
     if recommendation == "BUY":
-        return "the location is strong, but ownership, loans on the land and approvals are not yet verified"
+        return ("the location is strong, but ownership, loans on the land and approvals are not yet verified"
+                + (", and river flood maps were not read, so flood history is a check before paying" if flood else ""))
     if government.get("hold"):
         return ("the drawn boundary overlaps or touches mapped public land (" + str(government.get("label") or "map only")
                 + "); this must be ruled out with official land records")
+    if recommendation == "WAIT" and flood.get("strong"):
+        return ("river flood maps were not read and the plot shows local water signs (" + "; ".join(flood.get("signs") or [])
+                + "), so flooding must be ruled out first")
     if recommendation == "WAIT":
         return "the location evidence is not strong enough yet, and ownership and approvals are not verified"
     return None

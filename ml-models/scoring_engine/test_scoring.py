@@ -168,10 +168,12 @@ def test_recorded_legal_checks_are_never_verification_and_a_recorded_problem_is_
 
 # --- government and restricted land (2026-10-26): decided before any score, synthetic inputs only -------------
 
-def _mapped(category, contact, name=None):
+def _mapped(category, contact, name=None, overlap_m2=150.0, overlap_share=0.02):
+    """An edge contact defaults to 2% of the plot: more than map error, so it still holds (see within_map_error)."""
     return {"status": "assessed", "uncertainty_m": 15, "data_as_of": "2026-10-04",
             "overlaps": [] if contact == "nearby" else [{"category": category, "category_label": category.title(), "name": name,
-                                                          "contact": contact, "ownership_signal": "unknown"}],
+                                                          "contact": contact, "ownership_signal": "unknown",
+                                                          "overlap_m2": overlap_m2, "overlap_share": overlap_share}],
             "nearby": [{"category": category, "contact": "nearby", "distance_m": 120.0}] if contact == "nearby" else []}
 
 
@@ -207,6 +209,38 @@ def test_potential_public_land_without_an_official_record_holds_at_wait() -> Non
     result = compute_evaluation(parcel(public_land=_mapped("defence", "edge"), user_government_land=[_record("records_unavailable")]),
                                 _evidenced_profile("investor"))
     assert result["recommendation"] == "WAIT" and result["government_land"]["status"] == "records_unavailable"
+
+
+def test_an_edge_sliver_within_the_map_error_is_nearby_not_a_hold() -> None:
+    """SRM, 2026-10-28: 140 m2 and 69 m2 of a 26-acre plot touched a mapped lake and park and the answer was WAIT."""
+    profile = _evidenced_profile("investor")
+    sliver = _mapped("water_body", "edge", overlap_m2=140.0, overlap_share=0.0013)
+    sliver["overlaps"][0]["osm_id"] = "w67551369"
+    result = compute_evaluation(parcel(public_land=sliver), profile)
+    assert result["recommendation"] == "BUY" and result["government_land"]["hold"] is False
+    assert result["government_land"]["within_map_error"] == ["w67551369"]
+    wider = compute_evaluation(parcel(public_land=_mapped("water_body", "edge", overlap_m2=600.0, overlap_share=0.004)), profile)
+    assert wider["recommendation"] == "WAIT", "500 m2 or more is more than a 15 m map error explains"
+
+
+def _flood(height=None, seen=None, river=None):
+    return {"river_flood": river, "terrain": {"elevation_above_nearest_water_m": height, "nearest_water_feature_class": "drain",
+                                              "nearest_water_feature_distance_m": 94.0},
+            "surface_water": {"parcel": {"water_ever_fraction": seen}}}
+
+
+def test_unread_river_maps_add_a_flood_check_and_strong_water_signs_hold_a_buy() -> None:
+    """User decision, 2026-10-28 (Pallikaranai: -0.6 m below a drain, water on 17% of the plot, was 'Buy after checks')."""
+    profile = _evidenced_profile("investor")
+    dry = compute_evaluation(parcel(flood_indicators=_flood(height=2.4, seen=0.0)), profile)
+    assert dry["recommendation"] == "BUY" and any(c.startswith("Flood history") for c in dry["pre_purchase_checks"])
+    low = compute_evaluation(parcel(flood_indicators=_flood(height=-0.6, seen=0.17)), profile)
+    assert low["recommendation"] == "WAIT" and low["flood_unknown"]["strong"]
+    assert "-0.6 m relative to the nearest mapped water (drain, 94 m away)" in low["reasoning_summary"]
+    assert "17% of the plot" in low["reasoning_summary"]
+    read = compute_evaluation(parcel(flood_indicators=_flood(height=-0.6, seen=0.17, river={"status": "assessed", "scenarios": []})),
+                              profile)
+    assert read["flood_unknown"] is None and not any(c.startswith("Flood history") for c in read["pre_purchase_checks"])
 
 
 def test_conflicting_official_records_hold_at_wait_and_name_both() -> None:

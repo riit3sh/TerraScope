@@ -152,6 +152,7 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         "findings": build_findings(evaluated, result["factors"]),
         # The AI summary must give the verdict's real reason; a map-only public-land hold was invisible to it.
         "government_land": result["government_land"],
+        "flood_unknown": result["flood_unknown"],
     }
     # Every figure the assessment relies on, cited to the evidence row that holds it. No LLM needed.
     citations = evidence_citations(evaluated, result["factors"])
@@ -182,6 +183,7 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         "would_change": result["would_change"],
         "findings": evaluated["verdict"]["findings"],
         "government_land": result["government_land"],
+        "flood_unknown": result["flood_unknown"],
         "development_outlook": result["development_outlook"],
     }
     _validate_snapshot(evaluated)

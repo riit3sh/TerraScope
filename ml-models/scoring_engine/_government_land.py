@@ -25,6 +25,18 @@ GOVERNMENT = {"government_non_transferable", "government_transfer_documented"}
 # their owner is not implied by the facility type.
 RESTRICTED_CATEGORIES = {"defence", "protected_area", "railway_land", "railway_track", "water_body", "court",
                          "government_office", "park", "burial_ground"}
+# Provisional, not validated (user decision, 2026-10-28): an edge contact this small is what a 15 m map error along a
+# hand-drawn boundary produces, so it is shown as nearby and does not hold the verdict (SRM: 140 m2 and 69 m2 of a
+# 26-acre plot). Anything larger, or any real overlap, still does. For a line it is the crossing length.
+SLIVER_MAX_M2 = 500.0
+SLIVER_MAX_SHARE = 0.005
+
+
+def within_map_error(item: dict[str, Any]) -> bool:
+    return (item.get("contact") == "edge" and (item.get("overlap_m2") or 0.0) < SLIVER_MAX_M2
+            and (item.get("overlap_share") or 0.0) < SLIVER_MAX_SHARE)
+
+
 LABEL = {
     "confirmed_government": "Confirmed government-owned (official record)",
     "restricted": "Restricted: the official record prohibits this use",
@@ -50,7 +62,9 @@ def government_land_status(record: dict[str, Any]) -> dict[str, Any]:
     for r in records:
         by_outcome.setdefault(r.get("outcome"), []).append(r)
     mapped = record.get("public_land") if isinstance(record.get("public_land"), dict) else {}
-    contacts = [i for i in mapped.get("overlaps") or [] if i.get("contact") in ("overlap", "point_inside", "edge")]
+    contacts = [i for i in mapped.get("overlaps") or []
+                if i.get("contact") in ("overlap", "point_inside", "edge") and not within_map_error(i)]
+    slivers = [i.get("osm_id") for i in mapped.get("overlaps") or [] if within_map_error(i)]
     touched = ", ".join(dict.fromkeys(
         f"{i.get('category_label', i.get('category', 'facility')).split(' (')[0].lower()}"
         + (f" ({i['name']})" if i.get("name") else "") for i in contacts[:3]))
@@ -62,6 +76,8 @@ def government_land_status(record: dict[str, Any]) -> dict[str, Any]:
         return {"status": status, "label": LABEL[status], "walk_away": walk_away, "hold": hold, "restricted": restricted,
                 "warning": warning,
                 "would_change": would_change or [], "checks": checks or [], "map_contacts": len(contacts),
+                # Edge contacts within the map error: listed as nearby in the report, never a hold.
+                "within_map_error": slivers,
                 "mapping_status": mapped.get("status") or "not_assessed", "records": len(records)}
 
     tamil_nadu = ((record.get("location") or {}).get("state") or "").casefold() == "tamil nadu"

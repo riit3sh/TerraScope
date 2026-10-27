@@ -217,6 +217,11 @@ STEADY_PTS_PER_YEAR = 0.5
 RIVER_FLAG_MAX_RETURN_PERIOD = 100
 RIVER_FLAG_PARCEL_SHARE = 0.25
 WATER_BED_MEAN_OCCURRENCE_PCT = 10.0
+# Provisional rules, not validated (user decision, 2026-10-28). When the river flood maps were not read, the flood
+# history becomes a check before paying, and these local water signs alone hold a BUY at WAIT: ground at or below the
+# nearest mapped water, or open water seen at least once on this share of the plot's 30 m pixels (1984-2021).
+FLOOD_LOW_GROUND_M = 0.0
+FLOOD_WATER_SEEN_SHARE = 0.10
 
 AREA_HISTORY_LIMITS = (
     "Built-area share from a 10 m machine-learning land-cover map (Impact Observatory / Esri, 2017-2023). It shows "
@@ -333,6 +338,31 @@ def red_flags(record: dict[str, Any]) -> list[str]:
     if wet:
         flags.append(f"The plot was mapped as water or flooded vegetation in {', '.join(wet)}.")
     return flags
+
+
+def unassessed_flood(record: dict[str, Any]) -> dict[str, Any] | None:
+    """None when the river flood maps were read; otherwise the check before paying and any strong local water signs."""
+    flood = _section(record, "flood_indicators")
+    river = flood.get("river_flood")
+    if isinstance(river, dict) and river.get("status") in ("assessed", "partial"):
+        return None
+    signs = []
+    terrain = _section(flood, "terrain")
+    height = terrain.get("elevation_above_nearest_water_m")
+    if isinstance(height, (int, float)) and height <= FLOOD_LOW_GROUND_M:
+        near = terrain.get("nearest_water_feature_class") or terrain.get("nearest_water_feature_kind") or "water"
+        away = terrain.get("nearest_water_feature_distance_m")
+        signs.append(f"the plot's ground is {height:+.1f} m relative to the nearest mapped water ({near}"
+                     + (f", {away:,.0f} m away)" if isinstance(away, (int, float)) else ")"))
+    seen = _section(_section(flood, "surface_water"), "parcel").get("water_ever_fraction")
+    if isinstance(seen, (int, float)) and seen >= FLOOD_WATER_SEEN_SHARE:
+        signs.append(f"open water was seen at least once on {seen:.0%} of the plot's 30 m pixels (1984-2021)")
+    return {
+        "strong": bool(signs),
+        "signs": signs,
+        "check": "Flood history: river flood maps were not read for this report. Ask neighbours and the local body "
+                 "whether the plot flooded or waterlogged in recent monsoons, and see the plot after heavy rain",
+    }
 
 
 def plot_history_checks(record: dict[str, Any]) -> list[str]:

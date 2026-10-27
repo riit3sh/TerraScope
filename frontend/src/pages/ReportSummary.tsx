@@ -36,8 +36,10 @@ export function plainAssessment(record: ParcelRecord): { label: string; tone: To
   // Missing location evidence is a Wait, never a Buy; older reports stored it as INSUFFICIENT_EVIDENCE.
   if (rec === 'INSUFFICIENT_EVIDENCE' || (rec === 'WAIT' && missing.length)) return { label: 'Wait', tone: 'warn', sentence: `TerraScope could not measure ${missing.length ? missing.join(' or ') : 'all of the location'} for this plot, so it cannot recommend buying yet. Re-analyse once the data is available, and complete the legal checks below.` }
   if (rec === 'BUY' && legalVerified(record)) return { label: 'Buy', tone: 'good', sentence: 'The location is strong and the legal checks are verified from official records. Still confirm everything with a lawyer before paying.' }
-  if (rec === 'BUY') return { label: 'Buy after checks', tone: 'warn', sentence: `The location is strong${developing ? ' and the area has been developing' : ''}, but ownership, loans on the land and approvals have not been verified. Buy only once the checks below are complete.` }
+  const floodUnknown = v.flood_unknown
+  if (rec === 'BUY') return { label: 'Buy after checks', tone: 'warn', sentence: `The location is strong${developing ? ' and the area has been developing' : ''}, but ownership, loans on the land and approvals have not been verified${floodUnknown ? ', and the flood history has not been checked' : ''}. Buy only once the checks below are complete.` }
   if (gov?.hold) return { label: 'Wait', tone: 'warn', sentence: 'The plot may overlap public or restricted land on the map. Rule this out with official records before going further.' }
+  if (floodUnknown?.strong) return { label: 'Wait', tone: 'warn', sentence: `River flood maps could not be read, and ${floodUnknown.signs.join(' and ')}. Rule out flooding before going further.` }
   return { label: 'Wait', tone: 'warn', sentence: 'The location evidence is not strong enough yet, and ownership and approvals have not been verified. Look at the details below before committing money.' }
 }
 
@@ -68,7 +70,9 @@ export function keyFindings(record: ParcelRecord): KeyFinding[] {
       ? { key: 'flood', title: 'Flood risk', icon: <Waves size={18} />, status: 'Some risk', tone: 'warn', text: `${river.finding} Rainwater flooding has not been assessed.${coastalNote}`, why: '' }
       : river?.assessment === 'ok'
         ? { key: 'flood', title: 'Flood risk', icon: <Waves size={18} />, status: 'Partly assessed', tone: 'unknown', text: `The available river-flood model did not identify flooding here. Rainwater flooding and local drainage have not been assessed.${coastalNote}`, why: '' }
-        : { key: 'flood', title: 'Flood risk', icon: <Waves size={18} />, status: 'Not assessed', tone: 'unknown', text: `River flood maps could not be read for this plot, and rainwater flooding is not assessed.${coastalNote} Unknown is not safe.`, why: '' }
+        : record.verdict?.flood_unknown?.strong
+          ? { key: 'flood', title: 'Flood risk', icon: <Waves size={18} />, status: 'Check needed', tone: 'warn', text: `River flood maps could not be read, and ${record.verdict.flood_unknown.signs.join(' and ')}.${coastalNote} ${record.verdict.flood_unknown.check}.`, why: '' }
+          : { key: 'flood', title: 'Flood risk', icon: <Waves size={18} />, status: 'Not assessed', tone: 'unknown', text: `River flood maps could not be read for this plot, and rainwater flooding is not assessed.${coastalNote} Unknown is not safe.${record.verdict?.flood_unknown ? ` ${record.verdict.flood_unknown.check}.` : ''}`, why: '' }
   flood.why = 'Flooding damages buildings and cuts off roads. The river model covers large rivers only (about 90 m detail); waterlogging after heavy rain depends on local drainage, which TerraScope does not check. Ask neighbours how the area fares in the monsoon.'
 
   const roadsMissing = infra?.layer_status?.road === 'not_installed'
