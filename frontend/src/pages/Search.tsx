@@ -45,7 +45,8 @@ export function Search({ onSubmit, onOpenSaved, openingParcelId }: { onSubmit: (
     if (!query.trim()) return
     setLoading(true); setError('')
     try {
-      const result = selected?.place_id ? await resolveGooglePlace(selected.place_id) : selected || await geocodeAddress(query.trim())
+      const candidate = selected || suggestions[0]
+      const result = candidate?.place_id ? await resolveGooglePlace(candidate.place_id) : candidate || await geocodeAddress(query.trim())
       if (!result) throw new Error('No location found. Try Vellore, Chennai, or a more specific address.')
       onSubmit({ lat: result.lat, lon: result.lon, label: result.display_name })
     } catch (e) { setError(e instanceof Error ? e.message : 'Search failed') } finally { setLoading(false) }
