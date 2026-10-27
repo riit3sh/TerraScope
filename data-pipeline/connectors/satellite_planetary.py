@@ -194,10 +194,32 @@ class PlanetaryComputerClient:
         )
         self.max_observations = max_observations
         self.timeout = float(os.getenv("SENTINEL_TIMEOUT_SECONDS", "60"))
+        self.verify_tls = self._tls_verify_setting()
         self.last_diagnostics: dict[str, Any] = {}
         # time.monotonic() after which no new scene read starts: the caller's evidence deadline. Reads
         # already in flight finish and are cached; queued ones are dropped, not left to saturate the link.
         self.give_up_at: float | None = None
+
+    @staticmethod
+    def _tls_verify_setting() -> str | bool:
+        """Return the CA bundle or verification setting for local HTTPS inspection.
+
+        Certificate verification stays enabled by default. A corporate proxy or antivirus
+        can insert a local CA; point ``PLANETARY_CA_BUNDLE`` at that CA PEM file. The
+        insecure override is deliberately explicit and should only be used for a local
+        demo when the machine's certificate chain cannot be repaired.
+        """
+        bundle = os.getenv("PLANETARY_CA_BUNDLE", "").strip()
+        if bundle:
+            return bundle
+        if os.getenv("PLANETARY_TLS_VERIFY", "true").strip().lower() in {"0", "false", "no", "off"}:
+            LOGGER.warning("Planetary Computer TLS verification is disabled by PLANETARY_TLS_VERIFY")
+            return False
+        return True
+
+    def _tls_kwargs(self) -> dict[str, str | bool]:
+        # Omit the default so requests and lightweight test doubles retain their normal API.
+        return {} if self.verify_tls is True else {"verify": self.verify_tls}
 
     # --- plumbing ---------------------------------------------------------
 
@@ -207,7 +229,7 @@ class PlanetaryComputerClient:
             cached = PlanetaryComputerClient._token
             if cached and cached["expires_at"] > time.time() + 60:
                 return cached["token"]
-            response = requests.get(SAS_URL, timeout=self.timeout)
+            response = requests.get(SAS_URL, timeout=self.timeout, **self._tls_kwargs())
             response.raise_for_status()
             payload = response.json()
             PlanetaryComputerClient._token = {
@@ -248,7 +270,7 @@ class PlanetaryComputerClient:
         }
         url, features, truncated = STAC_URL, [], False
         for page in range(MAX_CATALOGUE_PAGES):
-            response = requests.post(url, json=body, timeout=self.timeout)
+            response = requests.post(url, json=body, timeout=self.timeout, **self._tls_kwargs())
             response.raise_for_status()
             payload = response.json()
             features += [

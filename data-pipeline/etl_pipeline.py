@@ -399,7 +399,7 @@ def _satellite_facts(series: list[dict[str, Any]], client: Any) -> dict[str, Any
             "algorithm_version", "selection", "anchors", "anchors_without_observation", "scenes_matched",
             "catalogue_truncated", "scenes_read", "observations_rejected", "rejected_too_few_clear_pixels",
             "rejected_below_clear_fraction", "observations_failed", "scenes_not_covering_parcel", "scenes_from_cache", "catalogue_age_s",
-            "min_usable_pixels", "min_clear_fraction", "max_cloud_cover_pct")} if diagnostics else None,
+            "min_usable_pixels", "min_clear_fraction", "max_cloud_cover_pct", "error")} if diagnostics else None,
     }
 
 
@@ -482,7 +482,8 @@ def _data_coverage(checks: dict[str, Any]) -> float:
 def _satellite_summary(series: list[dict[str, Any]], client: Any, metrics: dict[str, Any]) -> str:
     """Describe what was actually retrieved, including the resolution caveat."""
     if not series:
-        return "No usable satellite observations were retrieved."
+        error = (getattr(client, "last_diagnostics", {}) or {}).get("error")
+        return f"No usable satellite observations were retrieved: {error}" if error else "No usable satellite observations were retrieved."
     diagnostics = getattr(client, "last_diagnostics", {}) or {}
     pixels = [row.get("usable_pixel_count") or 0 for row in series]
     resolution = series[0].get("resolution_m") or 10.0
@@ -729,6 +730,13 @@ def build_evidence_snapshot(
                 LOGGER.warning("%s did not return within the %.0fs deadline.", label, deadline)
                 timed_out.add(label)
                 future.cancel()
+                return fallback
+            except Exception as error:  # noqa: BLE001 - provider failures become unavailable evidence
+                LOGGER.warning("%s failed; continuing with that layer unavailable: %s", label, error)
+                if label == "Satellite collection":
+                    diagnostics = getattr(satellite_client, "last_diagnostics", None)
+                    if isinstance(diagnostics, dict):
+                        diagnostics["error"] = str(error)[:300]
                 return fallback
 
         location_context = finish(location_future, None, "Geocoding")

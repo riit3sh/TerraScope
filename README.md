@@ -262,6 +262,11 @@ supply them in `.env`:
 
 - **Unavailable satellite data:** a provider failure produces no observation and no chart. TerraScope never
   substitutes a generated NDVI/NDBI curve for missing imagery.
+- **Planetary Computer TLS errors:** certificate verification remains enabled by default. If a corporate proxy or
+  antivirus inserts a trusted local CA, set `PLANETARY_CA_BUNDLE` to its PEM file. For a laptop-only demo, if the
+  certificate chain cannot be repaired, `PLANETARY_TLS_VERIFY=false` allows the satellite layer to continue with an
+  explicit warning; do not use that setting in production. Other evidence layers continue and the report labels
+  satellite data unavailable rather than fabricating observations.
 
 RERA evidence additionally needs a seed CSV — see
 [data-pipeline/data/raw/README.md](data-pipeline/data/raw/README.md).
