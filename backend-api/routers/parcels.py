@@ -209,8 +209,10 @@ async def resolve_google_place(place_id: str) -> dict[str, Any]:
         location = payload.get("location") or {}
         if not isinstance(location.get("latitude"), (int, float)) or not isinstance(location.get("longitude"), (int, float)):
             raise HTTPException(status_code=502, detail="Google returned no coordinates for this place.")
+        name = (payload.get("displayName") or {}).get("text") or "Google place"
+        address = payload.get("formattedAddress")
         return {"lat": location["latitude"], "lon": location["longitude"],
-                "display_name": payload.get("formattedAddress") or (payload.get("displayName") or {}).get("text") or place_id,
+                "display_name": f"{name}, {address}" if address and name.casefold() not in address.casefold() else address or name,
                 "kind": payload.get("primaryType") or "google-place", "source": "Google Places API (New)"}
     except HTTPException:
         raise

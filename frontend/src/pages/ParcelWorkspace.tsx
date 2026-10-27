@@ -275,7 +275,7 @@ function ZoomWatch({ onZoom }: { onZoom: (z: number) => void }) {
 function Focus({ lat, lon }: { lat: number; lon: number }) {
   const map = useMap();
   useEffect(() => {
-    map.flyTo([lat, lon], 14, { duration: 0.6 });
+    map.flyTo([lat, lon], 16, { duration: 0.6 });
   }, [lat, lon, map]);
   return null;
 }
@@ -477,7 +477,7 @@ export function ParcelWorkspace({
         </div>
       </header>
       <section className="map-stage">
-        <MapContainer center={center} zoom={14} zoomControl className="map">
+        <MapContainer center={center} zoom={16} zoomControl className="map">
           <TileLayer
             key={basemap}
             {...BASEMAPS[basemap].props}
@@ -488,6 +488,9 @@ export function ParcelWorkspace({
           />
           <Focus lat={search.lat} lon={search.lon} />
           <ZoomWatch onZoom={setZoom} />
+          <CircleMarker center={center} radius={9} pathOptions={{ color: "#b8f36a", fillColor: "#b8f36a", fillOpacity: 0.9, weight: 3 }}>
+            <LTooltip permanent direction="top">Selected location</LTooltip>
+          </CircleMarker>
           <DrawLayer points={points} onChange={setPoints} />
           {layers &&
             (snapshot?.public_land?.overlaps || [])
