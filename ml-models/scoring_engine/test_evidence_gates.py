@@ -121,7 +121,7 @@ def test_flood_evidence_gives_a_partial_assessment_without_a_score() -> None:
     assert not any("hazard map" in item for item in flood["checklist"])
     assert any("Rainfall" in item for item in flood["checklist"])
     # A withheld factor carrying weight still withholds the verdict.
-    assert result["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert result["recommendation"] == "WAIT"
     # Every factor status must be one the shared schema accepts (the service validates it).
     import json
     from pathlib import Path
@@ -195,7 +195,7 @@ def test_provider_failure_yields_no_accessibility_score() -> None:
 
 def test_recommendation_is_withheld_when_weighted_evidence_is_missing() -> None:
     result = compute_evaluation(KADAPA, EVALUATION)
-    assert result["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert result["recommendation"] == "WAIT"
     assert result["composite_score"] is None
     assert set(result["unassessed_factors"]) == {"legal_safety", "flood_safety", "growth"}
     assert result["assessed_weight_pct"] == 5.0
@@ -232,7 +232,7 @@ def test_stale_or_absent_evidence_never_becomes_fifty() -> None:
     result = compute_evaluation(bare, EVALUATION)
     for key in ("legal_safety_score", "flood_safety_score", "growth_score", "accessibility_score"):
         assert result[key] is None, f"{key} was invented from no evidence"
-    assert result["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert result["recommendation"] == "WAIT"
 
 
 # --- buy / wait from the area's history ------------------------------------
@@ -338,8 +338,8 @@ def test_decisions_use_buyer_words_walk_away_and_insufficient_data() -> None:
     walk = _decide(_history(0.63, 0.73, 1.92), flood_indicators=flood)
     assert walk["recommendation"] == "AVOID" and walk["reasoning_summary"].startswith("WALK AWAY:")
     unknown = _decide({}, infrastructure={})  # no area history and no infrastructure
-    assert unknown["recommendation"] == "INSUFFICIENT_EVIDENCE"
-    assert unknown["reasoning_summary"].startswith("INSUFFICIENT DATA:")
+    assert unknown["recommendation"] == "WAIT"
+    assert unknown["reasoning_summary"].startswith("WAIT: TerraScope could not measure")
 
 
 def test_wait_names_what_holds_it_back_and_buy_lists_unverified_legal_checks() -> None:
@@ -351,9 +351,9 @@ def test_wait_names_what_holds_it_back_and_buy_lists_unverified_legal_checks() -
 
 def test_score_recommendation_and_explanation_agree_when_critical_evidence_is_missing() -> None:
     result = _decide({}, infrastructure={})
-    assert result["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert result["recommendation"] == "WAIT"
     assert result["composite_score"] is None, "no score is shown when no decision can be made"
-    assert result["reasoning_summary"].startswith("INSUFFICIENT DATA")
+    assert result["reasoning_summary"].startswith("WAIT: TerraScope could not measure")
     assert result["would_change"], "the report must say what evidence is missing"
 
 

@@ -114,7 +114,7 @@ def test_missing_data_lowers_evidence_coverage_not_a_confidence_number() -> None
     )
     assert complete["confidence"] is None and incomplete["confidence"] is None
     assert incomplete["assessed_weight_pct"] < complete["assessed_weight_pct"]
-    assert incomplete["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert incomplete["recommendation"] == "WAIT"
 
 
 def test_sensitivity_reports_changed_factors_and_magnitude():
@@ -131,7 +131,7 @@ def test_missing_land_records_produce_no_legal_score_at_all() -> None:
     evaluation = {"profile": "homebuyer", "property_type": "residential", "weights": {}, "preferences": {}}
     unverified = compute_verdict({"land_records": None}, evaluation)
     assert unverified["legal_safety_score"] is None
-    assert unverified["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert unverified["recommendation"] == "WAIT"
     assert any("Ownership record" in check for check in unverified["pre_purchase_checks"])
     verified = compute_verdict({"land_records": {"title_clear": True, "encumbrance_flag": False}}, evaluation)
     assert "land records not provided" not in verified["reasoning_summary"]
@@ -245,7 +245,7 @@ def test_missing_road_data_makes_accessibility_unknown_not_scored_from_schools()
     access = next(f for f in result["factors"] if f["factor"] == "accessibility")
     assert access["score"] is None and access["status"] == "unavailable"
     assert "road data is not installed for Karnataka" in access["basis"] and "fetch-data karnataka" in access["basis"]
-    assert result["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert result["recommendation"] == "WAIT"
 
 
 def test_a_material_overlap_with_mapped_restricted_land_is_restricted_and_not_scored() -> None:

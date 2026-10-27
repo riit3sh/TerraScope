@@ -124,9 +124,12 @@ def build_verdict(
         summary = "WALK AWAY: " + " ".join(flags) + " Do not proceed unless this is explained."
         would_change = ["Official records (local body, revenue department) showing the red flag does not apply to this plot"]
     elif blocking or composite is None:
-        recommendation = "INSUFFICIENT_EVIDENCE"
+        # Missing location evidence is a WAIT (user decision, 2026-10-27): never a BUY, and the gap is named first.
+        # Saved reports may still hold the older INSUFFICIENT_EVIDENCE code.
+        recommendation = "WAIT"
         missing = blocking or [f for f in factors if f["factor"] in LOCATION_FACTORS]
-        summary = "INSUFFICIENT DATA: no responsible recommendation yet. " + " ".join(
+        summary = ("WAIT: TerraScope could not measure " + " or ".join(LABEL[f["factor"]] for f in missing)
+                   + " for this plot, so it cannot recommend buying yet. ") + " ".join(
             f"{LABEL[f['factor']].capitalize()}: {f['basis']}" for f in missing)
         would_change = [f"Evidence for {LABEL[f['factor']]}: {f['checklist'][0] if f.get('checklist') else 'analyse again'}"
                         for f in missing]
