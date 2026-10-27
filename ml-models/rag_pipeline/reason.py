@@ -70,7 +70,9 @@ def generate_grounded_answer(question: str, parcel_id: str) -> dict[str, Any]:
     response = requests.post(
         GROQ_API_URL,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": MODEL_NAME, "max_completion_tokens": 700, "temperature": 0, "messages": [{"role": "user", "content": _prompt(question, context)}]},
+        json={"model": MODEL_NAME, "max_completion_tokens": 700, "temperature": 0,
+              "include_reasoning": False, "reasoning_effort": "low",
+              "messages": [{"role": "user", "content": _prompt(question, context)}]},
         timeout=GROUNDED_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
@@ -84,32 +86,124 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
     if not api_key or api_key == "demo-groq-api-key":
         raise RuntimeError("A real GROQ_API_KEY is required for AI evaluation explanations.")
 
+    breakdown = snapshot.get("score_breakdown") or {}
     factual_context = {
+        # Keep the prompt compact. Sending the full raw snapshot made the model
+        # spend its completion budget reasoning over implementation metadata and
+        # return no explanation at all.
         "location": snapshot.get("location"),
-        "geometry_metadata": snapshot.get("geometry_metadata"),
-        "satellite": snapshot.get("satellite"),
-        "infrastructure": snapshot.get("infrastructure"),
-        "rera": snapshot.get("rera"),
-        "risk": snapshot.get("risk"),
-        "opportunity": snapshot.get("opportunity"),
-        "evaluation": snapshot.get("evaluation"),
-        "score_breakdown": snapshot.get("score_breakdown"),
-        "verdict": snapshot.get("verdict"),
+        "area_m2": (snapshot.get("geometry_metadata") or {}).get("area_m2"),
+        "recommendation": (snapshot.get("verdict") or {}).get("recommendation"),
+        "scores": {
+            key: breakdown.get(key)
+            for key in ("legal_safety_score", "accessibility_score", "flood_safety_score", "growth_score", "composite_score")
+            if breakdown.get(key) is not None
+        },
+        "factors": [
+            {
+                key: factor.get(key)
+                for key in ("factor", "status", "score", "basis", "limitations")
+                if factor.get(key) is not None
+            }
+            for factor in breakdown.get("factors", [])
+            if isinstance(factor, dict)
+        ],
+        "verdict": {
+            key: snapshot.get("verdict", {}).get(key)
+            for key in ("recommendation", "red_flags", "pre_purchase_checks", "would_change")
+            if key in (snapshot.get("verdict") or {})
+        },
+        "evidence": [
+            {
+                key: row.get(key)
+                for key in ("source_reference", "title", "summary", "observed_at", "freshness")
+                if row.get(key) is not None
+            }
+            for row in snapshot.get("evidence", [])
+            if isinstance(row, dict) and row.get("source_reference")
+        ],
+        "evidence_sources": [
+            {
+                "source_reference": row.get("source_reference"),
+                "title": row.get("title"),
+                "observed_at": row.get("observed_at"),
+                "freshness": row.get("freshness"),
+            }
+            for row in snapshot.get("evidence", [])
+            if isinstance(row, dict) and row.get("source_reference")
+        ],
     }
+    source_aliases = {
+        str(row.get("source_reference")).casefold(): str(row.get("source_reference"))
+        for row in snapshot.get("evidence", [])
+        if isinstance(row, dict) and row.get("source_reference")
+    }
+    source_type_rows: dict[str, list[str]] = {}
+    for row in snapshot.get("evidence", []):
+        if isinstance(row, dict) and row.get("source_reference") and row.get("title"):
+            source_aliases[str(row["title"]).casefold()] = str(row["source_reference"])
+        if isinstance(row, dict) and row.get("source_reference") and row.get("source_type"):
+            source_type_rows.setdefault(str(row["source_type"]).casefold(), []).append(str(row["source_reference"]))
+    # A model sometimes returns the evidence type rather than the long source
+    # label. Permit that only when the type identifies exactly one collected row;
+    # ambiguous types remain invalid rather than being attached to the wrong fact.
+    for source_type, references in source_type_rows.items():
+        if len(references) == 1:
+            source_aliases[source_type] = references[0]
     prompt = (
         "You are TerraScope's evidence explanation assistant. Explain the already-computed verdict in 2-4 concise sentences. "
         "Use ONLY the JSON facts below. Never invent missing values, sources, dates, or legal conclusions. "
         "The numerical scores and recommendation are authoritative and must not be changed. "
-        "Cite each factual sentence with [source: X], using the source labels supplied in the JSON. "
-        "If a fact is missing, say that the evidence is unavailable.\n\n"
+        "Cite each factual sentence with [source: X]. X MUST be copied exactly from one of the evidence_sources.source_reference values; "
+        "do not cite a source type, a provider name, or a source that is not listed. "
+        "If a fact is missing, say that the evidence is unavailable. Return JSON only in this shape: "
+        '{"answer_text":"2-4 concise sentences","citations":[{"claim":"one factual claim","source_reference":"exact evidence_sources value"}]}. '
+        "Do not put factor names, JSON keys, or prose such as 'scores' in source_reference.\n\n"
+        "Allowed source references (copy exactly):\n"
+        + "\n".join(f"- {source}" for source in source_aliases.values())
+        + "\n\n"
         f"FACTS:\n{json.dumps(factual_context, ensure_ascii=True, default=str)}"
     )
     response = requests.post(
         GROQ_API_URL,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": MODEL_NAME, "max_completion_tokens": 600, "temperature": 0, "messages": [{"role": "user", "content": prompt}]},
+        json={"model": MODEL_NAME, "max_completion_tokens": 1200, "temperature": 0,
+              "include_reasoning": False, "reasoning_effort": "low",
+              "response_format": {"type": "json_object"},
+              "messages": [{"role": "user", "content": prompt}]},
         timeout=EXPLANATION_TIMEOUT_SECONDS,
     )
     response.raise_for_status()
     answer_text = _extract_text(response.json()).strip()
-    return {"answer_text": answer_text[:500], "citations": _parse_citations(answer_text)}
+    citations: list[dict[str, str]]
+    try:
+        structured = json.loads(answer_text)
+        if not isinstance(structured, dict):
+            raise ValueError("not an object")
+        answer_text = str(structured.get("answer_text") or "").strip()
+        citations = [
+            {"claim": str(item.get("claim") or "").strip(), "source_reference": str(item.get("source_reference") or "").strip()}
+            for item in (structured.get("citations") or [])
+            if isinstance(item, dict)
+        ]
+    except (json.JSONDecodeError, TypeError, ValueError):
+        # Backwards-compatible fallback for a model that ignores JSON mode.
+        citations = _parse_citations(answer_text)
+    normalized_citations = []
+    for citation in citations:
+        reference = citation["source_reference"].casefold()
+        canonical = next(
+            (source for alias, source in source_aliases.items() if reference == alias or reference in alias or alias in reference),
+            None,
+        )
+        if canonical:
+            normalized_citations.append({**citation, "source_reference": canonical})
+    if not normalized_citations:
+        raise RuntimeError("Groq explanation contained no source citations; deterministic explanation retained.")
+    if len(normalized_citations) != len(citations):
+        invalid = [citation["source_reference"] for citation in citations if citation not in normalized_citations]
+        raise RuntimeError(
+            "Groq explanation cited a source that was not in the collected evidence "
+            f"({invalid!r}); deterministic explanation retained."
+        )
+    return {"answer_text": answer_text[:500], "citations": normalized_citations}

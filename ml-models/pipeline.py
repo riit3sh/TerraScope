@@ -113,19 +113,19 @@ def _maybe_grounded_reasoning(
     snapshot: dict[str, Any],
     documents_override: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    """Use local/sample RAG only when parcel documents and an API key are available."""
+    """Use RAG only for documents explicitly supplied for this parcel.
+
+    The hand-authored sample corpus is a standalone RAG demo, not evidence for a
+    live parcel. Automatically attaching it made a real report look as if Pune
+    title/RERA records belonged to the user's land, so production evaluation must
+    never discover or ingest SAMPLE_DOCUMENTS implicitly.
+    """
     parcel_id = snapshot.get("parcel_id")
     if not parcel_id or not os.getenv("GROQ_API_KEY"):
         return []
     documents = documents_override
     if documents is None:
         documents = snapshot.get("rag_documents") or snapshot.get("uploaded_documents")
-    if documents is None:
-        try:
-            from rag_pipeline.sample_documents import SAMPLE_DOCUMENTS
-            documents = [document for document in SAMPLE_DOCUMENTS if document.get("parcel_id") == parcel_id]
-        except ImportError:
-            documents = []
     if not documents:
         return []
     question = snapshot.get("rag_question", "Summarize the parcel's title and RERA evidence.")
@@ -244,7 +244,7 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
 
         ai_explanation = generate_evaluation_explanation(evaluated)
     except Exception as error:
-        LOGGER.info("AI explanation not used; showing the deterministic summary: %s", error)
+        LOGGER.warning("AI explanation unavailable; showing the deterministic summary: %s", error)
     citations.extend(
         {
             "claim": citation["claim"],
@@ -291,7 +291,13 @@ class EvaluateRequest(BaseModel):
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"service": "ml-models", "status": "ok"}
+    # Safe operational visibility: report configuration presence, never the key.
+    return {
+        "service": "ml-models",
+        "status": "ok",
+        "groq_configured": "true" if bool(os.getenv("GROQ_API_KEY")) else "false",
+        "groq_model": os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+    }
 
 
 @app.post("/internal/ml/enrich")

@@ -254,11 +254,18 @@ supply them in `.env`:
 - **Satellite:** none needed. Sentinel-2 comes from Planetary Computer without an account.
   The default is `SATELLITE_PROVIDER=planetary`; AppEEARS is opt-in only when you explicitly
   set `SATELLITE_PROVIDER=appeears` and configure its credentials.
-- **AI explanations:** `GROQ_API_KEY` and optional `GROQ_MODEL` (default `llama-3.3-70b-versatile`). Without it the report shows the rule-based
+- **AI explanations:** `GROQ_API_KEY` and optional `GROQ_MODEL` (default `openai/gpt-oss-20b`). Without it the report shows the rule-based
   "Assessment summary", which still cites the evidence rows behind each figure, and uploaded
   documents are still searched for the survey number and village you enter (cited by page).
   The label says **AI explanation** only when the Groq call actually succeeded. Existing saved reports do not
   change retroactively: re-evaluate the same evidence or run a new analysis after adding the key.
+
+  Groq is explanation-only: it receives collected facts and evidence references, cannot change scores,
+  and its response is discarded if it cites a source that was not collected. The hand-authored RAG sample
+  documents are a standalone developer demo and are never attached automatically to a real parcel.
+
+- **Unavailable satellite data:** a provider failure produces no observation and no chart. TerraScope never
+  substitutes a generated NDVI/NDBI curve for missing imagery.
 
 RERA evidence additionally needs a seed CSV — see
 [data-pipeline/data/raw/README.md](data-pipeline/data/raw/README.md).
