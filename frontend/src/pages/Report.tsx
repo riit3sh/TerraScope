@@ -520,7 +520,7 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
 
   async function askAnalyst() {
     if (!analystQuestion.trim() || !record.parcel_id || !record.metadata.analysis_snapshot_id) return
-    setAnalystBusy(true); setAnalystError('')
+    setAnalystBusy(true); setAnalystError(''); setAnalystAnswer(null)
     try { setAnalystAnswer(await askLandAnalyst(record.parcel_id, record.metadata.analysis_snapshot_id, analystQuestion)) }
     catch (error) { setAnalystError(error instanceof Error ? error.message : 'Land Analyst is unavailable.') }
     finally { setAnalystBusy(false) }
