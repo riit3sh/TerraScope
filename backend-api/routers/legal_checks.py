@@ -1,9 +1,10 @@
-"""Legal checks: where each one is verified officially, and the buyer's own record of having checked it.
+"""Legal checks: official sources and the buyer's own record of checking them.
 
-No Indian state publishes a permitted API for title, encumbrance, zoning or approvals (researched 2026-10-26: the
-Tamil Nadu portals are interactive web forms, some behind a captcha or a login, and are never scraped). So every state
-guide here is manual, and a recorded check is the buyer's statement, shown as theirs. A recorded problem can make the
-answer WALK AWAY; a recorded "confirmed" never counts as verification, because only a matched official record is.
+TerraScope has no authorised machine-readable integration for title, encumbrance, zoning,
+approvals or RERA. The state guides therefore point the buyer to the relevant official
+portal or office without scraping it. A recorded check is the buyer's statement, shown as
+theirs. A recorded problem can make the answer WALK AWAY; a recorded "confirmed" never
+counts as verification, because only a matched official record is.
 
 A state without a guide gets the generic checklist and an explicit "no state guide yet"; nothing implies it is covered.
 """
@@ -112,7 +113,7 @@ class LegalCheckRecord(BaseModel):
     source: str = Field(min_length=3, max_length=200)  # the portal or office consulted
     checked_on: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     reference: str | None = Field(None, max_length=120)  # EC / patta / approval / registration number
-    evidence: str | None = Field(None, max_length=200)  # e.g. the uploaded document's file name
+    evidence: str | None = Field(None, max_length=200)  # a reference or note supplied by the buyer
     notes: str | None = Field(None, max_length=500)
     # RERA only: the project as the buyer searched it; a registration number's format is never verification.
     project_name: str | None = Field(None, max_length=160)

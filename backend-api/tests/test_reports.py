@@ -144,33 +144,29 @@ def test_accessibility_limits_reach_the_evaluation_and_bad_ones_are_rejected(cli
     assert len(_EchoEvaluateClient.sent) == 1  # nothing invalid reached the evaluator
 
 
-def test_survey_details_and_typed_documents_travel_as_unverified_claims(client, monkeypatch) -> None:
+def test_survey_details_travel_as_unverified_claims_without_document_upload(client, monkeypatch) -> None:
     _EchoEvaluateClient.sent = []
     monkeypatch.setattr(parcels.httpx, "AsyncClient", _EchoEvaluateClient)
     parcel_id, snapshot_id = _saved()
     saved = client.put(f"/api/v1/parcels/{parcel_id}/land-details", json={
         "state": "Tamil Nadu", "district": "Vellore", "village": "Brammapuram", "survey_number": "123", "subdivision": "4A"})
     assert saved.status_code == 200 and saved.json()["verification_status"] == "user_provided_unverified"
-    upload = client.post(f"/api/v1/parcels/{parcel_id}/documents", data={"doc_type": "encumbrance_certificate"},
-                         files={"file": ("ec.txt", b"Village Brammapuram S.No. 123/4A", "text/plain")})
-    assert upload.status_code == 200 and upload.json()["doc_type"] == "encumbrance_certificate"
-    assert client.post(f"/api/v1/parcels/{parcel_id}/documents", data={"doc_type": "title_verified"},
-                       files={"file": ("x.txt", b"x", "text/plain")}).status_code == 400
+    assert client.post(f"/api/v1/parcels/{parcel_id}/documents",
+                       files={"file": ("ec.txt", b"Village Brammapuram S.No. 123/4A", "text/plain")}).status_code == 404
     assert client.put(f"/api/v1/parcels/{parcel_id}/land-details", json={"survey_number": "1; DROP"}).status_code == 422
     assert client.put("/api/v1/parcels/no-such-parcel/land-details", json={"village": "X"}).status_code == 404
     client.post(f"/api/v1/parcels/{parcel_id}/evaluate", json={"analysis_snapshot_id": snapshot_id, **SETTINGS})
     sent = _EchoEvaluateClient.sent[0]["snapshot"]
     assert sent["user_land_details"]["survey_number"] == "123"
-    assert sent["user_land_details"]["documents"] == [
-        {"filename": "ec.txt", "doc_type": "encumbrance_certificate", "text_extracted": True, "pages": None}]
+    assert "documents" not in sent["user_land_details"]
     assert "land_records" not in sent  # claims never become a matched land record
 
 
-def test_empty_uploads_and_unknown_parcels_are_refused(client) -> None:
-    """Regression (2026-10-25): an empty file, or any file for a parcel that does not exist, was stored."""
+def test_document_upload_is_not_a_live_feature(client) -> None:
+    """Document upload was removed so unverified files cannot enter the evidence pipeline."""
     parcel_id, _ = _saved()
     assert client.post(f"/api/v1/parcels/{parcel_id}/documents",
-                       files={"file": ("empty.txt", b"", "text/plain")}).status_code == 400
+                       files={"file": ("empty.txt", b"", "text/plain")}).status_code == 404
     assert client.post("/api/v1/parcels/no-such-parcel/documents",
                        files={"file": ("x.txt", b"hello", "text/plain")}).status_code == 404
-    assert client.get(f"/api/v1/parcels/{parcel_id}/land-details").json()["documents"] == []
+    assert "documents" not in client.get(f"/api/v1/parcels/{parcel_id}/land-details").json()

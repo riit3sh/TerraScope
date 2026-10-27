@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import io
 import logging
 import os
 import time
@@ -11,21 +10,17 @@ from datetime import date
 from typing import Any, Literal
 
 import httpx
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from . import places
 from .store import (
-    PAGE_BREAK,
-    get_document_texts,
     get_land_details,
     get_latest_evaluation,
     get_latest_for_parcel,
     get_snapshot,
     init_store,
-    list_documents,
     list_saved_reports,
-    save_document,
     save_evaluation,
     save_land_details,
     save_snapshot,
@@ -71,9 +66,6 @@ class EvaluationRequest(BaseModel):
 
 
 IDENTIFIER = r"^[\w .,/()'-]{1,80}$"
-DOC_TYPES = ("patta_chitta", "encumbrance_certificate", "sale_deed", "layout_or_building_approval", "fmb_sketch", "other")
-
-
 class LandDetails(BaseModel):
     """Survey identifiers as the user states them. Stored as claims; never treated as a matched land record."""
 
@@ -173,6 +165,31 @@ async def geocode_search(q: str) -> list[dict[str, Any]]:
     query = q.strip()
     if len(query) < 2:
         return []
+    google_key = os.getenv("GOOGLE_MAPS_API_KEY", "").strip()
+    if os.getenv("GOOGLE_LOCATION_PROVIDER", "local").casefold() == "google" and google_key:
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                response = await client.get(
+                    "https://maps.googleapis.com/maps/api/geocode/json",
+                    params={"address": query, "key": google_key, "region": "in"},
+                )
+                response.raise_for_status()
+                payload = response.json()
+            if payload.get("status") == "OK":
+                return [
+                    {
+                        "lat": item["geometry"]["location"]["lat"],
+                        "lon": item["geometry"]["location"]["lng"],
+                        "name": item.get("formatted_address", query),
+                        "display_name": item.get("formatted_address", query),
+                        "kind": "google-geocoded",
+                        "precision": item.get("geometry", {}).get("location_type", "unknown"),
+                        "source": "Google Geocoding API",
+                    }
+                    for item in payload.get("results", [])[:5]
+                ]
+        except (httpx.HTTPError, KeyError, TypeError, ValueError) as error:
+            LOGGER.warning("Google geocoding unavailable; falling back to local/Nominatim: %s", error)
     try:
         local = places.suggest(query, 5)
     except places.PlaceIndexMissing:
@@ -272,16 +289,10 @@ async def evaluate_parcel(parcel_id: str, request: EvaluationRequest) -> dict[st
         "weights": request.weights,
         "preferences": request.preferences.model_dump(),
     }
-    uploaded_documents = get_document_texts(parcel_id)
     request_snapshot = dict(snapshot)
-    if uploaded_documents:
-        request_snapshot["uploaded_documents"] = uploaded_documents
-    supplied, documents = get_land_details(parcel_id), list_documents(parcel_id)
-    if supplied or documents:
-        request_snapshot["user_land_details"] = {
-            **(supplied or {}),
-            "documents": [{key: doc[key] for key in ("filename", "doc_type", "text_extracted", "pages")} for doc in documents],
-        }
+    supplied = get_land_details(parcel_id)
+    if supplied:
+        request_snapshot["user_land_details"] = supplied
     recorded = latest_checks(parcel_id)
     if recorded:  # the buyer's statements; the verdict treats them as such, never as verification
         request_snapshot["user_legal_checks"] = recorded
@@ -316,49 +327,9 @@ async def evaluate_parcel(parcel_id: str, request: EvaluationRequest) -> dict[st
     return result
 
 
-def _document_text(content: bytes, extension: str, content_type: str) -> str | None:
-    """Extract indexable text from an uploaded evidence file, or None if there is none."""
-    if extension == "txt" or content_type == "text/plain":
-        return content.decode("utf-8", errors="replace").strip() or None
-    try:
-        from pypdf import PdfReader
-
-        pages = PdfReader(io.BytesIO(content)).pages
-        # Pages stay separable, so a citation can name the page an identifier was found on.
-        text = PAGE_BREAK.join(page.extract_text() or "" for page in pages)
-        return text if text.replace(PAGE_BREAK, "").strip() else None
-    except Exception as error:  # scanned or malformed PDFs stay stored but unindexed
-        LOGGER.warning("Could not extract text from uploaded evidence: %s", error)
-        return None
-
-
-@router.post("/api/v1/parcels/{parcel_id}/documents")
-async def upload_parcel_document(parcel_id: str, file: UploadFile = File(...),
-                                 doc_type: str | None = Form(None)) -> dict[str, Any]:
-    if doc_type is not None and doc_type not in DOC_TYPES:
-        raise HTTPException(status_code=400, detail=f"doc_type must be one of {', '.join(DOC_TYPES)}.")
-    content_type = file.content_type or "application/octet-stream"
-    filename = file.filename or "upload"
-    extension = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
-    if extension not in {"pdf", "txt"} and content_type not in {"application/pdf", "text/plain"}:
-        raise HTTPException(status_code=400, detail="Only PDF and TXT evidence files are accepted.")
-    if get_latest_for_parcel(parcel_id) is None:
-        raise HTTPException(status_code=404, detail=f"Parcel not found: {parcel_id}")
-    content = await file.read()
-    if not content:
-        raise HTTPException(status_code=400, detail="The file is empty.")
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="Evidence files must be 10 MB or smaller.")
-    text_content = _document_text(content, extension, content_type)
-    document_id = save_document(parcel_id, filename, content_type, len(content), text_content, doc_type)
-    return {"document_id": document_id, "parcel_id": parcel_id, "filename": filename, "doc_type": doc_type,
-            "text_indexed": text_content is not None,
-            "pages": text_content.count(PAGE_BREAK) + 1 if text_content and PAGE_BREAK in text_content else None}
-
-
 @router.get("/api/v1/parcels/{parcel_id}/land-details")
 def read_land_details(parcel_id: str) -> dict[str, Any]:
-    return {"parcel_id": parcel_id, "details": get_land_details(parcel_id), "documents": list_documents(parcel_id),
+    return {"parcel_id": parcel_id, "details": get_land_details(parcel_id),
             "verification_status": "user_provided_unverified"}
 
 
@@ -387,8 +358,6 @@ def get_parcel(parcel_id: str) -> dict[str, Any]:
         "parcel_id": parcel_id,
         "analysis_snapshot_id": snapshot_id,
         "evidence_snapshot": snapshot,
-        "uploaded_documents": get_document_texts(parcel_id),
-        "documents": list_documents(parcel_id),
         "land_details": get_land_details(parcel_id),
         "latest_evaluation": get_latest_evaluation(parcel_id),
     }

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import os
@@ -17,13 +16,12 @@ from pydantic import BaseModel
 
 from change_detection.statistical_change import detect_change_from_series
 from findings import build_findings
-from citations import PAGE_BREAK, evidence_citations, land_details
+from citations import evidence_citations
 from scoring_engine.scoring import compute_evaluation
 
 
 LOGGER = logging.getLogger(__name__)
 app = FastAPI(title="TerraScope ML Pipeline")
-_RAG_CACHE: dict[tuple[str, str, str], dict[str, Any]] = {}
 
 
 def _schema_path() -> Path:
@@ -98,91 +96,6 @@ def enrich_evidence(snapshot: dict[str, Any]) -> dict[str, Any]:
     return enriched
 
 
-def _documents_fingerprint(documents: list[dict[str, Any]]) -> str:
-    """Stable digest of the retrieval corpus, so new uploads invalidate cached answers."""
-    digest = hashlib.sha256()
-    for document in sorted(documents, key=lambda item: str(item.get("source_reference") or "")):
-        digest.update(str(document.get("source_reference") or "").encode("utf-8"))
-        digest.update(b"|ref|")
-        digest.update(str(document.get("text") or "").encode("utf-8"))
-        digest.update(b"|end|")
-    return digest.hexdigest()
-
-
-def _maybe_grounded_reasoning(
-    snapshot: dict[str, Any],
-    documents_override: list[dict[str, Any]] | None = None,
-) -> list[dict[str, Any]]:
-    """Use RAG only for documents explicitly supplied for this parcel.
-
-    The hand-authored sample corpus is a standalone RAG demo, not evidence for a
-    live parcel. Automatically attaching it made a real report look as if Pune
-    title/RERA records belonged to the user's land, so production evaluation must
-    never discover or ingest SAMPLE_DOCUMENTS implicitly.
-    """
-    parcel_id = snapshot.get("parcel_id")
-    if not parcel_id or not os.getenv("GROQ_API_KEY"):
-        return []
-    documents = documents_override
-    if documents is None:
-        documents = snapshot.get("rag_documents") or snapshot.get("uploaded_documents")
-    if not documents:
-        return []
-    question = snapshot.get("rag_question", "Summarize the parcel's title and RERA evidence.")
-    # The document set is part of the key: uploading new evidence after an earlier
-    # evaluation changes neither the snapshot id nor the question, so keying on
-    # those alone would serve an answer that never saw the new upload.
-    cache_key = (
-        str(snapshot.get("metadata", {}).get("analysis_snapshot_id", parcel_id)),
-        question,
-        _documents_fingerprint(documents),
-    )
-    if cache_key not in _RAG_CACHE:
-        try:
-            from rag_pipeline.ingest import build_vector_index
-            from rag_pipeline.reason import generate_grounded_answer
-            build_vector_index(documents)
-            _RAG_CACHE[cache_key] = generate_grounded_answer(question, str(parcel_id))
-        except Exception as error:
-            LOGGER.warning("Grounded RAG reasoning unavailable: %s", error)
-            _RAG_CACHE[cache_key] = {"answer_text": "", "citations": []}
-    return _RAG_CACHE[cache_key].get("citations", [])
-
-
-def _with_document_evidence(
-    evidence: list[dict[str, Any]],
-    documents: list[dict[str, Any]] | None,
-) -> list[dict[str, Any]]:
-    """Add one ledger row per uploaded document so the report can show what was attached."""
-    rows = [item for item in evidence if not (isinstance(item, dict) and item.get("source_type") == "user_upload")]
-    if not documents:
-        return rows
-    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-    seen: set[str] = set()
-    for document in documents:
-        reference = str(document.get("source_reference") or "uploaded document")
-        if reference in seen:
-            continue
-        seen.add(reference)
-        text = str(document.get("text") or "")
-        pages = text.count(PAGE_BREAK) + 1 if PAGE_BREAK in text else None
-        rows.append({
-            "evidence_id": f"upload:{reference}",
-            "source_type": "user_upload",
-            "source_reference": reference,
-            "title": "Your uploaded document (user-provided, not verified)",
-            "observed_at": now,
-            "freshness": "user_upload",
-            "summary": (
-                f"{len(text.split())} words extracted" + (f" from {pages} pages" if pages else "")
-                + ". TerraScope searches it for the survey number and village you entered and cites the page where "
-                "they appear. Finding them there does not verify ownership, encumbrance or approval."
-                + (" It is also available to the AI explanation." if os.getenv("GROQ_API_KEY") else "")
-            ),
-        })
-    return rows
-
-
 def _section(record: dict[str, Any], name: str) -> dict[str, Any]:
     value = record.get(name)
     return value if isinstance(value, dict) else {}
@@ -191,13 +104,15 @@ def _section(record: dict[str, Any], name: str) -> dict[str, Any]:
 def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> dict[str, Any]:
     """Evaluate an immutable evidence snapshot without collection connectors."""
     evaluated = deepcopy(snapshot)
-    # These are request-scoped RAG inputs, never persisted evidence-schema fields.
-    rag_documents = evaluated.pop("rag_documents", None)
-    uploaded_documents = evaluated.pop("uploaded_documents", None)
-    documents = rag_documents if rag_documents is not None else uploaded_documents
-    evaluated["evidence"] = _with_document_evidence(evaluated.get("evidence") or [], documents)
-    # The user's survey identifiers and document types: request-scoped claims, never land_records.
-    evaluated["user_land_details"] = land_details(evaluated.pop("user_land_details", None), documents)
+    # Legacy request payloads may still contain document fields. Ignore them so
+    # evaluation never turns an upload or sample corpus into parcel evidence.
+    evaluated.pop("rag_documents", None)
+    evaluated.pop("uploaded_documents", None)
+    user_land_details = evaluated.pop("user_land_details", None)
+    if isinstance(user_land_details, dict):
+        user_land_details = {key: value for key, value in user_land_details.items() if key != "documents"}
+        user_land_details.setdefault("verification_status", "user_provided_unverified")
+        evaluated["user_land_details"] = user_land_details
     evaluated["evaluation"] = deepcopy(evaluation)
     result = compute_evaluation(evaluated, evaluation)
     risk = evaluated.setdefault("risk", {}) or {}
@@ -245,14 +160,6 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         ai_explanation = generate_evaluation_explanation(evaluated)
     except Exception as error:
         LOGGER.warning("AI explanation unavailable; showing the deterministic summary: %s", error)
-    citations.extend(
-        {
-            "claim": citation["claim"],
-            "source_type": "rag",
-            "source_reference": citation["source_reference"],
-        }
-        for citation in _maybe_grounded_reasoning(evaluated, documents)
-    )
     citations.extend(
         {
             "claim": citation["claim"],

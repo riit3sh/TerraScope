@@ -8,7 +8,6 @@ import {
   RotateCcw,
   SlidersHorizontal,
   Sparkles,
-  Upload,
   X,
 } from "lucide-react";
 import {
@@ -28,13 +27,10 @@ import "leaflet-draw/dist/leaflet.draw.css";
 import {
   buildAnalysis,
   CoverageResult,
-  DOC_TYPE_LABEL,
-  DocType,
   evaluateParcel,
   EvaluationSettings,
   GeoJSONPolygon,
   ParcelRecord,
-  uploadEvidence,
 } from "../lib/api";
 import { AnalysisOverlay, rememberCollection } from "./AnalysisOverlay";
 import {
@@ -315,9 +311,6 @@ export function ParcelWorkspace({
   const [snapshot, setSnapshot] = useState<ParcelRecord | null>(null);
   const [notice, setNotice] = useState("");
   const [outside, setOutside] = useState<CoverageResult | null>(null);
-  const [docs, setDocs] = useState<
-    { file: File; status: string; docType: DocType }[]
-  >([]);
   const [pendingReport, setPendingReport] = useState<{
     snapshot: ParcelRecord;
     settings: EvaluationSettings;
@@ -362,7 +355,6 @@ export function ParcelWorkspace({
   }, [snapshot]);
   const stages = [
     "Collecting evidence (satellite, infrastructure, elevation, RERA)",
-    ...(docs.length ? ["Uploading your documents"] : []),
     "Scoring against your evaluation lens",
     "Analysis ready",
   ];
@@ -434,11 +426,7 @@ export function ParcelWorkspace({
       setSnapshot(result.evidence_snapshot);
       setCollected(result.evidence_snapshot);
       rememberCollection((Date.now() - began) / 1000);
-      if (docs.length) {
-        setStage(1);
-        await uploadDocs(parcelId);
-      }
-      setStage(docs.length ? 2 : 1);
+      setStage(1);
       const evaluated = await evaluateParcel(
         parcelId,
         settings,
@@ -446,7 +434,7 @@ export function ParcelWorkspace({
       );
       setSnapshot(evaluated);
       setPendingReport({ snapshot: evaluated, settings });
-      setStage(docs.length ? 3 : 2);
+      setStage(2);
     } catch (error) {
       setStage(-1);
       setNotice(
@@ -454,24 +442,6 @@ export function ParcelWorkspace({
           ? error.message
           : "Analysis failed. Check the service logs.",
       );
-    }
-  }
-  const setStatus = (file: File, status: string) =>
-    setDocs((d) => d.map((x) => (x.file === file ? { ...x, status } : x)));
-  async function uploadDocs(parcelId: string) {
-    for (const doc of docs) {
-      setStatus(doc.file, "uploading…");
-      try {
-        const result = await uploadEvidence(parcelId, doc.file, doc.docType);
-        setStatus(
-          doc.file,
-          result.text_indexed
-            ? `text extracted${result.pages ? ` · ${result.pages} pages` : ""}`
-            : "stored · no text extracted",
-        );
-      } catch {
-        setStatus(doc.file, "upload failed");
-      }
     }
   }
   return (
@@ -696,82 +666,13 @@ export function ParcelWorkspace({
           ) : null}
         </div>
         <div className="workspace-footer">
-          <label className="upload-row">
-            <input
-              type="file"
-              accept=".pdf,.txt,application/pdf,text/plain"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file)
-                  setDocs((d) => [
-                    ...d,
-                    {
-                      file,
-                      status: "attached · uploads with analysis",
-                      docType: "other",
-                    },
-                  ]);
-                e.target.value = "";
-              }}
-            />
-            <Upload size={15} />
-            <span>
-              <strong>+ Add evidence</strong>
-              <small>PDF or TXT · optional</small>
-            </span>
-          </label>
-          {docs.map((doc, index) => (
-            <div className="file-row" key={`${doc.file.name}-${index}`}>
-              {doc.file.name} ·{" "}
-              <select
-                aria-label={`Document type for ${doc.file.name}`}
-                value={doc.docType}
-                onChange={(e) =>
-                  setDocs((d) =>
-                    d.map((x, i) =>
-                      i === index
-                        ? { ...x, docType: e.target.value as DocType }
-                        : x,
-                    ),
-                  )
-                }
-              >
-                {(Object.keys(DOC_TYPE_LABEL) as DocType[]).map((type) => (
-                  <option key={type} value={type}>
-                    {DOC_TYPE_LABEL[type]}
-                  </option>
-                ))}
-              </select>{" "}
-              · {doc.status}
-              <button
-                type="button"
-                className="file-remove"
-                aria-label={`Remove ${doc.file.name}`}
-                onClick={() =>
-                  setDocs((d) => d.filter((_, position) => position !== index))
-                }
-              >
-                <X size={13} />
-              </button>
-            </div>
-          ))}
           <div className="source-legend">
-            <span title="Fetched from a provider during this analysis">
-              <i className="dot live" /> LIVE
-            </span>
-            <span title="Reused from an earlier provider response">
-              <i className="dot cached" /> CACHED
-            </span>
-            <span title="A document you uploaded">
-              <i className="dot user_upload" /> UPLOAD
-            </span>
-            <span title="Computed by TerraScope from other evidence">
-              <i className="dot derived" /> DERIVED
-            </span>
-            <span title="From a static seed dataset shipped with the app">
-              <i className="dot seed" /> SEED
-            </span>
+            <span title="Fetched from a provider during this analysis"><i className="dot live" /> LIVE</span>
+            <span title="Reused from an earlier provider response"><i className="dot cached" /> CACHED</span>
+            <span title="Computed by TerraScope from other evidence"><i className="dot derived" /> DERIVED</span>
+            <span title="From a static seed dataset shipped with the app"><i className="dot seed" /> SEED</span>
           </div>
+          <p className="field-hint">Legal checks are guided from the parcel location and official portal links. No document upload is required.</p>
         </div>
       </aside>
       {outside && (

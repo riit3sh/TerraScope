@@ -124,7 +124,6 @@ def list_saved_reports(limit: int = 50) -> list[dict[str, Any]]:
                    json_extract(s.snapshot_json, '$.geometry_metadata.area_acres') AS area_acres,
                    json_extract(s.snapshot_json, '$.metadata.analysis_date_from') AS date_from,
                    json_extract(s.snapshot_json, '$.metadata.analysis_date_to') AS date_to,
-                   (SELECT COUNT(*) FROM documents d WHERE d.parcel_id = s.parcel_id) AS document_count,
                    EXISTS (SELECT 1 FROM evaluation_history e WHERE e.parcel_id = s.parcel_id) AS has_evaluation
             FROM snapshots s
             JOIN (SELECT parcel_id, MAX(created_at) AS newest FROM snapshots GROUP BY parcel_id) latest
@@ -144,7 +143,6 @@ def list_saved_reports(limit: int = 50) -> list[dict[str, Any]]:
         "area_acres": row["area_acres"],
         "analysis_date_from": row["date_from"],
         "analysis_date_to": row["date_to"],
-        "document_count": int(row["document_count"] or 0),
         "has_evaluation": bool(row["has_evaluation"]),
     } for row in rows]
 

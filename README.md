@@ -12,7 +12,7 @@ land records.
 - straight-line distances to mapped roads, schools, hospitals and transport;
 - river-flood model results, observed surface water, and terrain relative to mapped water;
 - mapped public facilities touching the plot;
-- your survey details, documents and recorded legal checks.
+- optional survey identifiers and recorded legal checks.
 
 Every finding names its source and date. Missing data is reported as unknown, never as a clean result.
 
@@ -107,8 +107,9 @@ approvals and government-land status; you record them, and they are never automa
 
 ## Known limitations and future work
 
-- **Official verification:** no state publishes a permitted API for title, EC, zoning, approvals or poramboke
-  status, so those checks are manual. Future work: integrate a source if one is opened, or obtain authorization.
+- **Official verification:** TerraScope has no authorised machine-readable integration for title, EC, zoning,
+  approvals or poramboke status, so those checks are manual. Future work: integrate a source if one is opened,
+  or obtain authorization.
 - **Roads outside TN, PY and AP:** a nationwide road store needs about 3 GB more disk than the development machine
   has. Each state can be built with `terrascope.cmd fetch-data <state>`.
 - **Flooding:** only modelled river flooding is assessed. Rainfall waterlogging and coastal flooding are **not
@@ -117,7 +118,7 @@ approvals and government-land status; you record them, and they are never automa
   is not proof of absence.
 - **Imagery:** the satellite basemap (EOxCloudless) is for non-commercial use only. Bhuvan layers are viewing-only
   without written NRSC authorization and are not integrated.
-- **RERA:** the report asks who is selling, opens the official authority's portal (all 36 regions, MoHUA's list) and records what the buyer found there. It is never automated. Future work: integrate MoHUA's unified portal if a permitted API or dataset becomes available.
+- **RERA:** the report asks who is selling, opens the official authority's portal (all 36 regions, MoHUA's list) and records what the buyer found there. It is never automated. A district seed match is only candidate context, never parcel verification.
 - **Local news (GDELT):** frequently rate-limited. A failed search is shown as unavailable, never as "no news".
 
 ## Folder Structure
@@ -243,8 +244,8 @@ is skipped, and the backend still stores every snapshot.
    pytest ml-models/test_retrieval_cache.py -v
    ```
 
-The first build downloads a CPU build of PyTorch for the RAG embeddings, so
-expect it to take several minutes on a slow connection.
+The live application does not download document-embedding models. The optional historical RAG demo files are not
+used by parcel analysis.
 
 ### What needs credentials
 
@@ -255,14 +256,13 @@ supply them in `.env`:
   The default is `SATELLITE_PROVIDER=planetary`; AppEEARS is opt-in only when you explicitly
   set `SATELLITE_PROVIDER=appeears` and configure its credentials.
 - **AI explanations:** `GROQ_API_KEY` and optional `GROQ_MODEL` (default `openai/gpt-oss-20b`). Without it the report shows the rule-based
-  "Assessment summary", which still cites the evidence rows behind each figure, and uploaded
-  documents are still searched for the survey number and village you enter (cited by page).
-  The label says **AI explanation** only when the Groq call actually succeeded. Existing saved reports do not
+  "Assessment summary", which still cites the evidence rows behind each figure. The label says **TerraScope Land Analyst**
+  only when the Groq call actually succeeded. Existing saved reports do not
   change retroactively: re-evaluate the same evidence or run a new analysis after adding the key.
 
   Groq is explanation-only: it receives collected facts and evidence references, cannot change scores,
-  and its response is discarded if it cites a source that was not collected. The hand-authored RAG sample
-  documents are a standalone developer demo and are never attached automatically to a real parcel.
+  and its response is discarded if it cites a source that was not collected. It never fills missing legal,
+  environmental or ownership data. Document upload and document RAG are not part of the live application.
 
 - **Unavailable satellite data:** a provider failure produces no observation and no chart. TerraScope never
   substitutes a generated NDVI/NDBI curve for missing imagery.
@@ -286,12 +286,15 @@ are still responding over the network.
 - **OpenStreetMap, not Google Maps:** nearby roads, schools, hospitals, rail and public-facility overlays come from
   the local OpenStreetMap/Geofabrik cache. Distances are straight-line proximity measurements, not driving routes
   and not proof of legal access. A missing OSM feature means unknown, not absent.
+- **Optional Google geocoding:** set `GOOGLE_LOCATION_PROVIDER=google` and provide `GOOGLE_MAPS_API_KEY` to use
+  Google's Geocoding API for the explicit Search submission. Autocomplete remains the local GeoNames index, so
+  typing does not create paid requests. Google does not supply legal, ownership, RERA or environmental evidence.
 - **Mapped restriction:** if a parcel overlaps a mapped lake, park, railway, defence area or similar feature, the
   report shows `VERIFY RESTRICTION` and blocks purchase scoring. Redraw the boundary around the actual land under
   consideration, then compare it with the seller's survey sketch/FMB and verify the survey number with official Tamil
   Nadu records. The map overlap alone is never an ownership conclusion.
 - **Restricted reports still show evidence:** collected facilities, satellite evidence, the evidence ledger and the
-  AI/rule-based explanation remain visible. Only purchase scoring is withheld.
+  Land Analyst/rule-based explanation remain visible. Only purchase scoring is withheld.
 - **Groq's role:** the rule engine owns the recommendation, numbers and citations. Groq receives those facts and may
   write a short explanation. It must say when evidence is unavailable and cannot invent title, RERA, flood or
   ownership results.
@@ -314,8 +317,7 @@ earlier comparable-price module stays, unused, in `valuation/` for a later versi
   encumbrance are unknown, and the scoring treats unknown as unverified rather
   than as safe. Checks you record (source, date, reference) are shown as yours: a recorded problem means WALK
   AWAY; a recorded confirmation is shown as yours and never counts as verification. You can record survey details (state, district, taluk, village,
-  survey and subdivision numbers) and typed documents (patta, EC, sale deed,
-  approvals) on the report; they stay "user-provided, not verified" and never
+  survey and subdivision numbers) on the report; they stay "user-provided, not verified" and never
   produce a legal score.
 - **Accessibility** — straight-line distances to OpenStreetMap geometry, from the
   drawn boundary (and from the centroid, shown alongside). Your road and school

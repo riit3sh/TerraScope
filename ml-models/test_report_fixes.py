@@ -99,7 +99,7 @@ def test_rule_based_summary_is_labelled_and_cites_collected_evidence() -> None:
     assert not any("land record" in c["claim"].lower() for c in verdict["citations"])
 
 
-def test_uploaded_document_is_cited_by_page_and_never_verifies_title() -> None:
+def test_legacy_uploaded_document_is_ignored_and_never_verifies_title() -> None:
     snapshot = copy.deepcopy(VIT)
     snapshot["uploaded_documents"] = [{
         "source_reference": "EC_2024.pdf", "source_type": "user_upload",
@@ -115,8 +115,7 @@ def test_uploaded_document_is_cited_by_page_and_never_verifies_title() -> None:
     assert legal["score"] is None and legal["status"] == "unavailable"
     assert result["land_records"] is None  # a user claim never becomes a matched record
     assert "not independently verified" in legal["basis"] and "title is not verified" in legal["basis"]
-    doc_cites = [c for c in result["verdict"]["citations"] if c["source_type"] == "user_upload"]
-    assert {(c["claim"].split()[0], c["location"]) for c in doc_cites} == {("Survey", "page 2"), ("Village", "page 2")}
+    assert not any(c["source_type"] == "user_upload" for c in result["verdict"]["citations"])
     assert result["user_land_details"]["verification_status"] == "user_provided_unverified"
 
 

@@ -151,9 +151,11 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
         if len(references) == 1:
             source_aliases[source_type] = references[0]
     prompt = (
-        "You are TerraScope's evidence explanation assistant. Explain the already-computed verdict in 2-4 concise sentences. "
+        "You are TerraScope Land Analyst. Explain the already-computed land assessment in 2-4 concise sentences. "
         "Use ONLY the JSON facts below. Never invent missing values, sources, dates, or legal conclusions. "
         "The numerical scores and recommendation are authoritative and must not be changed. "
+        "Do not present a map signal as proof of ownership, title clearance, RERA registration, flood safety, or price. "
+        "If the evidence is insufficient for a conclusion, say so explicitly instead of guessing. "
         "Cite each factual sentence with [source: X]. X MUST be copied exactly from one of the evidence_sources.source_reference values; "
         "do not cite a source type, a provider name, or a source that is not listed. "
         "If a fact is missing, say that the evidence is unavailable. Return JSON only in this shape: "
