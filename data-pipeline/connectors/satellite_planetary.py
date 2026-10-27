@@ -77,6 +77,9 @@ ANCHOR_TOLERANCE_DAYS = 30
 ALTERNATES_PER_ANCHOR = 2
 LOW_CLOUD_PCT = 10.0
 MAX_CATALOGUE_PAGES = 10  # 1,000 scenes; a 2-year window over one parcel has ~150
+SEARCH_SLICE_DAYS = 183
+SEARCH_ATTEMPTS = 3
+SEARCH_TIMEOUT_S = float(os.getenv("SENTINEL_SEARCH_TIMEOUT_SECONDS", "15"))
 STAC_FIELDS = {
     "include": ["id", "properties.datetime", "properties.eo:cloud_cover", "properties.s2:processing_baseline",
                 "assets.B04.href", "assets.B08.href", "assets.B11.href", "assets.SCL.href", "geometry"],
@@ -157,6 +160,16 @@ class SatelliteError(RuntimeError):
 # back-to-back analyses stacked those reads until the link saturated and even geocoding and DEM
 # reads failed (measured 2026-10-12: Planetary Computer 6-20 s per request, then 1 s once stopped).
 _SCENE_SLOTS = threading.BoundedSemaphore(int(os.getenv("SENTINEL_MAX_CONCURRENT_SCENES", "12")))
+
+
+def _date_slices(start: date, end: date, days: int) -> list[tuple[str, str]]:
+    """[start, end] as consecutive, non-overlapping inclusive ranges of at most ``days`` days."""
+    slices, cursor = [], start
+    while cursor <= end:
+        stop = min(end, cursor + timedelta(days=days - 1))
+        slices.append((cursor.isoformat(), stop.isoformat()))
+        cursor = stop + timedelta(days=1)
+    return slices
 
 
 def season_anchors(start: date, end: date, limit: int) -> tuple[list[date], int]:
@@ -255,12 +268,40 @@ class PlanetaryComputerClient:
             return value.isoformat()
         return str(value)[:10]
 
+    def _post_search(self, url: str, body: dict[str, Any]) -> dict[str, Any]:
+        """One catalogue request, retried on a gateway error or dropped connection (Planetary Computer returns
+        504s under load: 2026-10-28 one lost a whole report's satellite layer). Never past the evidence deadline."""
+        for attempt in range(SEARCH_ATTEMPTS):
+            try:
+                response = requests.post(url, json=body, timeout=SEARCH_TIMEOUT_S, **self._tls_kwargs())
+                if response.status_code < 500:
+                    response.raise_for_status()
+                    return response.json()
+                error: Exception = requests.HTTPError(f"{response.status_code} Server Error for url: {url}", response=response)
+            except (requests.ConnectionError, requests.Timeout) as failure:
+                error = failure
+            pause = 1.0 + attempt
+            if attempt == SEARCH_ATTEMPTS - 1 or (self.give_up_at is not None and time.monotonic() + pause > self.give_up_at):
+                raise error
+            LOGGER.warning("Sentinel-2 catalogue request failed (%s); retrying", error)
+            time.sleep(pause)
+        raise AssertionError("unreachable")
+
     def _search(self, polygon: dict[str, Any], start: str, end: str) -> tuple[list[dict[str, Any]], bool]:
         """Every catalogue page for the window, trimmed to what the reader needs, sorted by date.
 
-        Returns (features, truncated). The API returns newest first, 100 per page; reading
-        only the first page silently dropped the start of a two-year window.
+        Returns (features, truncated). The window is searched as six-month slices at once: one
+        two-year query took 2-16 s and sometimes timed out at the gateway. The API returns newest
+        first, 100 per page; reading only the first page silently dropped the start of a window.
         """
+        slices = _date_slices(date.fromisoformat(start), date.fromisoformat(end), SEARCH_SLICE_DAYS)
+        with ThreadPoolExecutor(max_workers=len(slices)) as pool:
+            parts = list(pool.map(lambda bounds: self._search_slice(polygon, *bounds), slices))
+        unique = {item["id"]: item for features, _ in parts for item in features}
+        features = sorted(unique.values(), key=lambda item: (item["properties"]["datetime"], item["id"]))
+        return features, any(truncated for _, truncated in parts)
+
+    def _search_slice(self, polygon: dict[str, Any], start: str, end: str) -> tuple[list[dict[str, Any]], bool]:
         body: dict[str, Any] = {
             "collections": [COLLECTION],
             "bbox": self._bbox(polygon),
@@ -271,9 +312,7 @@ class PlanetaryComputerClient:
         }
         url, features, truncated = STAC_URL, [], False
         for page in range(MAX_CATALOGUE_PAGES):
-            response = requests.post(url, json=body, timeout=self.timeout, **self._tls_kwargs())
-            response.raise_for_status()
-            payload = response.json()
+            payload = self._post_search(url, body)
             features += [
                 {"id": item["id"],
                  "properties": {key: item["properties"].get(key)
@@ -290,7 +329,6 @@ class PlanetaryComputerClient:
                 break
             url = following.get("href") or STAC_URL
             body = {**body, **following["body"]} if following.get("merge") else following.get("body") or body
-        features.sort(key=lambda item: (item["properties"]["datetime"], item["id"]))
         return features, truncated
 
     def _catalogue(self, cache: ResultCache | None, polygon: dict[str, Any], start: str, end: str):
@@ -302,7 +340,15 @@ class PlanetaryComputerClient:
         hit = cache.get("catalogue", key) if cache else None
         if hit and time.time() - hit[1] < ttl:
             return hit[0]["features"], hit[0]["truncated"], time.time() - hit[1]
-        features, truncated = self._search(polygon, start, end)
+        try:
+            features, truncated = self._search(polygon, start, end)
+        except (requests.RequestException, ValueError):
+            if not hit:
+                raise
+            # An older listing of the same window beats no satellite layer; its age is reported, and
+            # scenes published since it was stored are the only thing it can miss.
+            LOGGER.warning("Sentinel-2 catalogue unavailable; reusing the listing stored %.0f h ago", (time.time() - hit[1]) / 3600)
+            return hit[0]["features"], hit[0]["truncated"], time.time() - hit[1]
         if cache:
             cache.put("catalogue", key, {"features": features, "truncated": truncated})
         return features, truncated, None

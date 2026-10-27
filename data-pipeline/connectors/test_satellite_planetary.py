@@ -148,8 +148,9 @@ def test_short_window_gets_evenly_spaced_anchors() -> None:
 # --- catalogue paging (no network) ------------------------------------------------
 
 class _Response:
-    def __init__(self, payload):
+    def __init__(self, payload, status_code=200):
         self.payload = payload
+        self.status_code = status_code
 
     def raise_for_status(self):
         pass
@@ -178,7 +179,7 @@ def test_every_catalogue_page_is_read(monkeypatch) -> None:
         return _Response({"features": [_feature("2024-10-29", "old")], "links": [{"rel": "previous"}]})
 
     monkeypatch.setattr(satellite_planetary.requests, "post", post)
-    features, truncated = PlanetaryComputerClient()._search(BOX, "2024-10-12", "2026-10-12")
+    features, truncated = PlanetaryComputerClient()._search(BOX, "2026-01-01", "2026-03-01")  # one slice
     assert [f["id"] for f in features] == ["old", "new"] and truncated is False
     assert bodies[0]["fields"] == satellite_planetary.STAC_FIELDS and bodies[1]["token"] == "next:1"
 
@@ -195,6 +196,47 @@ def test_catalogue_paging_is_bounded_and_says_so(monkeypatch) -> None:
     monkeypatch.setattr(satellite_planetary.requests, "post", post)
     features, truncated = PlanetaryComputerClient()._search(BOX, "2026-01-01", "2026-02-01")
     assert len(features) == 2 and truncated is True
+
+
+def test_a_long_window_is_searched_as_slices_that_cover_it_exactly(monkeypatch) -> None:
+    windows = []
+
+    def post(url, json, timeout):
+        windows.append(json["datetime"])
+        day = json["datetime"][:10]
+        return _Response({"features": [_feature(day, f"s{day}")], "links": []})
+
+    monkeypatch.setattr(satellite_planetary.requests, "post", post)
+    features, _ = PlanetaryComputerClient()._search(BOX, "2024-10-12", "2026-10-12")
+    spans = sorted((w[:10], w.split("/")[1][:10]) for w in windows)
+    assert spans[0][0] == "2024-10-12" and spans[-1][1] == "2026-10-12" and len(spans) == 4
+    for (_, stop), (begin, _) in zip(spans, spans[1:]):  # contiguous, no day searched twice or skipped
+        assert date.fromisoformat(begin) - date.fromisoformat(stop) == timedelta(days=1)
+    assert [f["id"] for f in features] == sorted(f["id"] for f in features)
+
+
+def test_a_gateway_timeout_is_retried(monkeypatch) -> None:
+    monkeypatch.setattr(satellite_planetary.time, "sleep", lambda seconds: None)
+    replies = [_Response({}, 504), _Response({"features": [_feature("2026-01-05", "a")], "links": []})]
+    monkeypatch.setattr(satellite_planetary.requests, "post", lambda url, json, timeout: replies.pop(0))
+    features, _ = PlanetaryComputerClient()._search(BOX, "2026-01-01", "2026-02-01")
+    assert [f["id"] for f in features] == ["a"] and not replies
+
+
+def test_a_failed_search_reuses_the_stored_listing(monkeypatch, tmp_path) -> None:
+    cache = satellite_planetary.ResultCache(tmp_path / "c.sqlite")
+    client = PlanetaryComputerClient()
+    monkeypatch.setattr(client, "_search", lambda *a: ([_feature("2026-01-05", "a")], False))
+    client._catalogue(cache, BOX, "2026-01-01", "2026-02-01")
+    monkeypatch.setattr(satellite_planetary, "CATALOGUE_TTL_RECENT_S", -1)
+    monkeypatch.setattr(satellite_planetary, "CATALOGUE_TTL_HISTORICAL_S", -1)
+
+    def down(*a):
+        raise satellite_planetary.requests.HTTPError("504 Server Error")
+
+    monkeypatch.setattr(client, "_search", down)
+    features, _, age = client._catalogue(cache, BOX, "2026-01-01", "2026-02-01")
+    assert [f["id"] for f in features] == ["a"] and age is not None
 
 
 # --- selection and result cache (no network) -----------------------------------------

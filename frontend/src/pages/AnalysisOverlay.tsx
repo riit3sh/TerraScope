@@ -18,7 +18,12 @@ export function collectedLayers(s: ParcelRecord): Layer[] {
   const river = s.flood_indicators?.river_flood as { status?: string } | null | undefined
   const layers: Layer[] = [
     { key: 'geocoding', label: 'Location', found: Boolean(s.location?.state), detail: [s.location?.district, s.location?.state].filter(Boolean).join(', ') || 'no address found', ms: t.geocoding ?? null },
-    { key: 'satellite', label: 'Satellite images', found: images > 0, detail: images ? `${images} clear image date${images === 1 ? '' : 's'}` : 'no clear images in the window', ms: t.satellite ?? null },
+    { key: 'satellite', label: 'Satellite images', found: images > 0,
+      // A provider failure is not "no clear images": say which happened.
+      detail: images ? `${images} clear image date${images === 1 ? '' : 's'}`
+        : s.satellite?.collection?.status === 'timed_out' ? 'imagery service too slow; run the analysis again'
+        : s.satellite?.collection?.error ? 'imagery service did not respond; run the analysis again'
+        : 'no clear images in the window', ms: t.satellite ?? null },
     { key: 'accessibility', label: 'Roads, schools, hospitals', found: road != null || infra?.nearest_school_distance_m != null,
       detail: [roadsMissing ? 'roads not installed for this region' : road != null ? `road ${m(road)}` : 'no road mapped nearby',
                infra?.nearest_school_distance_m != null ? `school ${m(infra.nearest_school_distance_m)}` : null].filter(Boolean).join(' · '), ms: t.accessibility ?? null },
