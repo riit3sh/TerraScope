@@ -29,7 +29,7 @@ import rasterio
 import requests
 import shapely
 from rasterio.enums import Resampling
-from rasterio.features import geometry_mask
+from rasterio.features import geometry_mask, geometry_window
 from rasterio.mask import mask as rio_mask
 from rasterio.transform import array_bounds
 from rasterio.warp import transform_geom
@@ -156,7 +156,7 @@ class SatelliteError(RuntimeError):
 # keeps reading in the background (so a re-run finds its scenes cached); without a shared cap,
 # back-to-back analyses stacked those reads until the link saturated and even geocoding and DEM
 # reads failed (measured 2026-10-12: Planetary Computer 6-20 s per request, then 1 s once stopped).
-_SCENE_SLOTS = threading.BoundedSemaphore(int(os.getenv("SENTINEL_MAX_CONCURRENT_SCENES", "8")))
+_SCENE_SLOTS = threading.BoundedSemaphore(int(os.getenv("SENTINEL_MAX_CONCURRENT_SCENES", "12")))
 
 
 def season_anchors(start: date, end: date, limit: int) -> tuple[list[date], int]:
@@ -346,16 +346,27 @@ class PlanetaryComputerClient:
         except (TypeError, ValueError):
             return BOA_OFFSET_DN if item["properties"]["datetime"][:10] >= BASELINE_04_START else 0.0
 
+    def _crop_grid(self, item: dict[str, Any], geometry: dict[str, Any], token: str):
+        """The 10 m crop grid _read_band produces (rasterio.mask's crop window), from B04's header alone."""
+        with rasterio.open(f"{item['assets']['B04']['href']}?{token}") as source:
+            window = geometry_window(source, [transform_geom("EPSG:4326", source.crs, geometry)])
+            return source.window_transform(window), (int(window.height), int(window.width))
+
     def _observation(self, item: dict[str, Any], geometry: dict[str, Any], token: str) -> dict[str, Any] | None:
         """One cloud-screened NDVI/NDBI observation, or None when too few clear pixels."""
-        # Each band is a few HTTP round trips, so the bands are read two at a time: B11 and SCL
-        # need B04's grid. Measured 2026-10-12 (VIT, 7 scenes): 12-28 s per scene one band after another.
-        with ThreadPoolExecutor(max_workers=2) as bands:
+        # Each band is a few HTTP round trips. B11 and SCL are resampled onto the 10 m crop grid, which
+        # needs only B04's header, so all four bands are read at once (2026-10-28: 8-11 s per scene when
+        # B11/SCL waited for B04's pixels). Measured 2026-10-12: 12-28 s per scene one band after another.
+        grid_transform, grid_shape = self._crop_grid(item, geometry, token)
+        with ThreadPoolExecutor(max_workers=4) as bands:
+            red_read = bands.submit(self._read_band, item, "B04", geometry, token)
             nir_read = bands.submit(self._read_band, item, "B08", geometry, token)
-            red, transform, footprint = self._read_band(item, "B04", geometry, token)
-            swir_read = bands.submit(self._read_on_grid, item, "B11", transform, red.shape, token)
-            scl = self._read_on_grid(item, "SCL", transform, red.shape, token)
-            nir, swir = nir_read.result()[0], swir_read.result()
+            swir_read = bands.submit(self._read_on_grid, item, "B11", grid_transform, grid_shape, token)
+            scl_read = bands.submit(self._read_on_grid, item, "SCL", grid_transform, grid_shape, token)
+            red, transform, footprint = red_read.result()
+            nir, swir, scl = nir_read.result()[0], swir_read.result(), scl_read.result()
+        if red.shape != grid_shape or transform != grid_transform:
+            raise RuntimeError(f"B04 crop grid {red.shape} differs from the header-derived grid {grid_shape}")
 
         inside = ~np.ma.getmaskarray(red)
         offset = self._offset(item)
@@ -481,10 +492,14 @@ class PlanetaryComputerClient:
                     seen.setdefault(item["id"], item)
             return list(seen.values())
 
-        # Wave 1: the best candidate for every anchor. Wave 2, only where that failed: alternates.
-        measure(unique(candidates[0] for candidates in options.values() if candidates))
+        # Wave 1: the best candidate for every anchor, plus the first alternate where that candidate is cloudy
+        # and so likely rejected: reading it now saves a whole second round of reads. Selection below still
+        # walks candidates in rank order, so the extra read never changes which scene is used.
+        # Wave 2, only where wave 1 found nothing usable: the remaining alternates.
+        measure(unique(item for candidates in options.values() for item in candidates[
+            :2 if candidates and (candidates[0]["properties"].get("eo:cloud_cover") or 0.0) > LOW_CLOUD_PCT else 1]))
         missing = [anchor for anchor, candidates in options.items()
-                   if not any(self._usable(measured.get(item["id"])) for item in candidates[:1])]
+                   if not any(self._usable(measured.get(item["id"])) for item in candidates[:2])]
         if self.give_up_at is None or time.monotonic() < self.give_up_at:
             measure(unique(item for anchor in missing for item in options[anchor][1:1 + ALTERNATES_PER_ANCHOR]))
         if cache:

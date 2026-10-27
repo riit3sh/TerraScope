@@ -24,8 +24,10 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import tempfile
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -97,6 +99,39 @@ def _layer_path(prefix: str, layer: str) -> str:
         relative = f"Spurious_Depths/{prefix}_spurious_depth_areas.tif"
     local = cache_dir() / "tiles" / relative
     return str(local) if local.exists() else f"/vsicurl/{BASE_URL}/{relative}"
+
+
+# --- provider health --------------------------------------------------------------
+
+# The JRC server sometimes accepts connections and then sends nothing; GDAL then spends its
+# full timeout and retries (~60 s) and the whole analysis waits on its deadline. A short ranged
+# GET decides first, and a failure is remembered so the next analyses skip it at once.
+PROBE_TIMEOUT_S = float(os.getenv("RIVER_FLOOD_PROBE_SECONDS", "6"))
+PROVIDER_RETRY_AFTER_S = float(os.getenv("RIVER_FLOOD_RETRY_AFTER_SECONDS", "600"))
+_provider_lock = threading.Lock()
+_provider_state: dict[str, float] = {"down_until": 0.0, "up_until": 0.0}
+
+
+def _check_provider(url: str) -> None:
+    """Raise RiverFloodUnavailable when the hazard-map server is not answering."""
+    with _provider_lock:
+        now = time.monotonic()
+        if now < _provider_state["down_until"]:
+            raise RiverFloodUnavailable(
+                f"the JRC hazard-map server did not respond to a check made in the last "
+                f"{PROVIDER_RETRY_AFTER_S / 60:.0f} minutes; it is retried after that")
+        if now < _provider_state["up_until"]:
+            return
+        try:
+            with requests.get(url, headers={"Range": "bytes=0-1023"}, timeout=PROBE_TIMEOUT_S, stream=True) as response:
+                if response.status_code not in (200, 206):
+                    raise requests.HTTPError(f"HTTP {response.status_code}")
+                next(response.iter_content(1024), None)
+        except requests.RequestException as error:
+            _provider_state["down_until"] = time.monotonic() + PROVIDER_RETRY_AFTER_S
+            raise RiverFloodUnavailable(
+                f"the JRC hazard-map server did not respond within {PROBE_TIMEOUT_S:.0f} s ({error.__class__.__name__})") from error
+        _provider_state["up_until"] = time.monotonic() + PROVIDER_RETRY_AFTER_S / 2
 
 
 # --- per-pixel overlap ------------------------------------------------------------
@@ -210,6 +245,8 @@ def assess(geojson_polygon: dict[str, Any]) -> dict[str, Any]:
         bounds = near.bounds
         layers = [f"RP{rp}" for rp in RETURN_PERIODS] + ["permanent_water", "spurious"]
         try:
+            if _layer_path(prefix, "RP100").startswith("/vsicurl/"):
+                _check_provider(f"{BASE_URL}/RP100/{prefix}_RP100_depth.tif")
             with ThreadPoolExecutor(max_workers=len(layers)) as pool:
                 arrays = dict(zip(layers, pool.map(lambda layer: _read(_layer_path(prefix, layer), bounds), layers)))
         except Exception as error:  # noqa: BLE001 - provider failure: this part stays unassessed

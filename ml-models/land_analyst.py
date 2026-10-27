@@ -23,6 +23,8 @@ MAX_RATE_LIMIT_WAIT_SECONDS = float(os.getenv("GROQ_MAX_RATE_LIMIT_WAIT_SECONDS"
 # Large raw series in the snapshot; their findings are already in the evidence summaries.
 _BULKY_SATELLITE_KEYS = ("observations", "collection", "change_method")
 EVIDENCE_SUMMARY_CHARS = 350
+_VERDICT_KEYS = ("recommendation", "reasoning_summary", "red_flags", "pre_purchase_checks", "would_change")
+_SCORE_KEYS = ("legal_safety_score", "accessibility_score", "flood_safety_score", "growth_score", "composite_score")
 
 
 class GroqRateLimited(RuntimeError):
@@ -218,6 +220,11 @@ def ask_land_question(snapshot: dict[str, Any], question: str) -> dict[str, Any]
     facts = {key: snapshot.get(key) for key in ("location", "geometry_metadata", "infrastructure", "risk", "satellite", "land_records", "rera", "opportunity", "evaluation", "verdict")}
     if isinstance(facts["satellite"], dict):
         facts["satellite"] = {key: value for key, value in facts["satellite"].items() if key not in _BULKY_SATELLITE_KEYS}
+    if isinstance(facts["verdict"], dict):
+        # The report's own answer, without the long findings and citation lists.
+        facts["verdict"] = {key: facts["verdict"].get(key) for key in _VERDICT_KEYS}
+    breakdown = snapshot.get("score_breakdown") or {}
+    facts["scores"] = {key: breakdown.get(key) for key in _SCORE_KEYS if key in breakdown}
     facts = {key: value for key, value in facts.items() if value not in (None, {}, [])}
     facts["evidence"] = evidence
     allowed = [str(row.get("source_reference")) for row in evidence if row.get("source_reference")]
@@ -226,13 +233,21 @@ def ask_land_question(snapshot: dict[str, Any], question: str) -> dict[str, Any]
         "Use only the supplied parcel facts and evidence. Do not invent or infer missing values. Never claim title, "
         "ownership, encumbrance, RERA, zoning, legal access, flood safety, or price is verified unless the facts "
         "explicitly say it was verified by an official record. Say 'not available in this analysis' when insufficient. "
+        "If asked whether to buy, state the report's recommendation from verdict.recommendation and its main reasons; "
+        "it is TerraScope's rule-based answer, not your own advice. answer_text must never be empty. "
         "Cite factual claims with [source: X], where X is copied exactly from an allowed source reference. Return JSON only: "
         "{\"answer_text\":\"...\",\"citations\":[{\"claim\":\"...\",\"source_reference\":\"...\"}]}\n\n"
         f"Allowed source references: {json.dumps(allowed)}\nQuestion: {question}\nFacts: {json.dumps(facts, ensure_ascii=True, default=str)}"
     )
-    payload = _groq_json(api_key, {"model": MODEL_NAME, "max_completion_tokens": 500, "temperature": 0, "include_reasoning": False,
-                                   "reasoning_effort": "low", "response_format": {"type": "json_object"},
-                                   "messages": [{"role": "user", "content": prompt}]})
+    request = {"model": MODEL_NAME, "max_completion_tokens": 500, "temperature": 0, "include_reasoning": False,
+               "reasoning_effort": "low", "response_format": {"type": "json_object"},
+               "messages": [{"role": "user", "content": prompt}]}
+    payload = _groq_json(api_key, request)
+    if not str(payload.get("answer_text") or "").strip():
+        # An empty answer showed as a blank panel; ask once more, then say so plainly.
+        payload = _groq_json(api_key, request)
+        if not str(payload.get("answer_text") or "").strip():
+            raise RuntimeError("TerraScope Land Analyst could not answer that; try rephrasing the question.")
     citations = []
     for item in payload.get("citations") or []:
         if not isinstance(item, dict):

@@ -397,6 +397,11 @@ async def ask_land_analyst(parcel_id: str, request: AskRequest) -> dict[str, Any
     snapshot = get_snapshot(request.analysis_snapshot_id)
     if snapshot is None or snapshot.get("parcel_id") != parcel_id:
         raise HTTPException(status_code=404, detail="Immutable evidence snapshot not found for this parcel.")
+    # The bare snapshot has no verdict; the latest evaluation of this same snapshot adds it, so the
+    # analyst can explain the report's answer. It is the snapshot plus scores, never new evidence.
+    evaluation = get_latest_evaluation(parcel_id)
+    if evaluation and (evaluation.get("metadata") or {}).get("analysis_snapshot_id") == request.analysis_snapshot_id:
+        snapshot = evaluation
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(

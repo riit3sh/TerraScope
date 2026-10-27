@@ -39,6 +39,7 @@ def test_bbox_comes_from_the_polygon_ring() -> None:
 
 def _bands(monkeypatch, client, red, nir, swir, scl, footprint=None):
     full = footprint if footprint is not None else int((~np.ma.getmaskarray(red)).sum())
+    monkeypatch.setattr(client, "_crop_grid", lambda item, geom, token: (GRID, red.shape))
     monkeypatch.setattr(client, "_read_band", lambda item, band, geom, token: ({"B04": red, "B08": nir}[band], GRID, full))
     monkeypatch.setattr(client, "_read_on_grid", lambda item, band, transform, shape, token: {"B11": swir, "SCL": scl}[band])
 
