@@ -117,6 +117,7 @@ approvals and government-land status; you record them, and they are never automa
   is not proof of absence.
 - **Imagery:** the satellite basemap (EOxCloudless) is for non-commercial use only. Bhuvan layers are viewing-only
   without written NRSC authorization and are not integrated.
+- **RERA:** the report asks who is selling, opens the official authority's portal (all 36 regions, MoHUA's list) and records what the buyer found there. It is never automated. Future work: integrate MoHUA's unified portal if a permitted API or dataset becomes available.
 - **Local news (GDELT):** frequently rate-limited. A failed search is shown as unavailable, never as "no news".
 
 ## Folder Structure

@@ -56,7 +56,7 @@ def _row(area, finding, assessment, basis, next_step, evidence=None, as_of=None,
 
 
 def _legal(record: dict[str, Any], factors: dict[str, dict[str, Any]], state: str | None) -> dict[str, Any]:
-    supplied = _section(record, "user_land_details")
+    supplied = {k: v for k, v in _section(record, "user_land_details").items() if k != "seller_type"}
     documents = supplied.get("documents") or []
     tamil_nadu = (state or "").casefold() == "tamil nadu"
     portal = ((for_state(state) or {}).get("land_records") or {}).get("url")
@@ -88,55 +88,91 @@ def _legal(record: dict[str, Any], factors: dict[str, dict[str, Any]], state: st
             f"/{supplied['subdivision']}" if supplied.get("subdivision") else "") + "."
     if documents:
         finding += f" {len(documents)} document(s) uploaded; they are your claims, not verification."
-    return _row("Title and ownership", finding, "unknown", "user_provided" if supplied or mine else "not_verified",
+    claims = any(v for k, v in supplied.items() if k not in ("documents", "verification_status")) or documents
+    return _row("Title and ownership", finding, "unknown", "user_provided" if claims or mine else "not_verified",
                 where + documents_needed + "Have a lawyer check the title chain and any loans or court cases on "
                 "the land.", source="No permitted land-records source is integrated")
 
 
-RERA_APPLIES = ("RERA covers a promoter's project (a plotted layout, building or apartments); projects on up to "
-                "500 m2 or with up to eight apartments are exempt unless the state sets lower limits (RERA Act "
-                "s. 3(2)). An individual owner's resale plot is usually outside RERA.")
+RERA_APPLIES = ("Registration is the promoter's duty (RERA Act s. 3(1)): a promoter may not advertise or sell plots "
+                "or apartments in a project without it. Exempt (s. 3(2)): land up to 500 m2 or up to eight apartments "
+                "(a state may lower these), and projects that had their completion certificate before the Act. Whether "
+                "it applies depends on the project and the transaction, so TerraScope never marks a plot exempt itself.")
+SELLER = {"developer": "a developer / promoter is selling", "individual": "an individual owner is reselling",
+          "unsure": "the seller type is not known"}
+LEGACY_RERA = {"confirmed": "registration_found", "not_found": "not_found_in_search"}  # records made before 2026-10-27
 
 
 def _rera(rows: dict[str, dict[str, Any]], record: dict[str, Any], state: str | None) -> dict[str, Any]:
-    """Four states, never mixed: registered (matched record), recorded by you, no matching record, not applicable."""
+    """What the buyer found on the official portal, kept apart from verification: only a matched record verifies.
+
+    A search that found nothing, or a portal that did not answer, is never "not registered"; RERA never decides
+    BUY or WALK AWAY on its own (only a legacy "problem" record, made before 2026-10-27, is a red flag)."""
     rera = _section(record, "rera")
     evidence = rows.get("rera")
-    authority = (for_state(state) or {}).get("rera") or {}
-    where = (f"{state} RERA portal: {authority['url']}" + (f" ({authority['note']})" if authority.get("note") else "")
+    mine = _section(record, "user_legal_checks").get("rera")
+    mine = mine if isinstance(mine, dict) else {}
+    outcome = LEGACY_RERA.get(mine.get("outcome"), mine.get("outcome"))
+    seller = _section(record, "user_land_details").get("seller_type")
+    rera_state = mine.get("rera_state") or state
+    authority = (for_state(rera_state) or {}).get("rera") or {}
+    where = (f"the {rera_state} RERA portal ({authority['url']})" + (f"; {authority['note']}" if authority.get("note") else "")
              if authority.get("url") else
-             f"MoHUA lists no RERA website for {state} (\"Website Not Setup\"): ask the state housing department"
+             f"the {rera_state} housing department: MoHUA lists no RERA website for {rera_state} (\"Website Not Setup\")"
              if authority.get("status") == "website_not_set_up" else
-             "the state RERA portal (listed by MoHUA at rera.mohua.gov.in)")
-    if rera.get("is_rera_project") is True:
+             "the state RERA portal (MoHUA lists them at rera.mohua.gov.in)")
+    seller_note = f" Seller: {SELLER[seller]}." if seller in SELLER else ""
+    if rera.get("is_rera_project") is True:  # only a matched record from an integrated source; none exists today
         return _row("RERA registration", f"Registered (matched record): {rera.get('rera_registration_number')}.", "ok",
                     "measured", f"Check the registration details and completion date on {where}. Registration does "
                     "not prove title.", evidence)
-    mine = _section(record, "user_legal_checks").get("rera")
-    mine = mine if isinstance(mine, dict) else {}
+    details = ", ".join(x for x in (f"no. {mine['reference']}" if mine.get("reference") else None,
+                                    f"project {mine['project_name']}" if mine.get("project_name") else None,
+                                    f"promoter {mine['promoter_name']}" if mine.get("promoter_name") else None) if x)
     cite = f"({mine.get('source')}, {mine.get('checked_on')})"
-    if mine.get("outcome") == "problem":
-        return _row("RERA registration", f"Problem recorded by you {cite}.", "red_flag", "user_provided",
-                    "Do not pay until the authority confirms the project's status.", source="Your recorded legal checks")
-    if mine.get("outcome") == "confirmed":
-        return _row("RERA registration", f"Registration found by you {cite}"
-                    + (f", number {mine['reference']}" if mine.get("reference") else "")
-                    + "; not verified by TerraScope.", "unknown", "user_provided",
-                    f"Keep the registration certificate; check the completion date on {where}. Registration does "
-                    "not prove title.", source="Your recorded legal checks")
-    if mine.get("outcome") == "not_found":
-        return _row("RERA registration", f"No matching record found by you {cite}. That is not proof the project is "
-                    "unregistered: it may be listed under another name, or RERA may not apply. " + RERA_APPLIES,
-                    "unknown", "user_provided", f"Ask the seller for the registration number and search it on {where}.",
-                    source="Your recorded legal checks")
-    if mine.get("outcome") == "not_applicable":
-        return _row("RERA registration", f"Not applicable, as recorded by you {cite}. " + RERA_APPLIES, "unknown",
-                    "user_provided", "If the seller is a developer selling layout plots, check again: RERA would apply.",
-                    source="Your recorded legal checks")
-    return _row("RERA registration", "Not verified: TerraScope cannot read the RERA registers. " + RERA_APPLIES,
-                "unknown", "not_verified",
-                f"If a developer is selling this plot in a layout, search the project on {where}. Registration does "
-                "not prove clear title.", evidence)
+    mine_row = dict(basis="user_provided", source="Your recorded RERA check", as_of=mine.get("checked_on"))
+    if outcome == "problem":
+        return _row("RERA registration", f"Problem recorded by you {cite}.", "red_flag", next_step=
+                    "Do not pay until the authority confirms the project's status.", **mine_row)
+    if outcome == "registration_found":
+        return _row("RERA registration", f"Matching registration reported by you {cite}: {details or 'details not given'}. "
+                    "Recorded by you, not verified by TerraScope; a RERA registration does not prove clear title."
+                    + seller_note, "unknown", next_step=f"Keep the registration certificate, and confirm on {where} that "
+                    "this plot is in the registered layout and the registration is valid.", **mine_row)
+    if outcome == "not_found_in_search":
+        flag = seller == "developer"
+        return _row("RERA registration", f"Not found in your search {cite}{': ' + details if details else ''}. That is not "
+                    "proof the project is unregistered: it may be listed under another name or number, or be exempt."
+                    + (" A promoter is selling, so registration is likely required: verify before paying." if flag else "")
+                    + seller_note, "caution" if flag else "unknown",
+                    next_step=f"Ask the promoter for the registration number in writing and search it on {where}; if "
+                    "there is none, ask the authority whether the project needed one.", **mine_row)
+    if outcome == "unable_to_verify":
+        return _row("RERA registration", f"Unable to verify {cite}: the portal was unavailable or the search was "
+                    f"inconclusive{' (' + mine['notes'] + ')' if mine.get('notes') else ''}. Status unknown, not "
+                    "\"unregistered\"." + seller_note, "unknown",
+                    next_step=f"Try {where} again later, or ask the authority's office directly.", **mine_row)
+    if outcome == "not_applicable":
+        return _row("RERA registration", f"Not applicable, as recorded by you {cite}"
+                    + (f": {mine['notes']}" if mine.get("notes") else "") + ". " + RERA_APPLIES + seller_note, "unknown",
+                    next_step="If the plot is part of a promoter's layout that is still being sold, check again: RERA "
+                    "would then apply.", **mine_row)
+    if seller == "developer":
+        return _row("RERA registration", "Not yet checked. A developer / promoter is selling, so the project likely needs "
+                    "RERA registration unless it is exempt. Status unknown until checked. " + RERA_APPLIES, "caution",
+                    "user_provided", f"Ask the promoter for the RERA registration number and verify it on {where}.",
+                    evidence)
+    if seller == "individual":
+        return _row("RERA registration", "An individual owner is reselling: RERA may not apply to an ordinary resale, "
+                    "but it can if the plot is in a promoter's project that is still being sold. Not marked exempt. "
+                    + RERA_APPLIES, "unknown", "user_provided",
+                    f"Ask how the seller bought the plot; if it came from a promoter's layout, check that layout on {where}.",
+                    evidence)
+    return _row("RERA registration", "Not verified: TerraScope cannot read the RERA registers"
+                + (", and who is selling is not known" if seller == "unsure" else "") + ". " + RERA_APPLIES,
+                "unknown", "user_provided" if seller == "unsure" else "not_verified",
+                f"Find out whether a developer / promoter is selling. If so, search the project on {where}. "
+                "Registration does not prove clear title.", evidence)
 
 
 def _river(rows: dict[str, dict[str, Any]], flood: dict[str, Any]) -> dict[str, Any]:

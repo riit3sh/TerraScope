@@ -84,6 +84,8 @@ class LandDetails(BaseModel):
     village: str | None = Field(None, pattern=IDENTIFIER)
     survey_number: str | None = Field(None, pattern=r"^[0-9A-Za-z/ .-]{1,30}$")
     subdivision: str | None = Field(None, pattern=r"^[0-9A-Za-z/ .-]{1,30}$")
+    # Who is selling decides whether RERA is likely to apply; "unsure" keeps it unknown.
+    seller_type: Literal["developer", "individual", "unsure"] | None = None
 
 
 def _validate_polygon(polygon: dict[str, Any]) -> None:

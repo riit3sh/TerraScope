@@ -28,7 +28,8 @@ export interface PublicFacility { category: string; category_label: string; kind
 export interface PublicLand { status: 'assessed'|'unavailable'; overlaps: PublicFacility[]; nearby: PublicFacility[]; reason?: string; source?: string; licence?: string; data_as_of?: string|null; stale?: boolean|null; uncertainty_m?: number; search_radius_m?: number; authoritative_boundaries?: null; limitations?: string }
 export type DocType = 'patta_chitta'|'encumbrance_certificate'|'sale_deed'|'layout_or_building_approval'|'fmb_sketch'|'other'
 export const DOC_TYPE_LABEL: Record<DocType, string> = { patta_chitta: 'Patta / chitta', encumbrance_certificate: 'Encumbrance certificate', sale_deed: 'Sale deed', layout_or_building_approval: 'Layout / building approval', fmb_sketch: 'FMB / survey sketch', other: 'Other' }
-export interface LandDetails { state?: string|null; district?: string|null; taluk?: string|null; village?: string|null; survey_number?: string|null; subdivision?: string|null }
+export type SellerType = 'developer'|'individual'|'unsure'
+export interface LandDetails { state?: string|null; district?: string|null; taluk?: string|null; village?: string|null; survey_number?: string|null; subdivision?: string|null; seller_type?: SellerType|null }
 export interface DocumentInfo { document_id?: number; filename: string; doc_type: DocType|null; text_extracted: boolean; pages: number|null; mentions?: { field: string; value: string; pages: number[]|null }[] }
 export interface UserLandDetails extends LandDetails { documents?: DocumentInfo[]; verification_status?: string }
 export interface EvaluationSettings { profile: 'homebuyer'|'developer'|'investor'|'conservative'|'custom'; property_type: 'residential'|'commercial'|'industrial'|'mixed_use'; investment_horizon: 'under_1y'|'1_to_3y'|'3_to_5y'|'5_to_10y'|'10_plus_y'; weights: { growth_pct: number; legal_safety_pct: number; accessibility_pct: number; flood_safety_pct: number }; preferences: { road_importance: 'low'|'medium'|'high'; school_importance: 'low'|'medium'|'high'; max_road_distance_m: number; max_school_distance_m: number; rera_requirement: 'strict'|'important'|'informational' } }
@@ -69,8 +70,11 @@ export function getSavedParcel(parcelId: string) {
 
 /** Legal checks: official sources to consult per state, and the buyer's own records (never verification). */
 export type LegalCheckKey = 'title'|'encumbrance'|'zoning'|'approvals'|'rera'|'government_land'
-export type LegalOutcome = 'confirmed'|'problem'|'not_found'|'not_applicable'|'government_non_transferable'|'government_transfer_documented'|'private_per_record'|'restriction_prohibits_use'|'restriction_with_conditions'|'records_unavailable'
-export interface LegalCheckInput { check: LegalCheckKey; outcome: LegalOutcome; source: string; checked_on: string; survey_number?: string|null; reference?: string|null; evidence?: string|null; notes?: string|null }
+export type LegalOutcome = 'confirmed'|'problem'|'not_found'|'not_applicable'|'government_non_transferable'|'government_transfer_documented'|'private_per_record'|'restriction_prohibits_use'|'restriction_with_conditions'|'records_unavailable'|'registration_found'|'not_found_in_search'|'unable_to_verify'
+export interface LegalCheckInput { check: LegalCheckKey; outcome: LegalOutcome; source: string; checked_on: string; survey_number?: string|null; reference?: string|null; evidence?: string|null; notes?: string|null; project_name?: string|null; promoter_name?: string|null; rera_state?: string|null }
+/** MoHUA's list of State/UT RERA authorities: a portal URL, or none where no website is set up. */
+export interface ReraAuthority { state: string; url: string|null; status: 'listed'|'website_not_set_up'; note?: string }
+export function getReraAuthorities() { return request<{ source: string; authorities: ReraAuthority[] }>('/api/v1/rera-authorities') }
 export interface LegalChecklist { state: string|null; state_guide: 'available'|'partial'|'not_yet'; automated_sources: string[]; notice: string; history_count: number; checks: { check: LegalCheckKey; label: string; mandatory_for_buy: boolean; guide: { authority: string; url: string; how: string; access: string }|null; record: (LegalCheckInput & { recorded_at: string })|null; records?: (LegalCheckInput & { recorded_at: string })[]|null; outcomes: LegalOutcome[]; verification: 'user_recorded'|'not_checked' }[] }
 export function getLegalChecks(parcelId: string) { return request<LegalChecklist>(`/api/v1/parcels/${encodeURIComponent(parcelId)}/legal-checks`) }
 export function recordLegalCheck(parcelId: string, record: LegalCheckInput) { return request<LegalChecklist>(`/api/v1/parcels/${encodeURIComponent(parcelId)}/legal-checks`, { method: 'POST', body: JSON.stringify(record) }) }

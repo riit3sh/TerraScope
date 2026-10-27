@@ -31,6 +31,9 @@ CHECKS = {
 }
 OUTCOMES = {
     "default": ("confirmed", "problem", "not_found", "not_applicable"),
+    # What the buyer saw on the official RERA portal. No "problem" outcome: a RERA search result alone never means
+    # WALK AWAY, and "not found" / "unable to verify" are never proof that a project is unregistered.
+    "rera": ("registration_found", "not_found_in_search", "unable_to_verify", "not_applicable"),
     # Several official records can be checked for one plot; each is kept per source, so conflicts stay visible.
     "government_land": ("government_non_transferable", "government_transfer_documented", "private_per_record",
                         "restriction_prohibits_use", "restriction_with_conditions", "records_unavailable"),
@@ -103,13 +106,18 @@ class LegalCheckRecord(BaseModel):
     check: Literal["title", "encumbrance", "zoning", "approvals", "rera", "government_land"]
     outcome: Literal["confirmed", "problem", "not_found", "not_applicable", "government_non_transferable",
                      "government_transfer_documented", "private_per_record", "restriction_prohibits_use",
-                     "restriction_with_conditions", "records_unavailable"]
+                     "restriction_with_conditions", "records_unavailable", "registration_found",
+                     "not_found_in_search", "unable_to_verify"]
     survey_number: str | None = Field(None, max_length=60)
     source: str = Field(min_length=3, max_length=200)  # the portal or office consulted
     checked_on: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     reference: str | None = Field(None, max_length=120)  # EC / patta / approval / registration number
     evidence: str | None = Field(None, max_length=200)  # e.g. the uploaded document's file name
     notes: str | None = Field(None, max_length=500)
+    # RERA only: the project as the buyer searched it; a registration number's format is never verification.
+    project_name: str | None = Field(None, max_length=160)
+    promoter_name: str | None = Field(None, max_length=160)
+    rera_state: str | None = Field(None, max_length=80)
 
     @model_validator(mode="after")
     def _applicable(self) -> "LegalCheckRecord":
@@ -119,6 +127,10 @@ class LegalCheckRecord(BaseModel):
             raise ValueError("A government-land check needs the survey number that was looked up.")
         if self.outcome == "not_applicable" and self.check != "rera":
             raise ValueError("Only RERA can be not applicable; title, EC, zoning and approvals always apply.")
+        if self.check != "rera" and (self.project_name or self.promoter_name or self.rera_state):
+            raise ValueError("Project, promoter and RERA state belong to the RERA check only.")
+        if self.outcome == "registration_found" and not (self.reference or self.project_name):
+            raise ValueError("A matching registration needs the registration number or the project name you found.")
         return self
 
 
@@ -209,6 +221,14 @@ def _state(parcel_id: str) -> str | None:
     if latest is None:
         raise HTTPException(status_code=404, detail=f"Parcel not found: {parcel_id}")
     return (latest[1].get("location") or {}).get("state")
+
+
+@router.get("/api/v1/rera-authorities")
+def rera_authorities() -> dict[str, Any]:
+    """Every State/UT RERA authority as MoHUA lists it (36 regions): portal URL, or none where no website is set up."""
+    return {"source": "MoHUA list of State/UT RERA authorities, read 2026-10-27",
+            "authorities": sorted(({"state": e["name"], **(e.get("rera") or {})} for e in _official_portals().values()),
+                                  key=lambda a: a["state"])}
 
 
 @router.get("/api/v1/parcels/{parcel_id}/legal-checks")

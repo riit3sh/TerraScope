@@ -3,7 +3,7 @@ import { KpiStrip } from './KpiStrip'
 import { acresToM2, AREA_UNIT_LABEL, AREA_UNITS, AreaUnit, formatArea, useAreaUnit } from '../lib/area'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowLeft, FileText, FlaskConical, History, Printer, RefreshCw, Sparkles, TriangleAlert, Upload, X } from 'lucide-react'
-import { DOC_TYPE_LABEL, DocType, evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, uploadEvidence, AreaNews, NewsItem, getAreaNews, PublicFacility, LegalChecklist, LegalCheckInput, getLegalChecks, recordLegalCheck, DevelopmentClaim, DevelopmentClaimInput, ProjectType, listClaims, addClaim, deleteClaim } from '../lib/api'
+import { DOC_TYPE_LABEL, DocType, evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, uploadEvidence, AreaNews, NewsItem, getAreaNews, PublicFacility, LegalChecklist, ReraAuthority, getReraAuthorities, SellerType, LegalCheckInput, getLegalChecks, recordLegalCheck, DevelopmentClaim, DevelopmentClaimInput, ProjectType, listClaims, addClaim, deleteClaim } from '../lib/api'
 
 type EvidenceTab = 'Satellite' | 'Infrastructure' | 'Flood indicators' | 'RERA' | 'Uploaded Documents' | 'Derived Scores'
 
@@ -316,7 +316,47 @@ function LegalEvidence({ record, onChanged }: { record: ParcelRecord; onChanged:
   </div>
 }
 
-const OUTCOME_LABEL: Record<LegalCheckInput['outcome'], string> = { confirmed: 'Record found and matches the seller', problem: 'Problem found', not_found: 'Could not find the record', not_applicable: 'Not applicable', government_non_transferable: 'Government land, not transferable', government_transfer_documented: 'Government land with a documented lawful auction or transfer', private_per_record: 'Private according to this record', restriction_prohibits_use: 'Restriction prohibits this use', restriction_with_conditions: 'Restriction allows this use on conditions (e.g. NOC)', records_unavailable: 'Record unavailable' }
+const OUTCOME_LABEL: Record<LegalCheckInput['outcome'], string> = { confirmed: 'Record found and matches the seller', problem: 'Problem found', not_found: 'Could not find the record', not_applicable: 'Not applicable', government_non_transferable: 'Government land, not transferable', government_transfer_documented: 'Government land with a documented lawful auction or transfer', private_per_record: 'Private according to this record', restriction_prohibits_use: 'Restriction prohibits this use', restriction_with_conditions: 'Restriction allows this use on conditions (e.g. NOC)', records_unavailable: 'Record unavailable', registration_found: 'Matching registration found', not_found_in_search: 'Registration not found in search (not proof)', unable_to_verify: 'Unable to verify' }
+const SELLER_LABEL: Record<SellerType, string> = { developer: 'A developer / promoter selling a plot in a layout or project', individual: 'An individual owner reselling a plot', unsure: 'Not sure' }
+const SELLER_NOTE: Record<SellerType, string> = {
+  developer: 'A promoter must register a project before selling plots in it, unless it is exempt (small projects, or ones completed before RERA). Verify the registration on the official portal below.',
+  individual: 'RERA may not apply to an ordinary resale by an individual, but it can if the plot is in a promoter\'s project that is still being sold. It is not marked exempt.',
+  unsure: 'RERA status stays unknown. Ask whether the seller is the developer of a layout or an owner reselling, and how they bought the plot.',
+}
+
+/** RERA: who is selling, the official portal for the project's state, and what the buyer found there. Never verification. */
+function ReraWorkflow({ record, onChanged }: { record: ParcelRecord; onChanged: () => Promise<void> }) {
+  const [authorities, setAuthorities] = useState<ReraAuthority[]>([])
+  const [seller, setSeller] = useState<SellerType | null>(record.user_land_details?.seller_type ?? null)
+  const [state, setState] = useState(record.location?.state || '')
+  const [note, setNote] = useState('')
+  useEffect(() => { getReraAuthorities().then(r => setAuthorities(r.authorities)).catch(() => setNote('Could not load the RERA authority list.')) }, [])
+  const fold = (v: string) => v.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  const authority = authorities.find(a => fold(a.state) === fold(state))
+  async function chooseSeller(next: SellerType) {
+    setSeller(next); setNote('Saving…')
+    try {
+      const { documents, verification_status, ...details } = (record.user_land_details || {}) as Record<string, unknown>
+      void documents; void verification_status
+      await saveLandDetails(record.parcel_id || '', { ...(details as LandDetails), seller_type: next })
+      await onChanged(); setNote('Saved and re-evaluated.')
+    } catch (error) { setNote(error instanceof Error ? error.message : 'Could not save.') }
+  }
+  return <div className="rera-flow">
+    <p className="muted"><strong>Who is selling this property?</strong> RERA registration depends on the project and the transaction.</p>
+    <div className="segmented three" role="radiogroup" aria-label="Who is selling">{(Object.keys(SELLER_LABEL) as SellerType[]).map(k => <button key={k} role="radio" aria-checked={seller === k} className={seller === k ? 'selected' : ''} onClick={() => chooseSeller(k)}>{SELLER_LABEL[k]}</button>)}</div>
+    {seller && <p className="field-hint">{SELLER_NOTE[seller]}</p>}
+    {seller !== 'unsure' && <div className="rera-portal">
+      <label className="stacked-field">State where the project is registered<select value={state} onChange={e => setState(e.target.value)}><option value="">Choose…</option>{authorities.map(a => <option key={a.state} value={a.state}>{a.state}</option>)}</select></label>
+      {authority?.url ? <a className="quiet-button" href={authority.url} target="_blank" rel="noreferrer">Verify on official portal ↗</a>
+        : authority ? <p className="muted">MoHUA lists no RERA website for {authority.state} ("Website Not Setup"): ask the state housing department or the promoter for the registration certificate.</p> : null}
+      {authority?.note && <small className="muted">{authority.note}.</small>}
+      <small className="muted">Opening the portal verifies nothing: search the registration number or project there, then record what you found below.</small>
+    </div>}
+    {note && <p className="muted" role="status">{note}</p>}
+  </div>
+}
+
 const ADVERSE_OUTCOMES = new Set(['problem', 'government_non_transferable', 'restriction_prohibits_use'])
 const CONTACT_LABEL: Record<PublicFacility['contact'], string> = { overlap: 'Overlaps the boundary', point_inside: 'Mapped as a point inside the boundary', edge: 'Touches it or within the map uncertainty', nearby: 'Nearby' }
 const SIGNAL_LABEL: Record<PublicFacility['ownership_signal'], string> = { government_tagged: 'map tag suggests a public operator', private_tagged: 'map tag suggests a private operator', unknown: 'ownership not shown on the map' }
@@ -370,18 +410,25 @@ function LegalChecks({ record, onChanged }: { record: ParcelRecord; onChanged: (
       <strong>{c.label}</strong>{c.mandatory_for_buy ? ' · required for BUY' : ''} · <span className={`finding-badge ${c.record && ADVERSE_OUTCOMES.has(c.record.outcome) ? 'red_flag' : c.record ? 'caution' : 'unknown'}`}>{c.record ? `${OUTCOME_LABEL[c.record.outcome]} · recorded by you ${c.record.checked_on}` : 'Not checked'}</span>
       {(c.records?.length ?? 0) > 1 && <small> {c.records!.length} sources recorded: {c.records!.map(r => `${r.source}: ${OUTCOME_LABEL[r.outcome]}`).join(' · ')}</small>}
       {c.record && <small> {c.record.source}{c.record.survey_number ? ` · survey ${c.record.survey_number}` : ''}{c.record.reference ? ` · ref ${c.record.reference}` : ''}{c.record.evidence ? ` · evidence: ${c.record.evidence}` : ''}{c.record.notes ? ` · ${c.record.notes}` : ''}</small>}
-      {c.guide ? <p className="muted">Where: <a href={c.guide.url} target="_blank" rel="noreferrer">{c.guide.authority}</a>. {c.guide.how} <em>{c.guide.access}</em></p> : <p className="muted">No official source has been researched for this state yet: ask a local lawyer which office holds this record.</p>}
-      {form?.check !== c.check && <button className="quiet-button" onClick={() => setForm({ check: c.check, outcome: c.outcomes[0], survey_number: c.check === 'government_land' ? (record.user_land_details?.survey_number || '') : null, source: c.guide?.authority || '', checked_on: new Date().toLocaleDateString('en-CA'), reference: '', evidence: '', notes: '' })}>Record a check</button>}
+      {c.check === 'rera' && <ReraWorkflow record={record} onChanged={onChanged} />}
+      {c.check === 'rera' ? null : c.guide ? <p className="muted">Where: <a href={c.guide.url} target="_blank" rel="noreferrer">{c.guide.authority}</a>. {c.guide.how} <em>{c.guide.access}</em></p> : <p className="muted">No official source has been researched for this state yet: ask a local lawyer which office holds this record.</p>}
+      {form?.check !== c.check && <button className="quiet-button" onClick={() => setForm({ check: c.check, outcome: c.outcomes[0], survey_number: c.check === 'government_land' ? (record.user_land_details?.survey_number || '') : null, rera_state: c.check === 'rera' ? (record.location?.state || '') : null, source: c.check === 'rera' ? (c.guide?.url || '') : c.guide?.authority || '', checked_on: new Date().toLocaleDateString('en-CA'), reference: '', evidence: '', notes: '' })}>Record a check</button>}
       {form?.check === c.check && <div className="land-grid">
         <label className="stacked-field">What you found<select value={form.outcome} onChange={e => setForm({ ...form, outcome: e.target.value as LegalCheckInput['outcome'] })}>{c.outcomes.filter(o => o !== 'not_applicable' || c.check === 'rera').map(o => <option key={o} value={o}>{OUTCOME_LABEL[o]}</option>)}</select></label>
         {c.check === 'government_land' && <label className="stacked-field">Survey no. looked up<input value={form.survey_number || ''} onChange={e => setForm({ ...form, survey_number: e.target.value })} /></label>}
-        <label className="stacked-field">Source consulted<input value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} /></label>
+        {c.check === 'rera' && <>
+          <label className="stacked-field">RERA registration no.<input value={form.reference || ''} onChange={e => setForm({ ...form, reference: e.target.value })} /></label>
+          <label className="stacked-field">Project / layout name<input value={form.project_name || ''} onChange={e => setForm({ ...form, project_name: e.target.value })} /></label>
+          <label className="stacked-field">Promoter / developer<input value={form.promoter_name || ''} onChange={e => setForm({ ...form, promoter_name: e.target.value })} /></label>
+          <label className="stacked-field">RERA state<input value={form.rera_state || ''} onChange={e => setForm({ ...form, rera_state: e.target.value })} /></label>
+        </>}
+        <label className="stacked-field">{c.check === 'rera' ? 'Official portal used' : 'Source consulted'}<input value={form.source} onChange={e => setForm({ ...form, source: e.target.value })} /></label>
         <label className="stacked-field">Date checked<input type="date" value={form.checked_on} onChange={e => setForm({ ...form, checked_on: e.target.value })} /></label>
-        <label className="stacked-field">Reference no.<input value={form.reference || ''} onChange={e => setForm({ ...form, reference: e.target.value })} /></label>
+        {c.check !== 'rera' && <label className="stacked-field">Reference no.<input value={form.reference || ''} onChange={e => setForm({ ...form, reference: e.target.value })} /></label>}
         <label className="stacked-field">Evidence (document)<input list="legal-evidence-docs" value={form.evidence || ''} onChange={e => setForm({ ...form, evidence: e.target.value })} /></label>
         <label className="stacked-field">Notes<input value={form.notes || ''} onChange={e => setForm({ ...form, notes: e.target.value })} /></label>
         <datalist id="legal-evidence-docs">{(record.user_land_details?.documents || []).map(d => <option key={d.filename} value={d.filename} />)}</datalist>
-        <button className="quiet-button" disabled={form.source.trim().length < 3 || !form.checked_on || (form.check === 'government_land' && !(form.survey_number || '').trim())} onClick={save}>Save and re-evaluate</button><button className="quiet-button" onClick={() => setForm(null)}>Cancel</button>
+        <button className="quiet-button" disabled={form.source.trim().length < 3 || !form.checked_on || (form.check === 'government_land' && !(form.survey_number || '').trim()) || (form.outcome === 'registration_found' && !(form.reference || '').trim() && !(form.project_name || '').trim())} onClick={save}>Save and re-evaluate</button><button className="quiet-button" onClick={() => setForm(null)}>Cancel</button>
       </div>}
     </li>)}</ul>
     {list.history_count > 0 && <p className="field-hint">{list.history_count} record{list.history_count === 1 ? '' : 's'} kept; the newest per check is shown. A record you could not find is not a clearance.</p>}

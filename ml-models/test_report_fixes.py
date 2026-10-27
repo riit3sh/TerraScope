@@ -218,25 +218,64 @@ def test_restricted_land_passes_schema_validation_and_names_the_overlap() -> Non
     assert row["assessment"] == "red_flag"
 
 
-def _rera_row(state, mine=None):
+def _rera_row(state, mine=None, seller=None):
     snapshot = copy.deepcopy(VIT)
     snapshot["location"]["state"] = state
     if mine:
         snapshot["user_legal_checks"] = {"rera": {"check": "rera", "source": "state RERA portal", "checked_on": "2026-10-27", **mine}}
+    if seller:
+        snapshot["user_land_details"] = {"seller_type": seller}
     findings = evaluate_snapshot(snapshot, SETTINGS)["verdict"]["findings"]
     return next(f for f in findings if f["area"] == "RERA registration"), next(f for f in findings if f["area"] == "Title and ownership")
 
 
-def test_rera_distinguishes_not_verified_no_match_not_applicable_and_recorded_registration() -> None:
+def test_rera_depends_on_who_is_selling_and_never_marks_a_plot_exempt_itself() -> None:
+    row, title = _rera_row("Karnataka", seller="developer")
+    assert row["assessment"] == "caution" and "likely needs RERA registration" in row["finding"]
+    assert "https://rera.karnataka.gov.in" in row["next_step"] and "s. 3(2)" in row["finding"]
+    assert title["basis"] == "not_verified", "the seller answer is not a land-record claim"
+    row, _ = _rera_row("Karnataka", seller="individual")
+    assert row["assessment"] == "unknown" and "may not apply to an ordinary resale" in row["finding"] and "Not marked exempt" in row["finding"]
+    row, _ = _rera_row("Karnataka", seller="unsure")
+    assert row["finding"].startswith("Not verified") and "who is selling is not known" in row["finding"]
     row, _ = _rera_row("Karnataka")
-    assert row["finding"].startswith("Not verified") and "https://rera.karnataka.gov.in" in row["next_step"]
-    assert "500 m2" in row["finding"], "applicability is explained"
-    row, _ = _rera_row("Karnataka", {"outcome": "not_found"})
-    assert row["finding"].startswith("No matching record") and "not proof the project is unregistered" in row["finding"]
-    row, _ = _rera_row("Karnataka", {"outcome": "not_applicable"})
-    assert row["finding"].startswith("Not applicable") and row["basis"] == "user_provided"
-    row, _ = _rera_row("Karnataka", {"outcome": "confirmed", "reference": "PRM/KA/123"})
-    assert "not verified by TerraScope" in row["finding"] and row["assessment"] == "unknown"
+    assert row["finding"].startswith("Not verified") and row["basis"] == "not_verified"
+
+
+def test_rera_outcomes_stay_the_buyers_record_and_never_mean_unregistered() -> None:
+    row, _ = _rera_row("Karnataka", {"outcome": "registration_found", "reference": "PRM/KA/RERA/1251/123", "project_name": "Green Acres",
+                                     "promoter_name": "ABC Developers"}, seller="developer")
+    assert "Matching registration reported by you" in row["finding"] and "not verified by TerraScope" in row["finding"]
+    assert "no. PRM/KA/RERA/1251/123, project Green Acres, promoter ABC Developers" in row["finding"]
+    assert row["assessment"] == "unknown" and row["basis"] == "user_provided" and row["as_of"] == "2026-10-27"
+    row, _ = _rera_row("Karnataka", {"outcome": "not_found_in_search", "project_name": "Green Acres"}, seller="developer")
+    assert row["finding"].startswith("Not found in your search") and "not proof the project is unregistered" in row["finding"]
+    assert row["assessment"] == "caution", "a promoter's sale with no registration found is flagged for verification"
+    row, _ = _rera_row("Karnataka", {"outcome": "not_found_in_search"}, seller="individual")
+    assert row["assessment"] == "unknown"
+    row, _ = _rera_row("Karnataka", {"outcome": "unable_to_verify", "notes": "portal timed out"})
+    assert "Unable to verify" in row["finding"] and "portal timed out" in row["finding"] and '"unregistered"' in row["finding"]
+    row, _ = _rera_row("Karnataka", {"outcome": "not_applicable", "notes": "a single resale plot, not a layout"})
+    assert row["finding"].startswith("Not applicable, as recorded by you") and "a single resale plot" in row["finding"]
+    row, _ = _rera_row("Karnataka", {"outcome": "not_found"})  # a record made before 2026-10-27
+    assert row["finding"].startswith("Not found in your search"), "legacy records still read"
+
+
+def test_the_portal_follows_the_state_the_project_is_registered_in() -> None:
+    row, _ = _rera_row("Tamil Nadu", {"outcome": "unable_to_verify", "rera_state": "Maharashtra"})
+    assert "https://maharera.maharashtra.gov.in/" in row["next_step"]
+
+
+def test_rera_cannot_decide_buy_or_walk_away_on_its_own() -> None:
+    weak = copy.deepcopy(VIT)
+    weak["user_legal_checks"] = {"rera": {"check": "rera", "outcome": "registration_found", "reference": "X1", "source": "portal", "checked_on": "2026-10-27"}}
+    weak["land_cover_history"] = None  # no growth evidence: the location cannot be strong
+    assert evaluate_snapshot(weak, SETTINGS)["verdict"]["recommendation"] != "BUY", "a registration found never makes BUY"
+    for outcome in ("not_found_in_search", "unable_to_verify"):
+        snap = copy.deepcopy(VIT)
+        snap["user_land_details"] = {"seller_type": "developer"}
+        snap["user_legal_checks"] = {"rera": {"check": "rera", "outcome": outcome, "source": "portal", "checked_on": "2026-10-27"}}
+        assert evaluate_snapshot(snap, SETTINGS)["verdict"]["recommendation"] != "AVOID", outcome
 
 
 def test_regions_without_a_portal_say_so_instead_of_inventing_one() -> None:
@@ -253,7 +292,7 @@ def test_a_missing_portal_list_reads_as_unknown_not_as_no_portal(monkeypatch) ->
 
     monkeypatch.setattr(official_portals, "_regions", lambda: {})
     row, title = _rera_row("Karnataka")
-    assert "listed by MoHUA" in row["next_step"] and "Website Not Setup" not in row["next_step"]
+    assert "MoHUA lists them" in row["next_step"] and "Website Not Setup" not in row["next_step"]
     assert "ask the taluk / tehsil office" in title["next_step"]
 
 
