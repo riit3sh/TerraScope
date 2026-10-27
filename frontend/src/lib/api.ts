@@ -51,6 +51,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> { const 
 export type PlaceSuggestion = { lat: number; lon: number; display_name: string; kind?: string|null; precision?: string|null; source?: string|null; place_id?: string|null }
 /** Autocomplete: the local GeoNames index only. Typing never reaches a public geocoder. */
 export function suggestPlaces(query: string, signal?: AbortSignal) { return request<PlaceSuggestion[]>(`/api/v1/search/suggest?q=${encodeURIComponent(query.trim())}`, { signal }) }
+export function resolveGooglePlace(placeId: string) { return request<PlaceSuggestion>(`/api/v1/search/place/${encodeURIComponent(placeId)}`) }
 /** Explicit search (Enter / Search button): local index first, then one rate-limited Nominatim lookup. */
 export async function geocodeAddress(address: string): Promise<PlaceSuggestion|null> { const results = await request<PlaceSuggestion[]>(`/api/v1/search/geocode?q=${encodeURIComponent(address.trim())}`); return results[0] || null }
 export function buildAnalysis(payload: { polygon: GeoJSONPolygon; address?: string; analysis_date_from: string; analysis_date_to: string }) { return request<AnalysisResult>('/api/v1/parcels/analyze', { method: 'POST', body: JSON.stringify(payload) }) }

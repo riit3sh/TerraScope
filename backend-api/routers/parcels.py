@@ -192,6 +192,32 @@ async def suggest_places(q: str, limit: int = 8) -> list[dict[str, Any]]:
         raise HTTPException(status_code=503, detail=str(error)) from error
 
 
+@router.get("/api/v1/search/place/{place_id:path}")
+async def resolve_google_place(place_id: str) -> dict[str, Any]:
+    """Resolve a Google Places prediction by ID, preserving the exact place coordinates."""
+    key = os.getenv("GOOGLE_MAPS_API_KEY", "").strip()
+    if not key or os.getenv("GOOGLE_LOCATION_PROVIDER", "local").casefold() != "google":
+        raise HTTPException(status_code=503, detail="Google Places is not configured.")
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            response = await client.get(
+                f"https://places.googleapis.com/v1/places/{place_id}",
+                headers={"X-Goog-Api-Key": key, "X-Goog-FieldMask": "id,displayName,formattedAddress,location,primaryType"},
+            )
+            response.raise_for_status()
+            payload = response.json()
+        location = payload.get("location") or {}
+        if not isinstance(location.get("latitude"), (int, float)) or not isinstance(location.get("longitude"), (int, float)):
+            raise HTTPException(status_code=502, detail="Google returned no coordinates for this place.")
+        return {"lat": location["latitude"], "lon": location["longitude"],
+                "display_name": payload.get("formattedAddress") or (payload.get("displayName") or {}).get("text") or place_id,
+                "kind": payload.get("primaryType") or "google-place", "source": "Google Places API (New)"}
+    except HTTPException:
+        raise
+    except (httpx.HTTPError, KeyError, TypeError, ValueError) as error:
+        raise HTTPException(status_code=502, detail=f"Google place lookup failed: {error}") from error
+
+
 @router.get("/api/v1/search/geocode")
 async def geocode_search(q: str) -> list[dict[str, Any]]:
     """Explicit search (the user pressed Search): the local index first, then one

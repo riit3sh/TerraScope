@@ -1,6 +1,6 @@
 import { ArrowRight, Clock, FileText, MapPin, Search as SearchIcon, Sparkles } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { geocodeAddress, listSavedReports, PlaceSuggestion, SavedReport, suggestPlaces } from '../lib/api'
+import { geocodeAddress, listSavedReports, PlaceSuggestion, resolveGooglePlace, SavedReport, suggestPlaces } from '../lib/api'
 import { acresToM2, formatArea, useAreaUnit } from '../lib/area'
 
 export function Search({ onSubmit, onOpenSaved, openingParcelId }: { onSubmit: (place: { lat: number; lon: number; label: string }) => void; onOpenSaved: (parcelId: string) => void; openingParcelId: string }) {
@@ -45,7 +45,7 @@ export function Search({ onSubmit, onOpenSaved, openingParcelId }: { onSubmit: (
     if (!query.trim()) return
     setLoading(true); setError('')
     try {
-      const result = selected?.source?.startsWith('Google Places') ? await geocodeAddress(selected.display_name) : selected || await geocodeAddress(query.trim())
+      const result = selected?.place_id ? await resolveGooglePlace(selected.place_id) : selected || await geocodeAddress(query.trim())
       if (!result) throw new Error('No location found. Try Vellore, Chennai, or a more specific address.')
       onSubmit({ lat: result.lat, lon: result.lon, label: result.display_name })
     } catch (e) { setError(e instanceof Error ? e.message : 'Search failed') } finally { setLoading(false) }
