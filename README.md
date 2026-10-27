@@ -1,7 +1,7 @@
 # TerraScope
 
 TerraScope is a local-first land due-diligence tool for India. You search a place, draw the plot, and it collects one
-immutable evidence snapshot, then answers one question for a buyer: **BUY, WAIT, WALK AWAY or INSUFFICIENT DATA**.
+immutable evidence snapshot, then answers one question for a buyer: **BUY, WAIT or WALK AWAY**.
 The report is evidence-first: it separates measured observations, mapped warnings and official checks that still need
 to be performed. An optional Groq call explains the already-computed result; it never creates scores or fills missing
 land records.
@@ -39,8 +39,9 @@ Each rule is checked in order, and the first that applies decides:
      government land, a prohibiting restriction);
    - a verified red flag: modelled river flooding over a quarter of the plot at 1-in-100 years or more often, or open
      water seen on the plot in at least 10 % of satellite passes.
-2. **INSUFFICIENT DATA** when a weighted location factor (area growth, accessibility) has no evidence, for example
-   when roads are not installed for the region. No score is shown.
+2. **WAIT** when a weighted location factor (area growth, accessibility) has no evidence: never BUY on missing data,
+   and the summary names what could not be measured. No score is shown. (Until 2026-10-27 this was a separate
+   INSUFFICIENT DATA answer; saved reports with that code now read as WAIT.)
 3. **BUY** when the location score is at least 75 (strong access and a developing area). Unless matched official
    records verify title, encumbrance, zoning and approvals, it is **BUY only after the legal checks**: they are listed
    first and are never treated as done, and a defect found in them is WALK AWAY.
@@ -86,8 +87,7 @@ It opens http://localhost:5173. Three plots show the range:
 2. **Mamillapalli, Kadapa (saved report).** The boundary overlaps 97 % of the mapped YS Raja Reddy Cricket Stadium.
    The answer is WAIT, with a warning that this is a potential spatial overlap, not an ownership finding, and the
    official poramboke check to do.
-3. **Patna (draw a small plot).** Uses the all-India store: schools, hospitals, water and public facilities, but roads
-   "not installed (unknown)". The answer is INSUFFICIENT DATA, with the reason.
+3. **Patna (draw a small plot).** Uses the all-India stores: roads, schools, hospitals, water and public facilities.
 
 **Automated:** mapping, flood model, land-cover history and the decision rules. **Manual:** title, EC, zoning,
 approvals and government-land status; you record them, and they are never automated clearance.
@@ -183,9 +183,9 @@ Copernicus DEM (read remotely, window by window, where no local tiles are instal
 rail, rivers, canals, tanks and mapped public facilities. River-flood, Sentinel-2, surface-water and DEM parcel results
 are cached; failed provider reads are never cached.
 
-**What needs a state store** (`fetch-data <state>`): roads, and therefore accessibility. Without one the report says
-"road data not installed (unknown)", accessibility is not assessed, and the decision is INSUFFICIENT DATA. A state
-store takes precedence over the all-India store, and each parcel reads exactly one store.
+**Roads:** a state store (`fetch-data <state>`) takes precedence over the all-India stores. Where a state has none,
+roads come from the all-India road store (`regions/india/roads.sqlite`, `fetch_data.py --national-roads`). If neither is
+installed, the report says "road data not installed (unknown)", accessibility is not assessed, and the decision is WAIT.
 
 How the decision is made, rule by rule, is in [docs/DECISION_RULES.md](docs/DECISION_RULES.md). Nothing is downloaded
 automatically; a build checks disk space and reuses any extract and tiles already on disk.

@@ -396,7 +396,8 @@ def _classify(obj, tags) -> list[tuple[str, str]]:
 OSM_LAYERS = ("road", "waterway", "school", "hospital", "bus", "rail_station", "water")
 
 
-def build_osm(pbf: Path, coverage, directory: Path, skip_layers: frozenset[str] = frozenset()) -> dict:
+def build_osm(pbf: Path, coverage, directory: Path, skip_layers: frozenset[str] = frozenset(),
+              store_name: str = REGION_STORE, locations: str = "flex_mem") -> dict:
     """Local store of the region's features within 5 km of its coverage polygon.
 
     ``skip_layers`` leaves layers out by design (the national store has no roads). The store records the layers it
@@ -409,7 +410,7 @@ def build_osm(pbf: Path, coverage, directory: Path, skip_layers: frozenset[str] 
     log(f"Building the local OSM store from {pbf.name} (data up to {as_of or 'unknown'}) ...")
     factory = osmium.geom.WKBFactory()
     directory.mkdir(parents=True, exist_ok=True)
-    tmp = directory / (REGION_STORE + ".building")
+    tmp = directory / (store_name + ".building")
     tmp.unlink(missing_ok=True)
     connection = create_store(tmp)
     clip = coverage.buffer(CLIP_BUFFER_DEG)
@@ -422,7 +423,7 @@ def build_osm(pbf: Path, coverage, directory: Path, skip_layers: frozenset[str] 
 
     processor = (
         osmium.FileProcessor(str(pbf))
-        .with_locations()
+        .with_locations(locations)
         .with_areas(osmium.filter.KeyFilter("natural", "landuse", "amenity", "healthcare", "railway", "waterway"))
         .with_filter(osmium.filter.KeyFilter("highway", "amenity", "healthcare", "railway", "waterway", "natural", "landuse"))
     )
@@ -487,7 +488,7 @@ def build_osm(pbf: Path, coverage, directory: Path, skip_layers: frozenset[str] 
     connection.commit()
     connection.execute("VACUUM")
     connection.close()
-    target = directory / REGION_STORE
+    target = directory / store_name
     tmp.replace(target)
     log(f"OSM store: {layer_counts}; {removed:,} outside the clip removed; {skipped} broken geometries skipped; "
         f"{target.stat().st_size / 1e6:.0f} MB in {time.monotonic() - started:.0f}s")
@@ -701,6 +702,59 @@ def build_national(root: Path) -> None:
     log(f"National store ready: {directory}")
 
 
+NATIONAL_ROADS = "roads.sqlite"
+
+
+def build_national_roads(root: Path) -> None:
+    """regions/india/roads.sqlite: every vehicular OSM road in India, for states without their own road store.
+
+    Memory-safe: the road ways and their nodes are copied to a derived file first, and node locations are indexed on
+    disk (a temporary file) rather than in RAM. The India extract is never modified."""
+    import osmium
+    import sqlite3
+    import shapely
+
+    extracts = sorted((root / "downloads").glob("india-*.osm.pbf"))
+    if not extracts:
+        raise SystemExit("No India extract on disk (downloads/india-*.osm.pbf).")
+    pbf = extracts[-1]
+    directory = root / "regions" / NATIONAL
+    check_disk(root, 6_000_000_000)
+    coverage = shapely.from_wkb((root / INDIA_DIR / UNION_FILE).read_bytes())
+    filtered, index = directory / "source-roads.osm.pbf", directory / "roads-nodes.idx"
+    log(f"Filtering {pbf.name} to vehicular roads (original unchanged) ...")
+    started = time.monotonic()
+    kept = 0
+    with osmium.BackReferenceWriter(str(filtered), ref_src=str(pbf), overwrite=True) as writer:
+        for obj in osmium.FileProcessor(str(pbf), osmium.osm.WAY).with_filter(osmium.filter.KeyFilter("highway")):
+            if obj.tags.get("highway") not in NON_ROAD and obj.tags.get("area") != "yes":
+                writer.add(obj)
+                kept += 1
+    log(f"  kept {kept:,} road ways; derived file {filtered.stat().st_size / 1e6:.0f} MB in {time.monotonic() - started:.0f}s")
+    try:
+        osm = build_osm(filtered, coverage, directory, skip_layers=frozenset(OSM_LAYERS) - {"road"},
+                        store_name=NATIONAL_ROADS, locations=f"sparse_file_array,{index}")
+    finally:
+        import gc
+
+        gc.collect()  # Windows keeps the node index locked until osmium's handler is freed (failed here 2026-10-27)
+        for temporary in (index, filtered):  # derived; rebuildable from the original extract
+            try:
+                temporary.unlink(missing_ok=True)
+            except PermissionError:
+                log(f"  could not remove {temporary.name} (still in use); delete it after this process exits")
+    with sqlite3.connect(directory / NATIONAL_ROADS) as connection:
+        connection.executemany("INSERT OR REPLACE INTO store_meta VALUES (?, ?)", [
+            ("extract_file", pbf.name), ("source_url", f"https://download.geofabrik.de/asia/{pbf.name}")])
+    manifest_path = directory / MANIFEST_NAME
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["label"] = "India (all states and UTs)"
+    manifest["roads"] = {**osm, "store": NATIONAL_ROADS}
+    manifest.pop("not_included", None)
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    log(f"National road store ready: {directory / NATIONAL_ROADS}")
+
+
 def build_coastline(root: Path) -> None:
     """regions/india/coastline.sqlite: OSM natural=coastline lines from the India extract (memory-safe, original unchanged)."""
     import osmium
@@ -759,6 +813,8 @@ def main() -> None:
                         help="build the all-India store (no roads) from downloads/india-*.osm.pbf")
     parser.add_argument("--coastline", action="store_true",
                         help="build regions/india/coastline.sqlite (coastline lines) from downloads/india-*.osm.pbf")
+    parser.add_argument("--national-roads", action="store_true",
+                        help="build regions/india/roads.sqlite (all vehicular roads) from downloads/india-*.osm.pbf")
     args = parser.parse_args()
     root = (args.data_dir or data_root()).resolve()
     if args.national:
@@ -766,6 +822,9 @@ def main() -> None:
         return
     if args.coastline:
         build_coastline(root)
+        return
+    if args.national_roads:
+        build_national_roads(root)
         return
     if args.public_land and args.region:
         build_public_land(args.region, root)

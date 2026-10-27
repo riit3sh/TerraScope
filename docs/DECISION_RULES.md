@@ -1,12 +1,12 @@
 # TerraScope decision rules
 
-TerraScope answers one question for a drawn plot: **BUY, WAIT, WALK AWAY, or INSUFFICIENT DATA?** The engine is
+TerraScope answers one question for a drawn plot: **BUY, WAIT or WALK AWAY?** The engine is
 deterministic (`ml-models/scoring_engine/_verdict.py` and `_assessment.py`), and every rule is unit-tested. AI text, when
 a Groq key is configured, only explains the result; it never changes it. There is no price, appreciation or demand
 prediction.
 
-Stored codes: `BUY`, `WAIT`, `AVOID` (shown as WALK AWAY) and `INSUFFICIENT_EVIDENCE` (shown as INSUFFICIENT DATA). The
-codes are kept so saved reports still read.
+Stored codes: `BUY`, `WAIT`, `AVOID` (shown as WALK AWAY) and `INSUFFICIENT_EVIDENCE` (no longer produced since
+2026-10-27; saved reports with it read as WAIT). The codes are kept so saved reports still read.
 
 ## Order of decision
 
@@ -14,7 +14,8 @@ codes are kept so saved reports still read.
    fires today.
 2. **WALK AWAY on a red flag** from the plot's history (below). A verified serious risk is never offset by good access
    or growth.
-3. **INSUFFICIENT DATA** when a weighted location factor (area growth or road/school access) has no evidence.
+3. **WAIT** when a weighted location factor (area growth or road/school access) has no evidence (user decision,
+   2026-10-27): never BUY on missing data, and the summary starts by naming what could not be measured.
 4. Otherwise the **location score** = weighted mean of the scored location factors (your profile's weights). It is a
    rule-based score, not a probability of success or appreciation.
 5. **BUY when the location score is 75 or more** (changed 2026-10-27 at the user's direction). If matched land records

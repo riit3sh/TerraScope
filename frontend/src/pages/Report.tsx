@@ -1,5 +1,5 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
-import { KpiStrip } from './KpiStrip'
+import { Fragment, ReactNode, useEffect, useMemo, useState } from 'react'
+import { SummaryCard } from './ReportSummary'
 import { acresToM2, AREA_UNIT_LABEL, AREA_UNITS, AreaUnit, formatArea, useAreaUnit } from '../lib/area'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowLeft, FileText, FlaskConical, History, Printer, RefreshCw, Sparkles, TriangleAlert, Upload, X } from 'lucide-react'
@@ -155,8 +155,8 @@ function FindingsTable({ findings }: { findings?: Finding[] | null }) {
   </section>
 }
 
-/** The four answers in buyer words. The stored codes (AVOID, INSUFFICIENT_EVIDENCE) are unchanged so saved reports still read. */
-const VERDICT_LABEL: Record<string, string> = { BUY: 'BUY', WAIT: 'WAIT', AVOID: 'WALK AWAY', INSUFFICIENT_EVIDENCE: 'INSUFFICIENT DATA', RESTRICTED: 'VERIFY RESTRICTION', UNAVAILABLE: 'NOT EVALUATED' }
+/** The answers in buyer words. Stored codes are unchanged so saved reports still read; the older INSUFFICIENT_EVIDENCE now reads as WAIT. */
+const VERDICT_LABEL: Record<string, string> = { BUY: 'BUY', WAIT: 'WAIT', AVOID: 'WALK AWAY', INSUFFICIENT_EVIDENCE: 'WAIT', RESTRICTED: 'VERIFY RESTRICTION', UNAVAILABLE: 'NOT EVALUATED' }
 
 const LAYER_OF: Record<string, string> = { Road: 'road', School: 'school', Hospital: 'hospital', 'Bus stop or station': 'bus', 'Railway station': 'rail_station' }
 
@@ -181,17 +181,6 @@ function FacilitiesTable({ record }: { record: ParcelRecord }) {
 }
 
 /** The strongest points each way, taken from the findings (nothing new is computed here). */
-function Highlights({ findings }: { findings?: Finding[] | null }) {
-  if (!findings?.length) return null
-  const good = findings.filter(f => f.assessment === 'ok' && f.next_step !== 'No action from this source.').slice(0, 3)
-  const bad = findings.filter(f => f.assessment === 'red_flag' || f.assessment === 'caution').slice(0, 3)
-  const known = findings.filter(f => f.assessment !== 'unknown').length
-  return <section className="highlights"><div><div className="section-label">STRONGEST POSITIVES</div>{good.length ? <ul>{good.map(f => <li key={f.area}><strong>{f.area}:</strong> {f.finding}</li>)}</ul> : <p className="muted">None the evidence supports.</p>}</div>
-    <div><div className="section-label">STRONGEST NEGATIVES</div>{bad.length ? <ul>{bad.map(f => <li key={f.area} className={f.assessment}><strong>{f.area}:</strong> {f.finding}</li>)}</ul> : <p className="muted">No red flag or caution in the evidence.</p>}</div>
-    <div className="evidence-meter"><div className="section-label">EVIDENCE COMPLETENESS</div><strong>{known} of {findings.length}</strong><small>checks have evidence; the rest are Unknown (not verified), never assumed safe.</small></div>
-  </section>
-}
-
 const NEWS_STATUS: Record<NewsItem['verification'], string> = { official_source: 'Official source', corroborated: 'Reported by 2+ outlets', single_report: 'Single news report' }
 const PROJECT_STATUS_LABEL: Record<NonNullable<NewsItem['project_status']>, string> = { proposed: 'proposed', approved: 'approved', under_construction: 'under construction', completed: 'completed', cancelled: 'cancelled', unknown: 'status unknown' }
 const NEWS_WHY: Record<NewsItem['topic'], string> = {
@@ -358,6 +347,14 @@ function ReraWorkflow({ record, onChanged }: { record: ParcelRecord; onChanged: 
 }
 
 const ADVERSE_OUTCOMES = new Set(['problem', 'government_non_transferable', 'restriction_prohibits_use'])
+const PLAIN_CHECK: Record<string, { label: string; why: string }> = {
+  title: { label: 'Ownership and title', why: 'Confirms that the seller really owns the land. Check the record of rights (for example patta / chitta in Tamil Nadu) and have a lawyer trace the sale deeds back at least 30 years.' },
+  encumbrance: { label: 'Outstanding loans or claims', why: 'An encumbrance certificate (EC) is an official list of every registered sale, mortgage or court attachment on the land. A loan or claim on it can pass to you as the buyer.' },
+  zoning: { label: 'Land-use zoning', why: 'The town-planning master plan says what the land may be used for (residential, agricultural, industrial…). Building a home on land zoned otherwise can be refused or penalised.' },
+  approvals: { label: 'Layout and building approvals', why: 'An approved layout (from DTCP, CMDA or the local body) means the plot was legally subdivided with roads and services. Unapproved plots may need costly regularisation.' },
+  government_land: { label: 'Government land or restrictions', why: 'Government (poramboke) land, water bodies and restricted land generally cannot be bought. The official land records show the land’s classification.' },
+  rera: { label: 'RERA registration (check if applicable)', why: 'If a developer is selling plots in a layout, the project usually has to be registered with the state RERA authority, which protects buyers. An individual’s resale is often outside RERA.' },
+}
 const CONTACT_LABEL: Record<PublicFacility['contact'], string> = { overlap: 'Overlaps the boundary', point_inside: 'Mapped as a point inside the boundary', edge: 'Touches it or within the map uncertainty', nearby: 'Nearby' }
 const SIGNAL_LABEL: Record<PublicFacility['ownership_signal'], string> = { government_tagged: 'map tag suggests a public operator', private_tagged: 'map tag suggests a private operator', unknown: 'ownership not shown on the map' }
 
@@ -404,15 +401,15 @@ function LegalChecks({ record, onChanged }: { record: ParcelRecord; onChanged: (
   }
   if (!list) return status ? <p className="muted">{status}</p> : null
   return <div className="land-evidence">
-    <div className="field-label">LEGAL CHECKS <span>{list.state_guide === 'available' ? `official sources for ${list.state}` : list.state_guide === 'partial' ? `official links for ${list.state} (some checks only)` : `no state guide for ${list.state || 'this state'} yet`} · automated verification: none</span></div>
-    <p className="field-hint">{list.notice}</p>
-    <ul className="doc-list">{list.checks.map(c => <li key={c.check}>
-      <strong>{c.label}</strong>{c.mandatory_for_buy ? ' · required for BUY' : ''} · <span className={`finding-badge ${c.record && ADVERSE_OUTCOMES.has(c.record.outcome) ? 'red_flag' : c.record ? 'caution' : 'unknown'}`}>{c.record ? `${OUTCOME_LABEL[c.record.outcome]} · recorded by you ${c.record.checked_on}` : 'Not checked'}</span>
+    <p className="field-hint">{list.state_guide === 'available' ? `Official sources are listed for ${list.state}.` : list.state_guide === 'partial' ? `Official links are listed for some checks in ${list.state}.` : `No official sources are listed for ${list.state || 'this state'} yet: ask a local lawyer which office holds each record.`} Opening a portal or recording a result is not verification by TerraScope.</p>
+    <ol className="pay-list">{list.checks.map(c => <li key={c.check} className="pay-item">
+      <div className="pay-head"><strong>{PLAIN_CHECK[c.check]?.label || c.label}</strong>{c.mandatory_for_buy && <span className="pay-required">Needed before buying</span>}<span className={`status-pill ${c.record && ADVERSE_OUTCOMES.has(c.record.outcome) ? 'bad' : c.record ? 'warn' : 'unknown'}`}>{c.record ? `Recorded by you: ${OUTCOME_LABEL[c.record.outcome]} (${c.record.checked_on})` : c.check === 'rera' ? 'Check if applicable' : 'Not verified'}</span></div>
+      {PLAIN_CHECK[c.check] && <p className="pay-why">{PLAIN_CHECK[c.check].why}</p>}
       {(c.records?.length ?? 0) > 1 && <small> {c.records!.length} sources recorded: {c.records!.map(r => `${r.source}: ${OUTCOME_LABEL[r.outcome]}`).join(' · ')}</small>}
       {c.record && <small> {c.record.source}{c.record.survey_number ? ` · survey ${c.record.survey_number}` : ''}{c.record.reference ? ` · ref ${c.record.reference}` : ''}{c.record.evidence ? ` · evidence: ${c.record.evidence}` : ''}{c.record.notes ? ` · ${c.record.notes}` : ''}</small>}
       {c.check === 'rera' && <ReraWorkflow record={record} onChanged={onChanged} />}
-      {c.check === 'rera' ? null : c.guide ? <p className="muted">Where: <a href={c.guide.url} target="_blank" rel="noreferrer">{c.guide.authority}</a>. {c.guide.how} <em>{c.guide.access}</em></p> : <p className="muted">No official source has been researched for this state yet: ask a local lawyer which office holds this record.</p>}
-      {form?.check !== c.check && <button className="quiet-button" onClick={() => setForm({ check: c.check, outcome: c.outcomes[0], survey_number: c.check === 'government_land' ? (record.user_land_details?.survey_number || '') : null, rera_state: c.check === 'rera' ? (record.location?.state || '') : null, source: c.check === 'rera' ? (c.guide?.url || '') : c.guide?.authority || '', checked_on: new Date().toLocaleDateString('en-CA'), reference: '', evidence: '', notes: '' })}>Record a check</button>}
+      {c.check === 'rera' ? null : c.guide ? <div className="pay-actions"><a className="quiet-button" href={c.guide.url} target="_blank" rel="noreferrer">Open official source ↗</a><details><summary>How to check</summary><p className="muted">{c.guide.authority}. {c.guide.how} <em>{c.guide.access}</em></p></details></div> : <p className="muted">No official source is listed for this state yet: ask a local lawyer which office holds this record.</p>}
+      {form?.check !== c.check && <button className="quiet-button" onClick={() => setForm({ check: c.check, outcome: c.outcomes[0], survey_number: c.check === 'government_land' ? (record.user_land_details?.survey_number || '') : null, rera_state: c.check === 'rera' ? (record.location?.state || '') : null, source: c.check === 'rera' ? (c.guide?.url || '') : c.guide?.authority || '', checked_on: new Date().toLocaleDateString('en-CA'), reference: '', evidence: '', notes: '' })}>Record what you found</button>}
       {form?.check === c.check && <div className="land-grid">
         <label className="stacked-field">What you found<select value={form.outcome} onChange={e => setForm({ ...form, outcome: e.target.value as LegalCheckInput['outcome'] })}>{c.outcomes.filter(o => o !== 'not_applicable' || c.check === 'rera').map(o => <option key={o} value={o}>{OUTCOME_LABEL[o]}</option>)}</select></label>
         {c.check === 'government_land' && <label className="stacked-field">Survey no. looked up<input value={form.survey_number || ''} onChange={e => setForm({ ...form, survey_number: e.target.value })} /></label>}
@@ -430,7 +427,7 @@ function LegalChecks({ record, onChanged }: { record: ParcelRecord; onChanged: (
         <datalist id="legal-evidence-docs">{(record.user_land_details?.documents || []).map(d => <option key={d.filename} value={d.filename} />)}</datalist>
         <button className="quiet-button" disabled={form.source.trim().length < 3 || !form.checked_on || (form.check === 'government_land' && !(form.survey_number || '').trim()) || (form.outcome === 'registration_found' && !(form.reference || '').trim() && !(form.project_name || '').trim())} onClick={save}>Save and re-evaluate</button><button className="quiet-button" onClick={() => setForm(null)}>Cancel</button>
       </div>}
-    </li>)}</ul>
+    </li>)}</ol>
     {list.history_count > 0 && <p className="field-hint">{list.history_count} record{list.history_count === 1 ? '' : 's'} kept; the newest per check is shown. A record you could not find is not a clearance.</p>}
     {status && <p className="muted" role="status">{status}</p>}
   </div>
@@ -461,6 +458,11 @@ function ChangeSummary({ record, observations }: { record: ParcelRecord; observa
   return <div className="signal-summary"><strong>{CHANGE_LABEL[sat.change_type] || sat.change_type}</strong><span>{method.pairs} same-season pair{method.pairs === 1 ? '' : 's'} a year apart · {observations} observations · no confidence % (rule thresholds, not calibrated)</span></div>
 }
 
+/** A collapsed section of the report: the detail stays one click away, and printing opens every section. */
+function Fold({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
+  return <details className="report-fold"><summary><span>{title}</span><small>{hint}</small></summary><div className="fold-body">{children}</div></details>
+}
+
 export function Report({ initialSnapshot, initialSettings, onBack }: { initialSnapshot: ParcelRecord; initialSettings: EvaluationSettings; onBack: () => void }) {
   const [record, setRecord] = useState(initialSnapshot)
   const [areaUnit, setAreaUnit] = useAreaUnit()
@@ -483,7 +485,6 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
   const verdict = record.verdict?.recommendation || 'UNAVAILABLE'
   const evidence = record.evidence || []
   const assessedWeight = Math.round(breakdown?.assessed_weight_pct ?? 0)
-  const insufficient = verdict === 'INSUFFICIENT_EVIDENCE'
   // Restricted land is not assessed for purchase: only the reason is shown (user decision, 2026-10-26).
   const restricted = verdict === 'RESTRICTED'
   const scored = factors.filter(f => f.score != null)
@@ -502,6 +503,11 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
   const windowStart = record.metadata.analysis_date_from
   const lateStart = imagery.length && windowStart && !record.satellite?.collection && (Date.parse(imagery[0]) - Date.parse(windowStart)) > 90 * 864e5
   const address = record.location?.address
+  useEffect(() => {
+    const openAll = () => document.querySelectorAll('.report-content details').forEach(d => d.setAttribute('open', ''))
+    window.addEventListener('beforeprint', openAll)
+    return () => window.removeEventListener('beforeprint', openAll)
+  }, [])
 
   async function rerun(next: EvaluationSettings, changed?: string) {
     setBusy(true)
@@ -523,37 +529,48 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
   return <main className="report-shell">
     <header className="report-topbar"><button className="back-button" onClick={onBack}><ArrowLeft size={16} /> Workspace</button><div className="wordmark"><span className="mark"><Sparkles size={14} /></span> TERRASCOPE</div><div className="report-tools"><button className="quiet-button" onClick={() => setHistoryOpen(true)}><History size={15} /> Scenario history</button><button className="quiet-button" onClick={() => setScenario(true)}><FlaskConical size={15} /> Explore scenarios</button><button className="quiet-button" onClick={() => window.print()}><Printer size={15} /> Print</button></div></header>
     <div className="report-content">
-      <section className="report-heading"><div><div className="eyebrow"><span className="pulse" /> ANALYSIS SNAPSHOT · {(record.metadata.analysis_snapshot_id || '—').slice(0, 8)}</div><h1>{placeName(address)}</h1>{address && <p className="full-address">{address}</p>}<p>{formatArea(record.geometry_metadata?.area_m2 ?? (record.geometry_metadata?.area_acres == null ? null : acresToM2(record.geometry_metadata.area_acres)), areaUnit)} <select className="area-unit" aria-label="Area unit" value={areaUnit} onChange={e => setAreaUnit(e.target.value as AreaUnit)}>{AREA_UNITS.map(u => <option key={u} value={u}>{AREA_UNIT_LABEL[u]}</option>)}</select> <span>·</span> {record.metadata.analysis_date_from || '—'} — {record.metadata.analysis_date_to || '—'}</p></div><div className={`verdict-badge ${verdict.toLowerCase()}`}><span>BUY, WAIT OR WALK AWAY?</span><strong>{VERDICT_LABEL[verdict] || verdict}</strong><small>{!record.verdict ? 'not evaluated yet' : restricted ? 'not assessed for purchase' : verdict === 'BUY' ? 'only after the legal checks below' : insufficient ? 'see what is missing below' : record.verdict.red_flags?.length ? 'red flags in the plot’s history' : 'rule-based · check title before paying'}</small></div></section>
-      {!restricted && record.verdict && <KpiStrip record={record} />}
-      {record.verdict && <p className="report-disclaimer" role="note"><TriangleAlert size={14} /><span><strong>Not perfect, and not advice.</strong> TerraScope's answer is a rule-based estimate from public map and satellite data. The development outlook extends the past trend and can be wrong; nothing here predicts prices or verifies ownership. Check title, encumbrance and approvals with official records and a lawyer before paying.</span></p>}
+      <SummaryCard record={record} place={placeName(address)} period={`${record.metadata.analysis_date_from || '—'} to ${record.metadata.analysis_date_to || '—'}`} areaControl={<>{formatArea(record.geometry_metadata?.area_m2 ?? (record.geometry_metadata?.area_acres == null ? null : acresToM2(record.geometry_metadata.area_acres)), areaUnit)} <select className="area-unit" aria-label="Area unit" value={areaUnit} onChange={e => setAreaUnit(e.target.value as AreaUnit)}>{AREA_UNITS.map(u => <option key={u} value={u}>{AREA_UNIT_LABEL[u]}</option>)}</select></>} />
       {olderEvaluation && <div className="older-note" role="note"><TriangleAlert size={15} /><span>This saved evaluation was made with an earlier version of TerraScope, so it lacks the current checks (the findings list, the buy / wait rules and what would change the answer). Re-evaluating uses the same evidence; nothing is collected again.</span><button className="quiet-button" disabled={busy} onClick={() => rerun(settings).catch(() => undefined)}><RefreshCw size={14} /> {busy ? 'Re-evaluating…' : 'Re-evaluate with current methods'}</button></div>}
       {scenarioError && !scenario && <div className="older-note error-note" role="alert"><TriangleAlert size={15} /><span>{scenarioError}</span></div>}
-      {record.verdict?.reasoning_summary && !restricted && <p className="decision-lede">{record.verdict.reasoning_summary}</p>}
-      {!restricted && <Highlights findings={record.verdict?.findings} />}
+      {restricted ? <>
       <GovernmentLand record={record} />
-      <>
-      <DecisionPanel record={record} growth={factorOf('growth')} />
-      <FacilitiesTable record={record} />
-      <FindingsTable findings={record.verdict?.findings} />
-      <div className="section-label suitability-divider">SUITABILITY FOR YOU — scored from your weights</div>
-      <section className="score-strip"><Bar label="Legal Safety" value={breakdown?.legal_safety_score ?? null} color="#77d8ff" status={factorOf('legal_safety')?.status} /><Bar label="Accessibility" value={breakdown?.accessibility_score ?? null} color="#f8c15c" status={factorOf('accessibility')?.status} /><Bar label="Flood Safety" value={breakdown?.flood_safety_score ?? null} color="#d49aff" status={factorOf('flood_safety')?.status} /><Bar label="Area growth" value={breakdown?.growth_score ?? null} color="#b8f36a" status={factorOf('growth')?.status} /></section>
-      <section className="evidence-status"><div className="section-head"><div><div className="section-label">EVIDENCE BEHIND EACH FACTOR</div><h2>What is measured, and what is scored</h2></div></div>
-        <div className="coverage-figures"><div><span>SCORED</span><strong>{assessedWeight}%</strong><small>of your weighting has a score{scored.length ? ` (${scored.map(f => FACTOR_LABEL[f.factor] || f.factor).join(', ')})` : ''}</small></div><div><span>MEASURED</span><strong>{collectedCount} of {fieldCount}</strong><small>evidence fields collected for this parcel</small></div></div>
-        <details className="denominators"><summary>How these two figures are counted</summary><p><strong>Scored</strong> adds up the weights of factors that have a score. {unscored.length ? `${unscored.map(f => `${FACTOR_LABEL[f.factor] || f.factor} (${f.weight_pct}%)`).join(', ')} ${unscored.length === 1 ? 'has' : 'have'} no score and ${unscored.length === 1 ? 'is' : 'are'} never filled in with 50. The composite is shared over the scored factors only. Unscored legal safety becomes the checks before you pay, and flood history can raise red flags. An unscored location factor (area growth, accessibility) withholds the decision.` : 'Every weighted factor has a score.'}</p><p><strong>Measured</strong> counts the evidence fields TerraScope tries to collect for every parcel ({record.metadata.data_completeness_pct ?? '—'}%). A field can be collected without being enough to score a factor: flood evidence is measured but not combined into a score.</p>{fields && <ul className="field-checks">{Object.entries(fields).map(([key, ok]) => <li key={key} className={ok ? 'ok' : 'missing'}>{ok ? '✓' : '—'} {COMPLETENESS_LABEL[key] || key}</li>)}</ul>}</details>
-        <div className="factor-list">{[...factors].sort((a, b) => Number(b.score != null) - Number(a.score != null)).map(f => <div className={`factor ${f.status}`} key={f.factor}><div className="factor-head"><strong>{FACTOR_LABEL[f.factor] || f.factor.replace(/_/g, ' ')}</strong><span className={`factor-badge ${f.status}`}>{f.score == null ? (f.status === 'partial' ? 'partly assessed · not scored' : f.status.replace(/_/g, ' ')) : `${f.score} · ${f.status}`}</span><em>{f.weight_pct}% weight</em></div>
-          <p>{f.factor === 'flood_safety' && record.flood_indicators?.components?.length ? `${floodHeadline(record.flood_indicators)}. The measurements are in the flood section below.` : f.basis}</p>
-          {f.factor === 'accessibility' && <AccessibilityDetails factor={f} />}
-          <small>{f.factor === 'flood_safety' ? 'No overall Flood Safety score: no validated method combines the mechanisms.' : f.limitations}</small>
-          {f.checklist && f.checklist.length > 0 && <ul className="checklist">{f.checklist.map(c => <li key={c}>{c}</li>)}</ul>}
-          {f.factor === 'legal_safety' && record.parcel_id && <><LegalEvidence record={record} onChanged={() => rerun(settings, 'Survey details or documents updated')} /><LegalChecks record={record} onChanged={() => rerun(settings, 'Legal check recorded')} /></>}
-        </div>)}</div>
+      {record.verdict && <p className="report-disclaimer" role="note"><TriangleAlert size={14} /><span><strong>Not perfect, and not advice.</strong> TerraScope's answer is a rule-based estimate from public map and satellite data. The development outlook extends the past trend and can be wrong; nothing here predicts prices or verifies ownership. Check title, encumbrance and approvals with official records and a lawyer before paying.</span></p>}
+      </> : <>
+      <section className="pay-first" aria-labelledby="before-you-pay">
+        <h2 id="before-you-pay">Before you pay</h2>
+        <p className="pay-intro">These checks decide whether the land can be bought safely. TerraScope cannot read official land records, so each one stays <strong>not verified</strong> until you check it at the official source and record what you found.</p>
+        {record.parcel_id && <LegalChecks record={record} onChanged={() => rerun(settings, 'Legal check recorded')} />}
+        {record.parcel_id && <Fold title="Your survey details and documents" hint="Survey number, patta, EC and other papers you have"><LegalEvidence record={record} onChanged={() => rerun(settings, 'Survey details or documents updated')} /></Fold>}
       </section>
-      <FloodPanel indicators={record.flood_indicators} latitude={record.location?.latitude} />
+      {record.verdict && <p className="report-disclaimer" role="note"><TriangleAlert size={14} /><span><strong>Not perfect, and not advice.</strong> TerraScope's answer is a rule-based estimate from public map and satellite data. The development outlook extends the past trend and can be wrong; nothing here predicts prices or verifies ownership. Check title, encumbrance and approvals with official records and a lawyer before paying.</span></p>}
+      </>}
+      <section className="more-detail" aria-labelledby="more-detail">
+        <h2 id="more-detail">More detail</h2>
+        <p className="pay-intro">Everything behind the assessment, with sources and dates. Open a section when you want it.</p>
+        <Fold title="Why did TerraScope reach this conclusion?" hint="The full reasoning, scores and evidence references">
+      {record.verdict?.reasoning_summary && !restricted && <p className="decision-lede">{record.verdict.reasoning_summary}</p>}
       <section className="why-grid"><div><div className="section-label">WHY THIS RECOMMENDATION?</div><h2>Scored contributions</h2><div className="contribution-list">{(breakdown?.weighted_contributions || []).map((item, index) => <div key={index}><span>{FACTOR_LABEL[item.factor || ''] || item.factor || 'Unnamed factor'}</span><strong className={(item.contribution || 0) < 0 ? 'negative' : ''}>{(item.contribution || 0) > 0 ? '+' : ''}{item.contribution ?? '—'}</strong></div>)}{unscored.map(f => <div key={f.factor} className="unscored-row"><span>{FACTOR_LABEL[f.factor] || f.factor}</span><strong>no score · {f.weight_pct}%</strong></div>)}</div>{breakdown?.composite_score != null && <div className="final-verdict"><span>LOCATION SCORE · RULE-BASED, NOT A PROBABILITY</span><b>{breakdown.composite_score}</b></div>}{breakdown?.composite_score != null && verdict !== 'BUY' && <p className="field-hint">This score describes the location only (development and access). It never overrides a red flag or pending legal checks, so a high score here is not approval to buy.</p>}</div>
         <div className="grounded-box"><div className="section-label">{isAi ? <><Sparkles size={13} /> AI EXPLANATION</> : 'ASSESSMENT SUMMARY · RULE-BASED, NOT AI'}</div><p>{record.verdict?.reasoning_summary || 'No summary was returned for this evaluation.'}</p>
           <div className="citation-row"><span>{citations.length ? `${citations.length} evidence reference${citations.length === 1 ? '' : 's'}` : olderEvaluation ? 'No evidence references in this older evaluation; re-evaluate to add them' : 'No figure here needs a reference'}</span></div>
           {citations.length > 0 && <div className="citation-list">{citations.map((citation, index) => <div key={index}><strong>{citation.claim}</strong><small>{citation.source_type === 'user_upload' ? 'your document' : citation.source_type} · {citation.source_reference}{citation.location ? ` · ${citation.location}` : ''}</small></div>)}</div>}
         </div></section>
+        </Fold>
+        {!restricted && <Fold title="Government land and restrictions" hint="Mapped public facilities near or on the plot">
+      <GovernmentLand record={record} />
+        </Fold>}
+        <Fold title="Nearby facilities and distances" hint="Roads, schools, hospitals, bus and rail">
+      <FacilitiesTable record={record} />
+        </Fold>
+        <Fold title="Historical development" hint="Built-up land around the plot, 2017–2023, and the outlook">
+      <DecisionPanel record={record} growth={factorOf('growth')} />
+        </Fold>
+        <Fold title="Flood data and scenarios" hint="River flood model, surface water, terrain">
+      <FloodPanel indicators={record.flood_indicators} latitude={record.location?.latitude} />
+        </Fold>
+        <Fold title="All findings" hint="Every check with its status, source and date">
+      <FindingsTable findings={record.verdict?.findings} />
+        </Fold>
+        <Fold title="Satellite observations" hint="Greenness and built-up signals on the plot">
       <section className={`satellite-section${satelliteIsDemo ? ' synthetic' : ''}`}>{satelliteIsDemo && <div className="demo-banner"><TriangleAlert size={15} /> <strong>DEMO DATA.</strong> This curve is invented to exercise the chart. It is not imagery and shows nothing about real vegetation or construction.</div>}<div className="section-head"><div><div className="section-label">THE PLOT ITSELF IN RECENT SATELLITE IMAGES · OBSERVED MEASUREMENTS</div><h2>Greenness and built-up signals on the plot</h2><p className="chart-subtitle">Sentinel-2 satellite (10 m), average over the drawn plot on each clear date, {record.metadata.analysis_date_from || '—'} to {record.metadata.analysis_date_to || '—'}. Index values have no unit and run from −1 to +1.</p><p className="chart-finding">{changeFinding(record)}</p></div>{satelliteIsDemo ? <div className="signal-summary"><strong>demo series</strong><span>no figure: series is invented</span></div> : <ChangeSummary record={record} observations={chart.length} />}</div>{chart.length ? <div className="chart-wrap"><ResponsiveContainer width="100%" height={250}><LineChart data={chart}><CartesianGrid stroke="#25313a" vertical={false} /><XAxis dataKey="date" stroke="#71808b" tickLine={false} axisLine={false} tickFormatter={(value: string) => value.slice(0, 7)} /><YAxis stroke="#71808b" tickLine={false} axisLine={false} width={52} label={{ value: 'Index (−1 to +1)', angle: -90, position: 'insideLeft', fill: '#71808b', fontSize: 11 }} /><Tooltip contentStyle={{ background: '#11191d', border: '1px solid #2d3b42' }} /><Line type="monotone" dataKey="ndvi" stroke="#b8f36a" strokeWidth={2} dot={{ r: 3 }} name="NDVI (greenness)" connectNulls={false} /><Line type="monotone" dataKey="ndbi" stroke="#f8c15c" strokeWidth={2} dot={{ r: 3 }} name="NDBI (built-up / bare surface signal)" connectNulls={false} /></LineChart></ResponsiveContainer></div> : <div className="chart-empty">{record.satellite?.collection?.status === 'timed_out' ? `Satellite collection did not finish within the ${record.satellite.collection.deadline_s ?? 35} s evidence deadline. The scene reads continue in the background and are cached: analyse this boundary again in a minute or two to reuse them.` : 'No usable satellite observations were found for this parcel and date range.'}</div>}
         {chart.length > 0 && <p className="history-legend"><span><i className="dot near" /> NDVI: greenness</span><span><i className="dot ndbi" /> NDBI: built-up or bare surface signal</span><span>Image date on the horizontal axis</span></p>}
         <details className="explain"><summary>What do these graphs mean?</summary>
@@ -568,8 +585,25 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
         {lateStart ? <p className="muted window-note">The first usable image is {imagery[0]}, months after the window starts ({windowStart}): the scene search used for this report stopped at the newest 100 catalogue entries. New analyses read the whole catalogue.</p> : null}
         {record.satellite?.collection?.selection && <p className="muted window-note">{record.satellite.collection.selection}; {record.satellite.collection.scenes_matched} scenes matched under {record.satellite.collection.max_cloud_cover_pct ?? 35}% cloud, {record.satellite.collection.observations_rejected ?? 0} read but rejected (under {Math.round((record.satellite.collection.min_clear_fraction ?? 0.5) * 100)}% of the parcel cloud-free){record.satellite.collection.anchors_without_observation?.length ? `; no usable scene near ${record.satellite.collection.anchors_without_observation.length} season anchor(s)` : ''}. Method {record.satellite.collection.algorithm_version}.</p>}
       </section>
+        </Fold>
+        <Fold title="Scores by factor" hint="How each factor was measured and scored">
+      <section className="score-strip"><Bar label="Legal Safety" value={breakdown?.legal_safety_score ?? null} color="#77d8ff" status={factorOf('legal_safety')?.status} /><Bar label="Accessibility" value={breakdown?.accessibility_score ?? null} color="#f8c15c" status={factorOf('accessibility')?.status} /><Bar label="Flood Safety" value={breakdown?.flood_safety_score ?? null} color="#d49aff" status={factorOf('flood_safety')?.status} /><Bar label="Area growth" value={breakdown?.growth_score ?? null} color="#b8f36a" status={factorOf('growth')?.status} /></section>
+      <section className="evidence-status"><div className="section-head"><div><div className="section-label">EVIDENCE BEHIND EACH FACTOR</div><h2>What is measured, and what is scored</h2></div></div>
+        <div className="coverage-figures"><div><span>SCORED</span><strong>{assessedWeight}%</strong><small>of your weighting has a score{scored.length ? ` (${scored.map(f => FACTOR_LABEL[f.factor] || f.factor).join(', ')})` : ''}</small></div><div><span>MEASURED</span><strong>{collectedCount} of {fieldCount}</strong><small>evidence fields collected for this parcel</small></div></div>
+        <details className="denominators"><summary>How these two figures are counted</summary><p><strong>Scored</strong> adds up the weights of factors that have a score. {unscored.length ? `${unscored.map(f => `${FACTOR_LABEL[f.factor] || f.factor} (${f.weight_pct}%)`).join(', ')} ${unscored.length === 1 ? 'has' : 'have'} no score and ${unscored.length === 1 ? 'is' : 'are'} never filled in with 50. The composite is shared over the scored factors only. Unscored legal safety becomes the checks before you pay, and flood history can raise red flags. An unscored location factor (area growth, accessibility) withholds the decision.` : 'Every weighted factor has a score.'}</p><p><strong>Measured</strong> counts the evidence fields TerraScope tries to collect for every parcel ({record.metadata.data_completeness_pct ?? '—'}%). A field can be collected without being enough to score a factor: flood evidence is measured but not combined into a score.</p>{fields && <ul className="field-checks">{Object.entries(fields).map(([key, ok]) => <li key={key} className={ok ? 'ok' : 'missing'}>{ok ? '✓' : '—'} {COMPLETENESS_LABEL[key] || key}</li>)}</ul>}</details>
+        <div className="factor-list">{[...factors].sort((a, b) => Number(b.score != null) - Number(a.score != null)).map(f => <div className={`factor ${f.status}`} key={f.factor}><div className="factor-head"><strong>{FACTOR_LABEL[f.factor] || f.factor.replace(/_/g, ' ')}</strong><span className={`factor-badge ${f.status}`}>{f.score == null ? (f.status === 'partial' ? 'partly assessed · not scored' : f.status.replace(/_/g, ' ')) : `${f.score} · ${f.status}`}</span><em>{f.weight_pct}% weight</em></div>
+          <p>{f.factor === 'flood_safety' && record.flood_indicators?.components?.length ? `${floodHeadline(record.flood_indicators)}. The measurements are in the flood section below.` : f.basis}</p>
+          {f.factor === 'accessibility' && <AccessibilityDetails factor={f} />}
+          <small>{f.factor === 'flood_safety' ? 'No overall Flood Safety score: no validated method combines the mechanisms.' : f.limitations}</small>
+          {f.checklist && f.checklist.length > 0 && <ul className="checklist">{f.checklist.map(c => <li key={c}>{c}</li>)}</ul>}
+          {f.factor === 'legal_safety' && <p className="field-hint">Record your legal checks in “Before you pay” at the top of the report.</p>}
+        </div>)}</div>
+      </section>
+        </Fold>
+        <Fold title="Data sources and dates" hint={`The evidence ledger behind every finding · analysis snapshot ${(record.metadata.analysis_snapshot_id || '—').slice(0, 8)}`}>
       <section className="evidence-section"><div className="section-head"><div><div className="section-label">EVIDENCE LEDGER</div><h2>Sources behind the findings</h2></div></div><div className="tabs">{(['Satellite', 'Infrastructure', 'Flood indicators', 'RERA', 'Uploaded Documents', 'Derived Scores'] as EvidenceTab[]).map(tab => <button className={tab === activeEvidenceTab ? 'active' : ''} key={tab} onClick={() => setActiveEvidenceTab(tab)}>{tab}</button>)}</div><div className="source-legend ledger-legend"><span><i className="dot live" /> LIVE</span><span><i className="dot cached" /> CACHED</span><span><i className="dot user_upload" /> YOUR UPLOAD</span><span><i className="dot derived" /> DERIVED</span><span><i className="dot seed" /> SEED DATA</span></div>{visibleEvidence.length ? visibleEvidence.map(item => <EvidenceRow key={item.evidence_id || item.title} title={item.title || item.source_type || 'Evidence'} refName={item.source_reference || 'TerraScope'} freshness={item.freshness || 'derived'} summary={item.summary || 'Collected evidence used in the evaluation.'} observedAt={item.observed_at} details={[item.observation_period && `observed ${item.observation_period}`, item.resolution, item.licence].filter(Boolean).join(' · ')} />) : <p className="muted evidence-empty">No {activeEvidenceTab.toLowerCase()} evidence is available for this parcel.</p>}</section>
-      </>
+        </Fold>
+      </section>
     </div>
     {scenario && <Scenario settings={settings} verdict={verdict} before={breakdown?.composite_score ?? null} accessibility={breakdown?.accessibility_score ?? null} busy={busy} error={scenarioError} onClose={() => setScenario(false)} onRun={(next, changed) => rerun(next, changed).catch(() => undefined)} />}
     {historyOpen && <div className="drawer-backdrop" onClick={() => setHistoryOpen(false)}><aside className="history-drawer" onClick={event => event.stopPropagation()}><div className="drawer-header"><div><div className="panel-kicker">DECISION TRAIL</div><h2>Scenario history</h2></div><button className="icon-button" aria-label="Close" onClick={() => setHistoryOpen(false)}><X size={18} /></button></div><div className="history-list">{history.length ? history.map((item, index) => <div className="history-item" key={index}><div><strong>{item.profile}</strong><span>{item.changed}</span></div><b>{VERDICT_LABEL[item.verdict] || item.verdict}</b></div>) : <p className="muted">No alternate lenses explored yet. The immutable evidence stays fixed while you test assumptions.</p>}</div></aside></div>}

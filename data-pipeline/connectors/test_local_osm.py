@@ -104,6 +104,22 @@ def test_a_store_without_roads_reports_them_not_installed_never_none_mapped(tmp_
     assert amenities["nearest_school_distance_m"] is not None
     assert "road data not installed" in _local_infrastructure_summary(amenities)
 
+    # With the all-India road store, the road comes from it and everything else still from the regional store.
+    roads_path = tmp_path / "roads.sqlite"
+    connection = create_store(roads_path)
+    write_features(connection, [("road", "primary", "NH 44", "w1", {}, LineString([(lon + 0.002, lat - 0.01), (lon + 0.002, lat + 0.01)]))])
+    connection.executemany("INSERT INTO store_meta VALUES (?, ?)", [("layers", json.dumps(["road"]))])
+    connection.commit()
+    connection.close()
+    osm, roads = LocalOSM(path), LocalOSM(roads_path)
+    try:
+        amenities = _local_amenities(osm, _parcel(lon, lat), roads)
+    finally:
+        osm.close()
+        roads.close()
+    assert amenities["layer_status"]["road"] == "installed" and amenities["nearest_road_name"] == "NH 44"
+    assert 150 < amenities["nearest_road_distance_m"] < 250 and amenities["nearest_school_distance_m"] is not None
+
 
 def test_stores_built_before_layer_lists_hold_every_layer(store) -> None:
     assert store.layers is None and store.has_layer("road")

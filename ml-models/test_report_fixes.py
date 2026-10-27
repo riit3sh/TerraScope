@@ -88,7 +88,7 @@ def test_rule_based_summary_is_labelled_and_cites_collected_evidence() -> None:
     result = evaluate_snapshot(copy.deepcopy(VIT), SETTINGS)
     verdict = result["verdict"]
     assert verdict["explanation_source"] == "deterministic"
-    assert verdict["recommendation"] == "INSUFFICIENT_EVIDENCE"
+    assert verdict["recommendation"] == "WAIT"
     evidence_ids = {row["evidence_id"] for row in result["evidence"]}
     assert verdict["citations"], "collected evidence must be citable without an LLM"
     for citation in verdict["citations"]:

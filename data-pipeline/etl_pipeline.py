@@ -87,16 +87,22 @@ def _hit_fields(prefix: str, hit: dict[str, Any] | None, *, with_class: bool = F
     return fields
 
 
-def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any]) -> dict[str, Any]:
-    """Nearest road, school, hospital, bus and rail station from the local extract."""
+def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any], roads: LocalOSM | None = None) -> dict[str, Any]:
+    """Nearest road, school, hospital, bus and rail station from the local extract.
+
+    ``roads`` is the all-India road store, used when the regional store holds no roads."""
     lon, lat = InfrastructureClient._representative_point(geojson_polygon)
     parcel = shape(geojson_polygon)
     # A layer the store does not hold is "not installed", reported as unknown: never as "none mapped nearby".
-    layer_status = {layer: "installed" if osm.has_layer(layer) else "not_installed"
+    def store(layer: str) -> LocalOSM:
+        return roads if layer == "road" and roads is not None and not osm.has_layer(layer) else osm
+
+    layer_status = {layer: "installed" if store(layer).has_layer(layer) else "not_installed"
                     for layer in ("road", "school", "hospital", "bus", "rail_station")}
 
     def near(layer: str, **kwargs):
-        return osm.nearest(lon, lat, layer, max_distance_m=POI_SEARCH_M, **kwargs) if osm.has_layer(layer) else None
+        source = store(layer)
+        return source.nearest(lon, lat, layer, max_distance_m=POI_SEARCH_M, **kwargs) if source.has_layer(layer) else None
 
     road = near("road")
     school = near("school")
@@ -579,6 +585,11 @@ def build_evidence_snapshot(
             f"Install it with: terrascope.cmd fetch-data {slug(main_state)}"
         )
     osm_meta = (local_osm.meta if local_osm else {}) or {}
+    # States without their own road store use the all-India one (fetch_data.py --national-roads).
+    national_roads: LocalOSM | None = None
+    roads_path = data_root() / "regions" / "india" / "roads.sqlite"
+    if local_osm is not None and not local_osm.has_layer("road") and roads_path.exists():
+        national_roads = LocalOSM(roads_path)
 
     infrastructure_client = InfrastructureClient()
     satellite_client = get_satellite_client()
@@ -636,7 +647,7 @@ def build_evidence_snapshot(
     def collect_amenities() -> tuple[dict[str, Any], str | None]:
         """Infrastructure is optional evidence; a gap is reported, never invented."""
         if local_osm is not None:
-            return _local_amenities(local_osm, geojson_polygon), None
+            return _local_amenities(local_osm, geojson_polygon, national_roads), None
         if not _overpass_fallback_enabled():
             return dict(_EMPTY_AMENITIES), f"{local_osm_error} The Overpass fallback is off (OSM_OVERPASS_FALLBACK)."
         try:
@@ -757,6 +768,8 @@ def build_evidence_snapshot(
 
     if local_osm is not None:
         local_osm.close()
+    if national_roads is not None:
+        national_roads.close()
     # Mapping evidence only (facility type and overlap), never ownership; fast local reads, so not in the pool.
     try:
         public = (public_land.assess(geojson_polygon, region.path / public_land.STORE_NAME, region.osm_store)
