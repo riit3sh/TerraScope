@@ -187,12 +187,13 @@ class PlanetaryComputerClient:
     _token: dict[str, Any] = {}
     _token_lock = threading.Lock()
 
-    def __init__(self, *, max_cloud_cover: float | None = None, max_observations: int = 8) -> None:
+    def __init__(self, *, max_cloud_cover: float | None = None, max_observations: int | None = None) -> None:
         self.max_cloud_cover = (
             max_cloud_cover if max_cloud_cover is not None
             else float(os.getenv("SENTINEL_MAX_CLOUD_COVER", "35"))
         )
-        self.max_observations = max_observations
+        configured_observations = max_observations if max_observations is not None else int(os.getenv("SENTINEL_MAX_OBSERVATIONS", "8"))
+        self.max_observations = max(6, min(8, configured_observations))
         self.timeout = float(os.getenv("SENTINEL_TIMEOUT_SECONDS", "60"))
         self.verify_tls = self._tls_verify_setting()
         self.last_diagnostics: dict[str, Any] = {}

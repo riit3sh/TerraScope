@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { ParcelRecord } from '../lib/api'
 
 /** The evidence collectors stop at this many seconds (EVIDENCE_COLLECTION_DEADLINE_SECONDS, data-pipeline default). */
-const COLLECTION_DEADLINE_S = 35
 const HISTORY_KEY = 'terrascope.analysisSeconds'
 
 type Layer = { key: string; label: string; found: boolean; detail: string; ms: number | null }
@@ -46,21 +45,17 @@ export function AnalysisOverlay({ stage, stages, startedAt, collected, onOpen }:
   const [now, setNow] = useState(Date.now())
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(id) }, [])
   const elapsed = (now - startedAt) / 1000
-  const history = recentSeconds().sort((a, b) => a - b)
-  const estimate = history.length ? history[Math.floor(history.length / 2)] : 20
   const ready = stage === stages.length - 1
   const layers = collected ? collectedLayers(collected) : []
   const timeLine = collected
     ? `Evidence collected in ${((collected.metadata.collection_timings_ms && Math.max(0, ...Object.values(collected.metadata.collection_timings_ms).map(v => v ?? 0)) || 0) / 1000).toFixed(1)} s${ready ? '' : ' · scoring'}`
-    : elapsed < estimate
-      ? `${Math.floor(elapsed)} s elapsed · about ${Math.max(1, Math.ceil(estimate - elapsed))} s left (estimate from ${history.length ? `your last ${history.length} analyses` : 'typical analyses'})`
-      : `${Math.floor(elapsed)} s elapsed · taking longer than usual · at most ${Math.max(0, Math.ceil(COLLECTION_DEADLINE_S - elapsed))} s until the collectors stop`
+    : `${Math.floor(elapsed)} s elapsed · evidence collectors are running in parallel`
   return <div className="analysis-overlay"><div className="analysis-card">
     <div className="scanner" aria-hidden="true"><span className="scan-grid" /><span className="scan-line" /><span className="scan-blip b1" /><span className="scan-blip b2" /><span className="scan-blip b3" /></div>
     <div className="eyebrow"><span className="pulse" /> {ready ? 'ANALYSIS READY' : 'LIVE EVIDENCE COLLECTION'}</div>
     <h2>{ready ? 'Found what the data holds.' : collected ? 'Evidence found. Scoring…' : 'Reading this parcel.'}</h2>
     <p className="analysis-time" role="status">{timeLine}</p>
-    <div className="analysis-progress" role="progressbar" aria-valuemin={0} aria-valuemax={stages.length - 1} aria-valuenow={Math.max(0, stage)}><i style={{ width: `${collected ? Math.round((Math.max(1, stage) / (stages.length - 1)) * 100) : Math.min(90, Math.round((elapsed / Math.max(estimate, 1)) * 60))}%` }} /></div>
+    <div className="analysis-progress" role="progressbar" aria-valuemin={0} aria-valuemax={stages.length - 1} aria-valuenow={Math.max(0, stage)}><i style={{ width: `${collected ? Math.round((Math.max(1, stage) / (stages.length - 1)) * 100) : 18}%` }} /></div>
     {collected
       ? <div className="stage-list found-list">{layers.map((l, i) => <div className={l.found ? 'done reveal' : 'missing reveal'} style={{ animationDelay: `${i * 120}ms` }} key={l.key}><span>{l.found ? '✓' : '–'}</span><strong>{l.found ? 'Found' : 'Not available'}</strong>&nbsp;{l.label}: {l.detail}{l.ms != null && <small> · {(l.ms / 1000).toFixed(1)} s</small>}</div>)}</div>
       : <div className="stage-list">{stages.map((x, i) => <div className={i === stage ? 'current' : ''} key={x}><span>{i === stage ? <i className="stage-spinner" /> : '·'}</span>{x}</div>)}</div>}
