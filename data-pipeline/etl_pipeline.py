@@ -22,6 +22,7 @@ from connectors import coast, flood_indicators, public_land
 from connectors.elevation_dem import ElevationClient, ElevationError
 from connectors import land_cover_history, river_flood
 from connectors.local_osm import LocalOSM
+from connectors.google_routes import GoogleRoutesClient
 from connectors.regions import LocalDataMissing, data_root, india_coverage, region_for, slug
 from connectors.osm_infrastructure import InfrastructureClient, InfrastructureError
 from connectors.rera_ingest import load_rera_seed_dataset, match_parcel_to_rera
@@ -111,6 +112,9 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any], roads: Loca
     school_edge = near("school", around=parcel)
     road_tags = (road or {}).get("tags", {})
     access_tag = road_tags.get("access")
+    routes = GoogleRoutesClient()
+    road_route = routes.route((lon, lat), (road["lon"], road["lat"])) if road and road.get("lon") is not None else None
+    school_route = routes.route((lon, lat), (school["lon"], school["lat"])) if school and school.get("lon") is not None else None
     return {
         "nearest_road_distance_from_boundary_m": road_edge["distance_m"] if road_edge else None,
         "nearest_road_boundary_name": road_edge["name"] if road_edge else None,
@@ -123,6 +127,10 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any], roads: Loca
         "nearest_road_surface": road_tags.get("surface"),
         "nearest_road_lat": road["lat"] if road else None,
         "nearest_road_lon": road["lon"] if road else None,
+        "nearest_road_route_distance_m": road_route["distance_m"] if road_route else None,
+        "nearest_road_route_duration_s": road_route["duration_s"] if road_route else None,
+        "nearest_school_route_distance_m": school_route["distance_m"] if school_route else None,
+        "nearest_school_route_duration_s": school_route["duration_s"] if school_route else None,
         **_hit_fields("nearest_school", school, with_point=True),
         **_hit_fields("nearest_hospital", near("hospital")),
         **_hit_fields("nearest_bus", near("bus"), with_class=True),

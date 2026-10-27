@@ -3,7 +3,7 @@ WORKDIR /app
 COPY ml-models/requirements.txt ml-models/pyproject.toml ./
 COPY ml-models/src ./src
 COPY ml-models/change_detection ./change_detection
-COPY ml-models/rag_pipeline ./rag_pipeline
+COPY ml-models/land_analyst.py ./land_analyst.py
 COPY ml-models/scoring_engine ./scoring_engine
 COPY ml-models/pipeline.py ./pipeline.py
 COPY docs/schema ./docs/schema

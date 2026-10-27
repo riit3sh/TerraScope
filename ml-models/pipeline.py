@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from change_detection.statistical_change import detect_change_from_series
 from findings import build_findings
 from citations import evidence_citations
+from land_analyst import ask_land_question, generate_evaluation_explanation
 from scoring_engine.scoring import compute_evaluation
 
 
@@ -155,8 +156,6 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
     # Groq explains the deterministic result; it never computes or changes the scores.
     ai_explanation: dict[str, Any] = {"answer_text": "", "citations": []}
     try:
-        from rag_pipeline.reason import generate_evaluation_explanation
-
         ai_explanation = generate_evaluation_explanation(evaluated)
     except Exception as error:
         LOGGER.warning("AI explanation unavailable; showing the deterministic summary: %s", error)
@@ -196,6 +195,11 @@ class EvaluateRequest(BaseModel):
     evaluation: dict[str, Any]
 
 
+class AskRequest(BaseModel):
+    snapshot: dict[str, Any]
+    question: str
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     # Safe operational visibility: report configuration presence, never the key.
@@ -221,3 +225,16 @@ def evaluate_endpoint(request: EvaluateRequest) -> dict[str, Any]:
         return evaluate_snapshot(request.snapshot, request.evaluation)
     except (ValueError, KeyError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+
+@app.post("/internal/ml/ask")
+def ask_endpoint(request: AskRequest) -> dict[str, Any]:
+    try:
+        return ask_land_question(request.snapshot, request.question)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    except Exception as error:
+        LOGGER.warning("Land Analyst request failed: %s", error)
+        raise HTTPException(status_code=502, detail="TerraScope Land Analyst is temporarily unavailable.") from error

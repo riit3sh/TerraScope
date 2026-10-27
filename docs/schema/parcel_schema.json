@@ -354,6 +354,24 @@
           ],
           "minimum": 0
         },
+        "nearest_road_route_distance_m": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Optional Google driving distance from the parcel centroid to the nearest mapped road point."
+        },
+        "nearest_road_route_duration_s": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "nearest_school_route_distance_m": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Optional Google driving distance from the parcel centroid to the nearest mapped school point."
+        },
+        "nearest_school_route_duration_s": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
         "nearest_road_lat": {
           "type": [
             "number",

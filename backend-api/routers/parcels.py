@@ -65,6 +65,11 @@ class EvaluationRequest(BaseModel):
     preferences: Preferences = Field(default_factory=Preferences)
 
 
+class AskRequest(BaseModel):
+    analysis_snapshot_id: str
+    question: str = Field(min_length=1, max_length=500)
+
+
 IDENTIFIER = r"^[\w .,/()'-]{1,80}$"
 class LandDetails(BaseModel):
     """Survey identifiers as the user states them. Stored as claims; never treated as a matched land record."""
@@ -325,6 +330,30 @@ async def evaluate_parcel(parcel_id: str, request: EvaluationRequest) -> dict[st
         raise _connection_error("Evaluation", error) from error
     save_evaluation(parcel_id, request.analysis_snapshot_id, result)
     return result
+
+
+@router.post("/api/v1/parcels/{parcel_id}/ask")
+async def ask_land_analyst(parcel_id: str, request: AskRequest) -> dict[str, Any]:
+    """Answer from the immutable snapshot; this route never recollects evidence."""
+    snapshot = get_snapshot(request.analysis_snapshot_id)
+    if snapshot is None or snapshot.get("parcel_id") != parcel_id:
+        raise HTTPException(status_code=404, detail="Immutable evidence snapshot not found for this parcel.")
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{ml_models_url()}/internal/ml/ask",
+                json={"snapshot": snapshot, "question": request.question},
+                timeout=httpx.Timeout(connect=2.0, read=20.0, write=5.0, pool=5.0),
+            )
+            if not response.is_success:
+                raise _downstream_error(response, "ml-models Land Analyst")
+            return response.json()
+    except HTTPException:
+        raise
+    except httpx.TimeoutException as error:
+        raise HTTPException(status_code=504, detail="TerraScope Land Analyst timed out; try a shorter question.") from error
+    except httpx.HTTPError as error:
+        raise _connection_error("Land Analyst", error) from error
 
 
 @router.get("/api/v1/parcels/{parcel_id}/land-details")

@@ -1,9 +1,8 @@
-"""Grounded Groq reasoning over parcel-scoped retrieved context."""
+"""TerraScope Land Analyst: strict Groq explanations over collected parcel facts."""
 
 from __future__ import annotations
 
 import os
-import re
 import json
 from typing import Any
 
@@ -12,72 +11,15 @@ import requests
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-SOURCE_TAG_PATTERN = re.compile(r"\[source:\s*([^\]]+)\]")
-# AI output is optional decoration on a deterministic verdict, so these stay well
-# inside the caller's budget: a slow Groq must degrade, never stall the report.
-GROUNDED_TIMEOUT_SECONDS = float(os.getenv("GROQ_GROUNDED_TIMEOUT_SECONDS", "15"))
+# AI output is optional decoration on a deterministic verdict, so a slow Groq
+# must degrade, never stall the report.
 EXPLANATION_TIMEOUT_SECONDS = float(os.getenv("GROQ_EXPLANATION_TIMEOUT_SECONDS", "12"))
-
-
-def _prompt(question: str, context: list[dict[str, Any]]) -> str:
-    context_text = "\n\n".join(
-        f"[source: {item['metadata']['source_reference']}]\n{item['text']}"
-        for item in context
-    )
-    if not context_text:
-        context_text = "[source: none]\nNo retrieved context is available."
-    return (
-        "Answer ONLY using the provided context. Cite every claim with [source: X]. "
-        "If the context is insufficient, say so explicitly.\n\n"
-        f"Context:\n{context_text}\n\n"
-        f"Question: {question}"
-    )
 
 
 def _extract_text(response: dict[str, Any]) -> str:
     choices = response.get("choices") or []
     message = choices[0].get("message", {}) if choices else {}
     return str(message.get("content", ""))
-
-
-def _parse_citations(answer_text: str) -> list[dict[str, str]]:
-    citations: list[dict[str, str]] = []
-    for claim in re.split(r"(?<=[.!?])\s+|\n+", answer_text):
-        references = SOURCE_TAG_PATTERN.findall(claim)
-        clean_claim = SOURCE_TAG_PATTERN.sub("", claim).strip()
-        if not clean_claim:
-            continue
-        for reference in references:
-            citation = {"claim": clean_claim, "source_reference": reference.strip()}
-            if citation not in citations:
-                citations.append(citation)
-    return citations
-
-
-def generate_grounded_answer(question: str, parcel_id: str) -> dict[str, Any]:
-    """Retrieve parcel context and ask Groq for a source-tagged answer."""
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
-        raise RuntimeError("GROQ_API_KEY must be set to generate a grounded answer.")
-    # Imported here, not at module load: retrieval pulls in chromadb and torch
-    # (~10-35 s cold), which the evaluation explanation never needs. A failed
-    # import (e.g. chromadb missing) still surfaces as itself.
-    if __package__:
-        from .retrieve import retrieve_context
-    else:  # pragma: no cover - direct script execution.
-        from retrieve import retrieve_context
-    context = retrieve_context(question, parcel_id)
-    response = requests.post(
-        GROQ_API_URL,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": MODEL_NAME, "max_completion_tokens": 700, "temperature": 0,
-              "include_reasoning": False, "reasoning_effort": "low",
-              "messages": [{"role": "user", "content": _prompt(question, context)}]},
-        timeout=GROUNDED_TIMEOUT_SECONDS,
-    )
-    response.raise_for_status()
-    answer_text = _extract_text(response.json())
-    return {"answer_text": answer_text, "citations": _parse_citations(answer_text)}
 
 
 def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -189,8 +131,9 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
             if isinstance(item, dict)
         ]
     except (json.JSONDecodeError, TypeError, ValueError):
-        # Backwards-compatible fallback for a model that ignores JSON mode.
-        citations = _parse_citations(answer_text)
+        # A non-JSON answer is not safe to present as grounded; keep the
+        # deterministic explanation instead of trying to infer citations.
+        raise RuntimeError("Groq explanation was not valid JSON; deterministic explanation retained.")
     normalized_citations = []
     for citation in citations:
         reference = citation["source_reference"].casefold()
@@ -209,3 +152,49 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
             f"({invalid!r}); deterministic explanation retained."
         )
     return {"answer_text": answer_text[:500], "citations": normalized_citations}
+
+
+def ask_land_question(snapshot: dict[str, Any], question: str) -> dict[str, Any]:
+    """Answer one explicit question from the immutable snapshot only."""
+    question = question.strip()
+    if not question or len(question) > 500:
+        raise ValueError("question must contain 1-500 characters")
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key or api_key == "demo-groq-api-key":
+        raise RuntimeError("A real GROQ_API_KEY is required for TerraScope Land Analyst.")
+    evidence = [
+        {key: row.get(key) for key in ("source_reference", "title", "summary", "observed_at", "freshness") if row.get(key) is not None}
+        for row in snapshot.get("evidence", []) if isinstance(row, dict)
+    ]
+    facts = {key: snapshot.get(key) for key in ("location", "geometry_metadata", "infrastructure", "risk", "satellite", "land_records", "rera", "opportunity", "evaluation", "verdict")}
+    facts["evidence"] = evidence
+    allowed = [str(row.get("source_reference")) for row in evidence if row.get("source_reference")]
+    prompt = (
+        "You are TerraScope Land Analyst. Answer the user's question in at most 3 concise sentences. "
+        "Use only the supplied parcel facts and evidence. Do not invent or infer missing values. Never claim title, "
+        "ownership, encumbrance, RERA, zoning, legal access, flood safety, or price is verified unless the facts "
+        "explicitly say it was verified by an official record. Say 'not available in this analysis' when insufficient. "
+        "Cite factual claims with [source: X], where X is copied exactly from an allowed source reference. Return JSON only: "
+        "{\"answer_text\":\"...\",\"citations\":[{\"claim\":\"...\",\"source_reference\":\"...\"}]}\n\n"
+        f"Allowed source references: {json.dumps(allowed)}\nQuestion: {question}\nFacts: {json.dumps(facts, ensure_ascii=True, default=str)}"
+    )
+    response = requests.post(
+        GROQ_API_URL,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        json={"model": MODEL_NAME, "max_completion_tokens": 500, "temperature": 0, "include_reasoning": False,
+              "reasoning_effort": "low", "response_format": {"type": "json_object"}, "messages": [{"role": "user", "content": prompt}]},
+        timeout=EXPLANATION_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    payload = json.loads(_extract_text(response.json()))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Land Analyst returned an invalid response")
+    citations = []
+    for item in payload.get("citations") or []:
+        if not isinstance(item, dict):
+            continue
+        reference = str(item.get("source_reference") or "").strip()
+        canonical = next((source for source in allowed if reference.casefold() == source.casefold()), None)
+        if canonical:
+            citations.append({"claim": str(item.get("claim") or "").strip(), "source_reference": canonical})
+    return {"answer_text": str(payload.get("answer_text") or "").strip()[:1000], "citations": citations}

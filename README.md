@@ -132,7 +132,7 @@ terrascope/
 │   └── src/terrascope_data_pipeline/
 ├── ml-models/                      # ML service package and model areas
 │   ├── change_detection/
-│   ├── rag_pipeline/
+│   ├── land_analyst.py            # strict, fact-only Groq explanation/Q&A
 │   ├── scoring_engine/
 │   └── src/terrascope_ml_models/
 ├── backend-api/                    # Public API package
@@ -240,8 +240,9 @@ is skipped, and the backend still stores every snapshot.
 
    Unit tests need no running stack; run the relevant package tests with `pytest -q`.
 
-The live application does not download document-embedding models. The optional historical RAG demo files are not
-used by parcel analysis.
+The live application does not use document upload, document embeddings, or document retrieval. The Land Analyst is a
+bounded Groq explanation/Q&A layer over the immutable collected snapshot; it cannot create missing evidence or verify
+title, ownership, RERA, flood safety, access rights, or prices.
 
 ### What needs credentials
 
@@ -257,8 +258,8 @@ supply them in `.env`:
   change retroactively: re-evaluate the same evidence or run a new analysis after adding the key.
 
   Groq is explanation-only: it receives collected facts and evidence references, cannot change scores,
-  and its response is discarded if it cites a source that was not collected. It never fills missing legal,
-  environmental or ownership data. Document upload and document RAG are not part of the live application.
+  and its response is discarded if it cites a source that was not collected. The optional Land Analyst question
+  endpoint uses the same strict evidence-only policy. It never fills missing legal, environmental or ownership data.
 
 - **Unavailable satellite data:** a provider failure produces no observation and no chart. TerraScope never
   substitutes a generated NDVI/NDBI curve for missing imagery.
@@ -290,6 +291,10 @@ are still responding over the network.
 - **Optional Google geocoding:** set `GOOGLE_LOCATION_PROVIDER=google` and provide `GOOGLE_MAPS_API_KEY` to use
   Google's Geocoding API for the explicit Search submission. Autocomplete remains the local GeoNames index, so
   typing does not create paid requests. Google does not supply legal, ownership, RERA or environmental evidence.
+- **Optional routed distance:** set `GOOGLE_ROUTES_ENABLED=true` and provide `GOOGLE_ROUTES_API_KEY` (or the same
+  Maps key) to add Google driving distance/time from the parcel centroid to the nearest mapped road/school. Without
+  it, the report uses exact straight-line distance to OSM geometry and labels it as such; proximity is not travel
+  distance or proof of legal access.
 - **Mapped restriction:** if a parcel overlaps a mapped lake, park, railway, defence area or similar feature, the
   report shows `VERIFY RESTRICTION` and blocks purchase scoring. Redraw the boundary around the actual land under
   consideration, then compare it with the seller's survey sketch/FMB and verify the survey number with official Tamil

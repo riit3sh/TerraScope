@@ -3,9 +3,9 @@ import { SummaryCard } from './ReportSummary'
 import { acresToM2, AREA_UNIT_LABEL, AREA_UNITS, AreaUnit, formatArea, useAreaUnit } from '../lib/area'
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowLeft, FileText, FlaskConical, History, Printer, RefreshCw, Sparkles, TriangleAlert, X } from 'lucide-react'
-import { evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, AreaNews, NewsItem, getAreaNews, PublicFacility, LegalChecklist, ReraAuthority, getReraAuthorities, SellerType, LegalCheckInput, getLegalChecks, recordLegalCheck, DevelopmentClaim, DevelopmentClaimInput, ProjectType, listClaims, addClaim, deleteClaim } from '../lib/api'
+import { askLandAnalyst, evaluateParcel, EvaluationSettings, FactorAssessment, Finding, FloodIndicators, LandCoverHistory, LandDetails, ParcelRecord, saveLandDetails, AreaNews, NewsItem, getAreaNews, PublicFacility, LegalChecklist, ReraAuthority, getReraAuthorities, SellerType, LegalCheckInput, getLegalChecks, recordLegalCheck, DevelopmentClaim, DevelopmentClaimInput, ProjectType, listClaims, addClaim, deleteClaim } from '../lib/api'
 
-type EvidenceTab = 'Satellite' | 'Infrastructure' | 'Flood indicators' | 'RERA' | 'Derived Scores'
+type EvidenceTab = 'Satellite' | 'Infrastructure' | 'Flood indicators' | 'Derived Scores'
 
 const MECHANISM_LABEL: Record<string, string> = { river_flooding: 'River flooding (modelled)', historical_inundation: 'Historical inundation (observed)', observed_surface_water: 'Surface water seen 1984-2021', terrain_and_nearby_water: 'Terrain and nearby water', rainfall_waterlogging: 'Rainfall / waterlogging', coastal_flooding: 'Coastal flooding' }
 const STATUS_LABEL: Record<string, string> = { assessed: 'assessed', partial: 'partly assessed', not_modelled: 'not modelled here', unavailable: 'unavailable', not_integrated: 'not integrated', not_assessed: 'not assessed' }
@@ -164,6 +164,7 @@ const LAYER_OF: Record<string, string> = { Road: 'road', School: 'school', Hospi
 /** Nearby facilities, exactly as the regional OpenStreetMap store returned them: distance, name, nothing inferred. */
 function FacilitiesTable({ record }: { record: ParcelRecord }) {
   const i: NonNullable<ParcelRecord['infrastructure']> = record.infrastructure || { nearest_road_distance_m: null, nearest_road_type: null, nearest_school_distance_m: null }
+  const routed = i as typeof i & { nearest_road_route_distance_m?: number | null; nearest_school_route_distance_m?: number | null }
   const osm = (record.evidence || []).find(e => e.source_type === 'openstreetmap')
   const rows: [string, number | null | undefined, string | null | undefined, string][] = [
     ['Road', i.nearest_road_distance_from_boundary_m ?? i.nearest_road_distance_m, [i.nearest_road_name, i.nearest_road_type].filter(Boolean).join(' · '), i.nearest_road_distance_from_boundary_m != null ? 'from the boundary' : 'from the centre'],
@@ -177,7 +178,7 @@ function FacilitiesTable({ record }: { record: ParcelRecord }) {
     {collected ? <div className="flood-table-wrap"><table className="flood-table"><thead><tr><th>Facility</th><th>Distance</th><th>Name / type</th><th>Measured</th></tr></thead><tbody>{rows.map(([name, d, label, from]) => <tr key={name}><td>{name}</td><td>{d == null ? (i.layer_status?.[LAYER_OF[name]] === 'not_installed' ? 'not installed for this region (unknown)' : `none mapped within ${m(i.search_radius_m)}`) : m(d)}</td><td>{d == null ? '—' : label || 'unnamed'}</td><td>{d == null ? '—' : from}</td></tr>)}</tbody></table></div>
       : <p className="muted">{osm?.summary || 'No facility data was collected for this parcel.'}</p>}
     {Object.entries(i.layer_status || {}).some(([, s]) => s === 'not_installed') && <p className="older-note" role="note"><TriangleAlert size={15} /><span>Not installed for this region: {Object.entries(i.layer_status || {}).filter(([, s]) => s === 'not_installed').map(([l]) => l.replace('_', ' ')).join(', ')}. These are unknown, not absent; accessibility is not assessed without roads.</span></p>}
-    <p className="field-hint">{osm ? `${osm.source_reference} · data as of ${(osm.observed_at || '').slice(0, 10)}. ` : ''}Straight lines, not travel routes; a mapped road is not proof of legal access. “None mapped” means OpenStreetMap has nothing there, not that none exists: check locally. Colleges, markets and shops are not collected in this version.</p>
+    <p className="field-hint">{osm ? `${osm.source_reference} · data as of ${(osm.observed_at || '').slice(0, 10)}. ` : ''}{routed.nearest_road_route_distance_m != null || routed.nearest_school_route_distance_m != null ? 'Google driving route distance is shown where available; ' : ''}Straight-line proximity is not a travel route and a mapped road is not proof of legal access. “None mapped” means OpenStreetMap has nothing there, not that none exists: check locally. Colleges, markets and shops are not collected in this version.</p>
   </section>
 }
 
@@ -469,6 +470,10 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
   const [busy, setBusy] = useState(false)
   const [activeEvidenceTab, setActiveEvidenceTab] = useState<EvidenceTab>('Satellite')
   const [scenarioError, setScenarioError] = useState('')
+  const [analystQuestion, setAnalystQuestion] = useState('')
+  const [analystAnswer, setAnalystAnswer] = useState<{ answer_text: string; citations: { source_reference: string }[] } | null>(null)
+  const [analystBusy, setAnalystBusy] = useState(false)
+  const [analystError, setAnalystError] = useState('')
 
   const chart = useMemo(() => {
     const ndvi = record.satellite?.ndvi_trend || []
@@ -486,7 +491,7 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
   const scored = factors.filter(f => f.score != null)
   const unscored = factors.filter(f => f.score == null && f.weight_pct > 0)
   const satelliteIsDemo = evidence.some(item => (item.source_type || '') === 'satellite' && /synthetic/i.test(`${item.source_reference || ''} ${item.title || ''}`))
-  const tabMatch: Record<EvidenceTab, string[]> = { Satellite: ['satellite', 'land_cover'], Infrastructure: ['openstreetmap', 'infrastructure'], 'Flood indicators': ['jrc_gsw', 'jrc_flood_hazard', 'copernicus_dem', 'osm_water', 'open_elevation', 'elevation'], RERA: ['maharera_seed', 'rera'], 'Derived Scores': ['derived'] }
+  const tabMatch: Record<EvidenceTab, string[]> = { Satellite: ['satellite', 'land_cover'], Infrastructure: ['openstreetmap', 'infrastructure'], 'Flood indicators': ['jrc_gsw', 'jrc_flood_hazard', 'copernicus_dem', 'osm_water', 'open_elevation', 'elevation'], 'Derived Scores': ['derived'] }
   const visibleEvidence = evidence.filter(item => tabMatch[activeEvidenceTab].some(type => (item.source_type || '').toLowerCase().includes(type)))
   const fields = record.metadata.data_completeness_fields
   const fieldCount = fields ? Object.keys(fields).length : 12
@@ -504,6 +509,22 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
     window.addEventListener('beforeprint', openAll)
     return () => window.removeEventListener('beforeprint', openAll)
   }, [])
+
+  function printReport() {
+    const previousTitle = document.title
+    const slug = (address || record.location?.district || record.parcel_id || 'parcel').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase()
+    document.title = `TerraScope-${slug || 'parcel'}-report`
+    window.addEventListener('afterprint', () => { document.title = previousTitle }, { once: true })
+    window.requestAnimationFrame(() => window.print())
+  }
+
+  async function askAnalyst() {
+    if (!analystQuestion.trim() || !record.parcel_id || !record.metadata.analysis_snapshot_id) return
+    setAnalystBusy(true); setAnalystError('')
+    try { setAnalystAnswer(await askLandAnalyst(record.parcel_id, record.metadata.analysis_snapshot_id, analystQuestion)) }
+    catch (error) { setAnalystError(error instanceof Error ? error.message : 'Land Analyst is unavailable.') }
+    finally { setAnalystBusy(false) }
+  }
 
   async function rerun(next: EvaluationSettings, changed?: string) {
     setBusy(true)
@@ -523,7 +544,7 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
   }
 
   return <main className="report-shell">
-    <header className="report-topbar"><button className="back-button" onClick={onBack}><ArrowLeft size={16} /> Workspace</button><div className="wordmark"><span className="mark"><Sparkles size={14} /></span> TERRASCOPE</div><div className="report-tools"><button className="quiet-button" onClick={() => setHistoryOpen(true)}><History size={15} /> Scenario history</button><button className="quiet-button" onClick={() => setScenario(true)}><FlaskConical size={15} /> Explore scenarios</button><button className="quiet-button" onClick={() => window.print()}><Printer size={15} /> Print</button></div></header>
+    <header className="report-topbar"><button type="button" className="back-button" onClick={onBack}><ArrowLeft size={16} /> Workspace</button><div className="wordmark"><span className="mark"><Sparkles size={14} /></span> TERRASCOPE</div><div className="report-tools"><button type="button" className="quiet-button" onClick={() => setHistoryOpen(true)}><History size={15} /> Scenario history</button><button type="button" className="quiet-button" onClick={() => setScenario(true)}><FlaskConical size={15} /> Explore scenarios</button><button type="button" className="quiet-button" onClick={printReport} aria-label="Print or save this report as PDF"><Printer size={15} /> Print / PDF</button></div></header>
     <div className="report-content">
       <SummaryCard record={record} place={placeName(address)} period={`${record.metadata.analysis_date_from || '—'} to ${record.metadata.analysis_date_to || '—'}`} areaControl={<>{formatArea(record.geometry_metadata?.area_m2 ?? (record.geometry_metadata?.area_acres == null ? null : acresToM2(record.geometry_metadata.area_acres)), areaUnit)} <select className="area-unit" aria-label="Area unit" value={areaUnit} onChange={e => setAreaUnit(e.target.value as AreaUnit)}>{AREA_UNITS.map(u => <option key={u} value={u}>{AREA_UNIT_LABEL[u]}</option>)}</select></>} />
       {olderEvaluation && <div className="older-note" role="note"><TriangleAlert size={15} /><span>This saved evaluation was made with an earlier version of TerraScope, so it lacks the current checks (the findings list, the buy / wait rules and what would change the answer). Re-evaluating uses the same evidence; nothing is collected again.</span><button className="quiet-button" disabled={busy} onClick={() => rerun(settings).catch(() => undefined)}><RefreshCw size={14} /> {busy ? 'Re-evaluating…' : 'Re-evaluate with current methods'}</button></div>}
@@ -543,6 +564,7 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
       <section className="more-detail" aria-labelledby="more-detail">
         <h2 id="more-detail">More detail</h2>
         <p className="pay-intro">Everything behind the assessment, with sources and dates. Open a section when you want it.</p>
+        <section className="analyst-panel" aria-labelledby="land-analyst-title"><div className="section-label"><Sparkles size={13} /> TERRASCOPE LAND ANALYST</div><h2 id="land-analyst-title">Ask about this parcel</h2><p className="muted">Answers use only this saved evidence snapshot. Missing data stays unknown; this is not legal or price advice.</p><div className="analyst-form"><input value={analystQuestion} onChange={event => setAnalystQuestion(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void askAnalyst() }} placeholder="What is still unknown about this parcel?" maxLength={500} /><button type="button" className="quiet-button" disabled={analystBusy || !analystQuestion.trim()} onClick={() => void askAnalyst()}>{analystBusy ? 'Thinking…' : 'Ask'}</button></div>{analystError && <p className="error-text" role="alert">{analystError}</p>}{analystAnswer && <div className="analyst-answer"><p>{analystAnswer.answer_text}</p>{analystAnswer.citations.length > 0 && <small>Sources: {analystAnswer.citations.map(item => item.source_reference).join(' · ')}</small>}</div>}</section>
         <Fold title="Why did TerraScope reach this conclusion?" hint="The full reasoning, scores and evidence references">
       {record.verdict?.reasoning_summary && !restricted && <p className="decision-lede">{record.verdict.reasoning_summary}</p>}
       <section className="why-grid"><div><div className="section-label">WHY THIS RECOMMENDATION?</div><h2>Scored contributions</h2><div className="contribution-list">{(breakdown?.weighted_contributions || []).map((item, index) => <div key={index}><span>{FACTOR_LABEL[item.factor || ''] || item.factor || 'Unnamed factor'}</span><strong className={(item.contribution || 0) < 0 ? 'negative' : ''}>{(item.contribution || 0) > 0 ? '+' : ''}{item.contribution ?? '—'}</strong></div>)}{unscored.map(f => <div key={f.factor} className="unscored-row"><span>{FACTOR_LABEL[f.factor] || f.factor}</span><strong>no score · {f.weight_pct}%</strong></div>)}</div>{breakdown?.composite_score != null && <div className="final-verdict"><span>LOCATION SCORE · RULE-BASED, NOT A PROBABILITY</span><b>{breakdown.composite_score}</b></div>}{breakdown?.composite_score != null && verdict !== 'BUY' && <p className="field-hint">This score describes the location only (development and access). It never overrides a red flag or pending legal checks, so a high score here is not approval to buy.</p>}</div>
@@ -597,7 +619,7 @@ export function Report({ initialSnapshot, initialSettings, onBack }: { initialSn
       </section>
         </Fold>
         <Fold title="Data sources and dates" hint={`The evidence ledger behind every finding · analysis snapshot ${(record.metadata.analysis_snapshot_id || '—').slice(0, 8)}`}>
-      <section className="evidence-section"><div className="section-head"><div><div className="section-label">EVIDENCE LEDGER</div><h2>Sources behind the findings</h2></div></div><div className="tabs">{(['Satellite', 'Infrastructure', 'Flood indicators', 'RERA', 'Derived Scores'] as EvidenceTab[]).map(tab => <button className={tab === activeEvidenceTab ? 'active' : ''} key={tab} onClick={() => setActiveEvidenceTab(tab)}>{tab}</button>)}</div><div className="source-legend ledger-legend"><span><i className="dot live" /> LIVE</span><span><i className="dot cached" /> CACHED</span><span><i className="dot derived" /> DERIVED</span><span><i className="dot seed" /> SEED DATA</span></div>{visibleEvidence.length ? visibleEvidence.map(item => <EvidenceRow key={item.evidence_id || item.title} title={item.title || item.source_type || 'Evidence'} refName={item.source_reference || 'TerraScope'} freshness={item.freshness || 'derived'} summary={item.summary || 'Collected evidence used in the evaluation.'} observedAt={item.observed_at} details={[item.observation_period && `observed ${item.observation_period}`, item.resolution, item.licence].filter(Boolean).join(' · ')} />) : <p className="muted evidence-empty">No {activeEvidenceTab.toLowerCase()} evidence is available for this parcel.</p>}</section>
+      <section className="evidence-section"><div className="section-head"><div><div className="section-label">EVIDENCE LEDGER</div><h2>Sources behind the findings</h2></div></div><div className="tabs">{(['Satellite', 'Infrastructure', 'Flood indicators', 'Derived Scores'] as EvidenceTab[]).map(tab => <button type="button" className={tab === activeEvidenceTab ? 'active' : ''} key={tab} onClick={() => setActiveEvidenceTab(tab)}>{tab}</button>)}</div><div className="source-legend ledger-legend"><span><i className="dot live" /> LIVE</span><span><i className="dot cached" /> CACHED</span><span><i className="dot derived" /> DERIVED</span><span><i className="dot seed" /> SEED DATA</span></div>{visibleEvidence.length ? visibleEvidence.map(item => <EvidenceRow key={item.evidence_id || item.title} title={item.title || item.source_type || 'Evidence'} refName={item.source_reference || 'TerraScope'} freshness={item.freshness || 'derived'} summary={item.summary || 'Collected evidence used in the evaluation.'} observedAt={item.observed_at} details={[item.observation_period && `observed ${item.observation_period}`, item.resolution, item.licence].filter(Boolean).join(' · ')} />) : <p className="muted evidence-empty">No {activeEvidenceTab.toLowerCase()} evidence is available for this parcel.</p>}</section>
         </Fold>
       </section>
     </div>
