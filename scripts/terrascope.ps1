@@ -9,6 +9,9 @@
   terrascope.cmd status     show what is on each port and whether it is healthy
   terrascope.cmd fetch-data [region]  India boundary (~46 MB, needed once). With a region (e.g. tamil-nadu):
                                      a local OSM store and raster tiles for it. 'fetch-data --list' lists regions.
+  terrascope.cmd fetch-data [region] -FloodTiles  JRC river flood hazard tiles for India (11 tiles, 99 files) or
+                                     the region, so river flooding is read from disk. Stops at once if the JRC
+                                     server is not responding; re-running skips completed files.
   terrascope.cmd seed-demo  add one FIXTURE report to the saved-reports list (explicit, never automatic)
 
   A port that already serves the matching healthy TerraScope service is reused.
@@ -27,7 +30,8 @@ param(
     [string]$Command = 'start',
     [Parameter(Position = 1)]
     [string]$Region = '',
-    [switch]$NoBrowser
+    [switch]$NoBrowser,
+    [switch]$FloodTiles
 )
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
@@ -253,7 +257,10 @@ function Invoke-FetchData {
     if (-not (Test-Path -LiteralPath $Py)) { throw "Missing .venv. Run: terrascope.cmd setup" }
     Initialize-Env
     $fetchArgs = @((Join-Path $Root 'data-pipeline\fetch_data.py'), '--data-dir', $env:TERRASCOPE_DATA_DIR)
-    if ($Region -eq '--list') { $fetchArgs += '--list' } elseif ($Region) { $fetchArgs += $Region }
+    if ($Region -eq '--list') { $fetchArgs += '--list' }
+    elseif ($Region -eq '--flood-tiles') { $fetchArgs += '--flood-tiles' }
+    elseif ($Region) { $fetchArgs += $Region }
+    if ($FloodTiles) { $fetchArgs += '--flood-tiles' }
     & $Py @fetchArgs
     if ($LASTEXITCODE) { throw "fetch-data failed (see the messages above). Re-running resumes from the files already downloaded." }
     Write-Host "Local data ready. Restart the services to load it: terrascope.cmd stop, then terrascope.cmd start"

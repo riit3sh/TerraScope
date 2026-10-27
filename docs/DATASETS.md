@@ -22,7 +22,7 @@ No `.part`, `.tmp`, `.building` or empty files were found in `data-cache\` (2026
 | Previous Tamil Nadu build (backup, unused) | `regions\tamil-nadu\previous-build-2026-10-06\` | 276 MB | ODbL 1.0 | Nothing; can be deleted |
 | Copernicus DEM GLO-30, 75 tiles (Tamil Nadu, Puducherry, Andhra Pradesh) | `rasters\dem\` | 2.5 GB | Copernicus DEM licence (free use) | Elevation; height relative to mapped water. Elsewhere read remotely |
 | JRC Global Surface Water v1.4, 8 tiles (70-90°E, 0-20°N) | `rasters\gsw\` | 180 MB | Copernicus, free without restriction ("Source: EC JRC/Google") | Water seen on and around the plot, 1984-2021 |
-| JRC river flood hazard maps v2.1.2 (tile index and cached parcel results) | `flood-hazard\` | <1 MB | CC BY 4.0 | River flooding by return period (tiles read remotely) |
+| JRC river flood hazard maps v2.1.2 (tile index and cached parcel results) | `flood-hazard\` | <1 MB | CC BY 4.0 | River flooding by return period (tiles read remotely unless `fetch-data -FloodTiles` installed them; not installed yet) |
 | Caches | `satellite\sentinel2-cache.sqlite`, `flood-indicators-cache.json` | 7 MB | derived | Faster repeat analyses (Sentinel-2 measurements; surface-water, DEM and land-cover parcel results, 30 days) |
 
 Read remotely, with no download or account: Sentinel-2 L2A and the Impact Observatory / Esri 10 m annual land cover
@@ -38,6 +38,7 @@ explanation. `SATELLITE_DEMO_FALLBACK=false`, so no synthetic imagery is ever su
 | **Roads** for any state except Tamil Nadu, Puducherry and Andhra Pradesh (the all-India store has every other layer) | Road "not installed (unknown)"; accessibility not assessed, so **no BUY / WAIT decision** (INSUFFICIENT DATA) | A nationwide road store needs about 3 GB more disk than this machine has (3.4 GB free on C:). Per state: `terrascope.cmd fetch-data <state>` (100-300 MB each) |
 | State RERA data (only a MahaRERA seed format is supported; none configured) | RERA "Unknown" | Manual check on the state portal: rera.tn.gov.in, rera.ap.gov.in. No public API was found, and portals are not scraped |
 | Land records and encumbrance | Title "Unknown"; always on the "before you pay" list | Manual: Tamil Nadu eservices.tn.gov.in (patta/chitta) and tnreginet.gov.in (EC); Andhra Pradesh meebhoomi.ap.gov.in (Adangal, 1B). Web lookups for individuals; not integrated, never automated, never treated as verification |
+| Local JRC river flood hazard tiles (`flood-hazard\tiles\`) | River flooding is read from the JRC server; while that server is down (as on 2026-10-28) reports show "River flood maps: not available" | `terrascope.cmd fetch-data -FloodTiles` (all India) or `terrascope.cmd fetch-data <region> -FloodTiles`; see "River flood hazard tiles" below |
 | Rainfall waterlogging, coastal flooding, observed flood footprints | Those mechanisms "Unknown" | See candidate sources below |
 | Land prices | Not shown (removed in this version, J-58) | — |
 
@@ -48,6 +49,34 @@ explanation. `SATELLITE_DEMO_FALLBACK=false`, so no synthetic imagery is ever su
 2. **Karnataka, Kerala or Telangana**: the same command with that state's slug (`terrascope.cmd fetch-data --list`),
    only when you analyse plots there. The OSM extract is reused; DEM tile sizes have not been measured yet.
 3. **Optional cleanup**: the unused previous Tamil Nadu build frees 276 MB. Delete it only on purpose.
+4. **River flood hazard tiles**: `terrascope.cmd fetch-data -FloodTiles` once the JRC server answers again.
+
+### River flood hazard tiles (`--flood-tiles`)
+
+`fetch_data.py [region] --flood-tiles` downloads the JRC global river flood hazard maps v2.1.2 (CC BY 4.0) from
+`https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/CEMS-GLOFAS/flood_hazard` into `flood-hazard\tiles\`, in the
+layout `river_flood.py` reads before falling back to the server. Tiles are the 10° cells of
+`flood-hazard\tile_extents.geojson` that intersect India's boundary (or the region's), plus 5 km. Each tile has 9 files:
+
+| File (per tile `<prefix>`, e.g. `ID193_N20_E80`) | Content |
+|---|---|
+| `RP10\`, `RP20\`, `RP50\`, `RP75\`, `RP100\`, `RP200\`, `RP500\` `<prefix>_RP<n>_depth.tif` | Modelled water depth (m) for each return period |
+| `Permanent_WaterBodies\<prefix>_permanent_water.tif` | Permanent water mask (excluded from flood exposure) |
+| `Spurious_Depths\<prefix>_spurious_depth_areas.tif` | Cells whose depths are flagged as unreliable |
+
+| Area | Tiles | Files |
+|---|---|---|
+| All India | 11: ID178_N30_E60, ID183_N40_E70, ID184_N30_E70, ID185_N20_E70, ID186_N10_E70, ID191_N40_E80, ID192_N30_E80, ID193_N20_E80, ID200_N30_E90, ID201_N20_E90, ID202_N10_E90 | 99 |
+| `tamil-nadu` | 3 | 27 |
+
+**Sizes not measured yet**: the JRC server did not respond on 2026-10-28 (connections accepted, no bytes), so no
+file could be sized or downloaded. The command reports the total from the server's `Content-Length` and checks free
+disk before downloading, logs each file's size, and records the installed files and bytes in
+`flood-hazard\tiles\manifest.json`. Update this table with those figures after the first download.
+
+The command first sends a 1 kB request and stops with "The JRC flood hazard server is not responding" if it gets
+no data within 20 s; it does the same if the server stops answering mid-run. Files are written as `.part` and renamed
+when complete, so re-running skips completed files and restarts only the interrupted one.
 
 ## Verified in the pipeline (2026-10-25, Vijayawada plot, re-analysed on an audit copy)
 

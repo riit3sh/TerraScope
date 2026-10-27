@@ -5,6 +5,7 @@
     python fetch_data.py --list               show regions and what is installed
     python fetch_data.py --national           all-India store without roads, from downloads/india-*.osm.pbf
     python fetch_data.py <region> --public-land   only the public-facility store of an installed region
+    python fetch_data.py [region] --flood-tiles   JRC river flood hazard tiles for India (11 tiles) or one region
 
 (run by: terrascope.cmd fetch-data [region])
 
@@ -21,7 +22,8 @@ Layout, under data-cache/ (git-ignored):
   regions/<slug>/ osm.sqlite, boundary.geojson, manifest.json
   rasters/        gsw/ and dem/ tiles, shared by every region
   downloads/      Geofabrik extracts and zone .poly files
-  flood-hazard/   JRC river flood hazard tile index and cached parcel results
+  flood-hazard/   JRC river flood hazard tile index, cached parcel results and, with
+                  --flood-tiles, local tiles/ (RP*/, Permanent_WaterBodies/, Spurious_Depths/)
 """
 
 from __future__ import annotations
@@ -69,7 +71,7 @@ def log(message: str) -> None:
 def download(url: str, target: Path, session: requests.Session) -> Path:
     """Stream to a .part file and rename, so an interrupted run never leaves a truncated file."""
     if target.exists() and target.stat().st_size > 0:
-        log(f"  have {target.name} ({target.stat().st_size / 1e6:.0f} MB)")
+        log(f"  have {target.name} ({target.stat().st_size / 1e6:,.1f} MB)")
         return target
     target.parent.mkdir(parents=True, exist_ok=True)
     part = target.with_suffix(target.suffix + ".part")
@@ -96,7 +98,7 @@ def download(url: str, target: Path, session: requests.Session) -> Path:
             log(f"  {target.name}: attempt {attempt} failed ({error}); retrying")
             time.sleep(5 * attempt)
     part.replace(target)
-    log(f"  downloaded {target.name} ({target.stat().st_size / 1e6:.0f} MB)")
+    log(f"  downloaded {target.name} ({target.stat().st_size / 1e6:,.1f} MB)")
     return target
 
 
@@ -555,6 +557,132 @@ def fetch_rasters(coverage, root: Path, session: requests.Session) -> dict:
     }
 
 
+# --- JRC river flood hazard tiles -----------------------------------------------------
+
+# The JRC server has accepted connections and then sent nothing (2026-10-28): (connect, first bytes).
+FLOOD_PROBE_TIMEOUT = (10, 20)
+
+
+class FloodServerDown(RuntimeError):
+    pass
+
+
+def _probe_flood_server(url: str, session: requests.Session) -> None:
+    """Raise FloodServerDown unless the server answers a 1 kB ranged GET with data."""
+    try:
+        with session.get(url, stream=True, timeout=FLOOD_PROBE_TIMEOUT,
+                         headers={"Range": "bytes=0-1023", "User-Agent": USER_AGENT}) as response:
+            if response.status_code not in (200, 206):
+                raise requests.HTTPError(f"HTTP {response.status_code}")
+            if not next(response.iter_content(1024), b""):
+                raise requests.ConnectionError("connection accepted but no data received")
+    except requests.RequestException as error:
+        raise FloodServerDown(f"{error.__class__.__name__}: {error}") from error
+
+
+def _flood_server_down_exit(base_url: str, reason: str, done: int) -> SystemExit:
+    return SystemExit(
+        f"The JRC flood hazard server is not responding ({base_url}): {reason}.\n"
+        f"{done} file(s) were completed in this run and are kept; nothing partial was left in place. "
+        "Try again later: completed files are skipped. Until the tiles are local, reports read the maps "
+        "remotely and show 'River flood maps: not available' while the server is down.")
+
+
+def fetch_flood_tiles(region: str | None, root: Path, session: requests.Session) -> dict:
+    """JRC river flood hazard tiles (all return periods, permanent water, spurious-depth flags) for India or one
+    region, into flood-hazard/tiles/ in the layout river_flood reads before falling back to the server."""
+    import shapely
+
+    from connectors import river_flood
+
+    base = river_flood.BASE_URL
+    directory = root / "flood-hazard"
+    if region:
+        catalogue = region_catalogue(root)
+        if region not in catalogue:
+            raise SystemExit(f"Unknown region {region!r}. Known regions: {', '.join(sorted(catalogue))}")
+        states = load_states(root)
+        coverage = shapely.union_all([states[iso]["geometry"] for iso in catalogue[region]])
+        label = region
+    else:
+        coverage = shapely.from_wkb((root / INDIA_DIR / UNION_FILE).read_bytes())
+        label = "india"
+    # Parcels near the edge are assessed with 500 m of surroundings; 5 km covers that with room to spare.
+    area = coverage.buffer(CLIP_BUFFER_DEG)
+
+    index_path = directory / "tile_extents.geojson"
+    if not index_path.exists():
+        try:
+            _probe_flood_server(f"{base}/tile_extents.geojson", session)
+        except FloodServerDown as error:
+            raise _flood_server_down_exit(base, str(error), 0) from error
+        download(f"{base}/tile_extents.geojson", index_path, session)
+    prefixes = [prefix for prefix, extent in river_flood.read_tile_index(index_path) if extent.intersects(area)]
+    files = [river_flood.layer_relative_path(prefix, layer) for prefix in prefixes for layer in river_flood.LAYERS]
+    tiles_dir = directory / "tiles"
+    missing = [relative for relative in files if not ((tiles_dir / relative).exists() and (tiles_dir / relative).stat().st_size > 0)]
+    log(f"River flood hazard tiles for {label}: {len(prefixes)} tiles x {len(river_flood.LAYERS)} layers = "
+        f"{len(files)} files; {len(files) - len(missing)} already on disk, {len(missing)} to download")
+
+    if missing:
+        try:
+            _probe_flood_server(f"{base}/{missing[0]}", session)
+        except FloodServerDown as error:
+            raise _flood_server_down_exit(base, str(error), 0) from error
+        sizes = {}
+        for relative in missing:
+            try:
+                head = session.head(f"{base}/{relative}", timeout=FLOOD_PROBE_TIMEOUT, allow_redirects=True,
+                                    headers={"User-Agent": USER_AGENT})
+                sizes[relative] = int(head.headers.get("Content-Length") or 0) if head.ok else 0
+            except requests.RequestException:
+                sizes[relative] = 0
+        known = sum(sizes.values())
+        unknown = sum(1 for size in sizes.values() if not size)
+        log(f"  to download: {known / 1e6:,.1f} MB" + (f" plus {unknown} file(s) of unknown size" if unknown else ""))
+        check_disk(root, known)
+
+        failed: list[str] = []
+        for number, relative in enumerate(missing, 1):
+            log(f"  [{number}/{len(missing)}] {relative}")
+            try:
+                download(f"{base}/{relative}", tiles_dir / relative, session)
+            except RuntimeError as error:
+                try:
+                    _probe_flood_server(f"{base}/{relative}", session)
+                except FloodServerDown as down:
+                    raise _flood_server_down_exit(base, str(down), number - 1 - len(failed)) from error
+                failed.append(f"{relative}: {error}")
+        if failed:
+            raise SystemExit(f"{len(failed)} flood hazard file(s) could not be downloaded:\n  " + "\n  ".join(failed)
+                             + "\nRe-run to retry them; completed files are skipped.")
+
+    manifest_path = tiles_dir / MANIFEST_NAME
+    try:
+        previous = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        previous = {}
+    on_disk = sorted(path for path in tiles_dir.rglob("*.tif"))
+    manifest = {
+        "dataset": river_flood.DATASET,
+        "source_url": base,
+        "licence": river_flood.LICENCE,
+        "citation": river_flood.CITATION,
+        "areas": sorted(set(previous.get("areas", [])) | {label}),
+        "tiles": sorted(set(previous.get("tiles", [])) | set(prefixes)),
+        "files": len(on_disk),
+        "size_bytes": sum(path.stat().st_size for path in on_disk),
+        "updated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+    tiles_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    area_bytes = sum((tiles_dir / relative).stat().st_size for relative in files)
+    log(f"River flood hazard tiles for {label} ready: {len(files)} files, {area_bytes / 1e6:,.1f} MB "
+        f"({manifest['files']} files, {manifest['size_bytes'] / 1e6:,.1f} MB in {tiles_dir}). "
+        "Analyses now read them from disk.")
+    return manifest
+
+
 # --- region build ----------------------------------------------------------------------
 
 def build_region(name: str, root: Path, session: requests.Session) -> None:
@@ -815,8 +943,16 @@ def main() -> None:
                         help="build regions/india/coastline.sqlite (coastline lines) from downloads/india-*.osm.pbf")
     parser.add_argument("--national-roads", action="store_true",
                         help="build regions/india/roads.sqlite (all vehicular roads) from downloads/india-*.osm.pbf")
+    parser.add_argument("--flood-tiles", action="store_true",
+                        help="download the JRC river flood hazard tiles for India (or the given region) into "
+                             "flood-hazard/tiles/, so river flooding is read from disk")
     args = parser.parse_args()
     root = (args.data_dir or data_root()).resolve()
+    if args.flood_tiles:
+        session = requests.Session()
+        install_india(root, session)
+        fetch_flood_tiles(args.region, root, session)
+        return
     if args.national:
         build_national(root)
         return

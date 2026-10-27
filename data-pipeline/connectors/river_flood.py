@@ -84,19 +84,30 @@ def tile_index() -> list[tuple[str, Any]]:
                 raise RiverFloodUnavailable(f"JRC tile index could not be downloaded: {error}") from error
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(response.content)
-        features = json.loads(path.read_text(encoding="utf-8"))["features"]
-        _index = [(f"ID{f['properties']['id']}_{f['properties']['name']}", shape(f["geometry"])) for f in features]
+        _index = read_tile_index(path)
         return _index
+
+
+def read_tile_index(path: Path) -> list[tuple[str, Any]]:
+    features = json.loads(path.read_text(encoding="utf-8"))["features"]
+    return [(f"ID{f['properties']['id']}_{f['properties']['name']}", shape(f["geometry"])) for f in features]
+
+
+LAYERS = tuple(f"RP{rp}" for rp in RETURN_PERIODS) + ("permanent_water", "spurious")
+
+
+def layer_relative_path(prefix: str, layer: str) -> str:
+    """Path of one layer file below BASE_URL, and below data-cache/flood-hazard/tiles for a local copy."""
+    if layer.startswith("RP"):
+        return f"{layer}/{prefix}_{layer}_depth.tif"
+    if layer == "permanent_water":
+        return f"Permanent_WaterBodies/{prefix}_permanent_water.tif"
+    return f"Spurious_Depths/{prefix}_spurious_depth_areas.tif"
 
 
 def _layer_path(prefix: str, layer: str) -> str:
     """Local copy under data-cache/flood-hazard/tiles if present, else the provider URL."""
-    if layer.startswith("RP"):
-        relative = f"{layer}/{prefix}_{layer}_depth.tif"
-    elif layer == "permanent_water":
-        relative = f"Permanent_WaterBodies/{prefix}_permanent_water.tif"
-    else:
-        relative = f"Spurious_Depths/{prefix}_spurious_depth_areas.tif"
+    relative = layer_relative_path(prefix, layer)
     local = cache_dir() / "tiles" / relative
     return str(local) if local.exists() else f"/vsicurl/{BASE_URL}/{relative}"
 
@@ -243,7 +254,7 @@ def assess(geojson_polygon: dict[str, Any]) -> dict[str, Any]:
         if near.is_empty:
             continue
         bounds = near.bounds
-        layers = [f"RP{rp}" for rp in RETURN_PERIODS] + ["permanent_water", "spurious"]
+        layers = list(LAYERS)
         try:
             if _layer_path(prefix, "RP100").startswith("/vsicurl/"):
                 _check_provider(f"{BASE_URL}/RP100/{prefix}_RP100_depth.tif")
