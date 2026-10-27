@@ -7,6 +7,7 @@ import json
 import math
 import re
 import time
+import unicodedata
 from typing import Any
 
 import requests
@@ -108,11 +109,15 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError("A real DEEPINFRA_API_KEY or GROQ_API_KEY is required for AI evaluation explanations.")
 
     breakdown = snapshot.get("score_breakdown") or {}
+    evidence_rows = [row for row in snapshot.get("evidence", []) if isinstance(row, dict) and row.get("source_reference")]
+    not_assessed = [str(row.get("title") or row["source_reference"]) for row in evidence_rows if _not_assessed(row)]
     factual_context = {
         # Keep the prompt compact. Sending the full raw snapshot made the model
         # spend its completion budget reasoning over implementation metadata and
         # return no explanation at all.
+        "place": place_name(snapshot),
         "location": snapshot.get("location"),
+        "not_assessed": not_assessed,
         "area_m2": (snapshot.get("geometry_metadata") or {}).get("area_m2"),
         "recommendation": (snapshot.get("verdict") or {}).get("recommendation"),
         "scores": {
@@ -155,14 +160,14 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
         ],
     }
     source_aliases = {
-        str(row.get("source_reference")).casefold(): str(row.get("source_reference"))
+        _fold(str(row.get("source_reference"))): str(row.get("source_reference"))
         for row in snapshot.get("evidence", [])
         if isinstance(row, dict) and row.get("source_reference")
     }
     source_type_rows: dict[str, list[str]] = {}
     for row in snapshot.get("evidence", []):
         if isinstance(row, dict) and row.get("source_reference") and row.get("title"):
-            source_aliases[str(row["title"]).casefold()] = str(row["source_reference"])
+            source_aliases[_fold(str(row["title"]))] = str(row["source_reference"])
         if isinstance(row, dict) and row.get("source_reference") and row.get("source_type"):
             source_type_rows.setdefault(str(row["source_type"]).casefold(), []).append(str(row["source_reference"]))
     # A model sometimes returns the evidence type rather than the long source
@@ -179,7 +184,11 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
         "If the evidence is insufficient for a conclusion, say so explicitly instead of guessing. "
         "Cite each factual sentence with [source: X]. X MUST be copied exactly from one of the evidence_sources.source_reference values; "
         "do not cite a source type, a provider name, or a source that is not listed. "
-        "If a fact is missing, say that the evidence is unavailable. Return JSON only in this shape: "
+        "If a fact is missing, say that the evidence is unavailable. "
+        "Everything in not_assessed was NOT checked: say it was not assessed; never say nothing was found, no hazard "
+        "was found, or that it is safe. Refer to the plot by its place name (place), never by coordinates. "
+        "A sentence about something with no evidence row (legal records, a check that was not assessed) gets no citation; "
+        "never cite an unrelated source for it. Return JSON only in this shape: "
         '{"answer_text":"2-4 concise sentences","citations":[{"claim":"one factual claim","source_reference":"exact evidence_sources value"}]}. '
         "Do not put factor names, JSON keys, or prose such as 'scores' in source_reference.\n\n"
         "Allowed source references (copy exactly):\n"
@@ -205,24 +214,95 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
         for item in (structured.get("citations") or [])
         if isinstance(item, dict)
     ]
-    normalized_citations = []
+    normalized_citations, invalid = [], []
     for citation in citations:
-        reference = citation["source_reference"].casefold()
+        reference = _fold(citation["source_reference"])
         canonical = next(
             (source for alias, source in source_aliases.items() if reference == alias or reference in alias or alias in reference),
             None,
         )
         if canonical:
             normalized_citations.append({**citation, "source_reference": canonical})
-    if not normalized_citations:
-        raise RuntimeError("Groq explanation contained no source citations; deterministic explanation retained.")
-    if len(normalized_citations) != len(citations):
-        invalid = [citation["source_reference"] for citation in citations if citation not in normalized_citations]
+        elif _is_factor_name(reference):
+            # A factor name ("legal_safety") is not a source: the claim keeps its text, uncited. Any other unknown
+            # source may be invented, so it still rejects the explanation below.
+            continue
+        else:
+            invalid.append(citation["source_reference"])
+    if invalid:
         raise RuntimeError(
             "Groq explanation cited a source that was not in the collected evidence "
             f"({invalid!r}); deterministic explanation retained."
         )
-    return {"answer_text": answer_text[:500], "citations": normalized_citations}
+    # A claim cited to a row it shares no words with (legal status cited to Sentinel-2) keeps its text, loses the citation.
+    rows_by_reference = {}
+    for row in evidence_rows:
+        rows_by_reference.setdefault(str(row["source_reference"]), []).append(row)
+    normalized_citations = [citation for citation in normalized_citations
+                            if _relevant(citation["claim"], rows_by_reference.get(citation["source_reference"], []))]
+    if not normalized_citations:
+        raise RuntimeError("Groq explanation contained no relevant source citations; deterministic explanation retained.")
+    if any(_claims_nothing_found(answer_text, title) for title in not_assessed):
+        raise RuntimeError("AI explanation described an unassessed check as clear; deterministic explanation retained.")
+    return {"answer_text": _clip_sentences(answer_text, 900), "citations": normalized_citations}
+
+
+_NOT_ASSESSED = re.compile(r"\b(not assessed|unavailable|not integrated|did not respond|could not be read)\b", re.I)
+_FACTOR_KEYS = {"accessibility", "scores", "factors", "verdict", "recommendation", "legal", "flood", "growth"}
+_STOPWORDS = {"which", "there", "their", "these", "those", "parcel", "about", "within", "would", "because", "where",
+              "based", "other", "being", "plot's", "parcel's"}
+
+
+def _is_factor_name(reference: str) -> bool:
+    """'legal_safety', 'legal_safety factor', 'accessibility score': a JSON key or factor, not a source."""
+    words = reference.split()
+    return (1 <= len(words) <= 2 and bool(re.fullmatch(r"[a-z_]+", words[0]))
+            and ("_" in words[0] or words[0] in _FACTOR_KEYS) and (len(words) == 1 or words[1] in ("factor", "score")))
+
+
+def _not_assessed(row: dict[str, Any]) -> bool:
+    return bool(_NOT_ASSESSED.search(str(row.get("summary") or "")[:200]))
+
+
+def _fold(text: str) -> str:
+    """Case- and Unicode-insensitive form: models write narrow no-break spaces and non-breaking hyphens."""
+    return " ".join(unicodedata.normalize("NFKC", text).replace("\u2010", "-").casefold().split())
+
+
+def _words(text: str) -> set[str]:
+    return {word for word in re.findall(r"[a-z][a-z0-9'-]{4,}", _fold(text)) if word not in _STOPWORDS}
+
+
+def _relevant(claim: str, rows: list[dict[str, Any]]) -> bool:
+    row_text = " ".join(f"{row.get('title') or ''} {row.get('summary') or ''} {row.get('source_type') or ''}" for row in rows)
+    return bool(_words(claim) & _words(row_text))
+
+
+def _claims_nothing_found(answer: str, title: str) -> bool:
+    """'no river flood hazard was found' when the river flood maps were never read."""
+    if "flood" not in title.casefold():
+        return False
+    return bool(re.search(r"\bno (?:\w+ ){0,2}flood\w*(?: (?:hazard|risk|exposure|inundation))?\s*(?:was |were |is )?"
+                          r"(?:found|detected|identified|modell?ed|shown)", answer, re.I))
+
+
+def _clip_sentences(text: str, limit: int) -> str:
+    """At most ``limit`` characters, ending at a whole sentence (never mid-word)."""
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    end = max(cut.rfind(". "), cut.rfind(".\n"), cut.rfind("? "), cut.rfind("! "))
+    return cut[:end + 1] if end > 0 else cut[:cut.rfind(" ")].rstrip(",;:") + "…"
+
+
+def place_name(snapshot: dict[str, Any]) -> str | None:
+    """The first part of the address ('Lancor Infinys'), or the district, for referring to the plot."""
+    location = snapshot.get("location") or {}
+    address = str(location.get("address") or "").strip()
+    first = address.split(",")[0].strip() if address else ""
+    if first and not first[:1].isdigit():
+        return first
+    return ", ".join(part.strip() for part in address.split(",")[:2]) or location.get("district") or None
 
 
 def ask_land_question(snapshot: dict[str, Any], question: str) -> dict[str, Any]:

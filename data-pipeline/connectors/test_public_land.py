@@ -78,6 +78,12 @@ def test_classification_keeps_facility_type_apart_from_ownership() -> None:
     assert kinds({"leisure": "stadium"}) == ["sports"]
     assert kinds({"amenity": "school", "name": "Government Higher Secondary School"}) == ["government_school"]
     assert kinds({"amenity": "school", "name": "St. Mary's School"}) == [], "a private school is not a public facility"
+    # Seen in Chennai: a private clinic tagged operator:type=public, and a swimming academy tagged sports_centre.
+    assert kinds({"amenity": "hospital", "name": "Malar Clinic", "operator": "Dr. Arun", "operator:type": "public"}) == []
+    assert kinds({"amenity": "hospital", "name": "Govt Hospital", "operator:type": "government"}) == ["government_hospital"]
+    assert kinds({"leisure": "sports_centre", "name": "Waves Swimming Academy"}) == []
+    assert kinds({"leisure": "sports_centre", "name": "Corporation Sports Centre"}) == ["sports"]
+    assert public_land.ownership_signal({"operator:type": "public"}, "sports")[0] == "unknown"
     assert public_land.ownership_signal({"leisure": "stadium"}, "sports")[0] == "unknown"
     assert public_land.ownership_signal({"landuse": "military"}, "defence")[0] == "government_tagged"
     assert public_land.ownership_signal({"ownership": "private"}, "sports")[0] == "private_tagged"

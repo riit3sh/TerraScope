@@ -65,7 +65,9 @@ def classify(tags: Any, is_area: bool, is_node: bool, is_way: bool) -> list[tupl
     if not (is_node or is_area):
         return out
     operator = f"{get('operator') or ''} {get('name:en') or get('name') or ''}"
-    public_operator = get("operator:type") in ("government", "public") or bool(GOVERNMENT_NAME.search(operator))
+    # operator:type=public is used loosely in Indian OSM ("open to the public": a private clinic run by "Dr. Arun" was
+    # tagged so), so only operator:type=government or a government name counts.
+    public_operator = get("operator:type") == "government" or bool(GOVERNMENT_NAME.search(operator))
     if amenity == "courthouse":
         out.append(("court", "courthouse"))
     if get("office") == "government" or get("government") or amenity in ("townhall", "police", "fire_station", "prison"):
@@ -74,7 +76,8 @@ def classify(tags: Any, is_area: bool, is_node: bool, is_way: bool) -> list[tupl
         out.append(("government_school", "school"))
     if amenity == "hospital" and public_operator:
         out.append(("government_hospital", "hospital"))
-    if leisure in ("stadium", "sports_centre", "recreation_ground"):
+    # A sports centre is most often a private academy or gym; only a government-run one is a public-land signal.
+    if leisure in ("stadium", "recreation_ground") or (leisure == "sports_centre" and public_operator):
         out.append(("sports", leisure))
     if leisure in ("park", "playground"):
         out.append(("park", leisure))
@@ -96,7 +99,7 @@ def ownership_signal(tags: dict[str, Any], category: str) -> tuple[str, str]:
     op_type, ownership = tags.get("operator:type"), tags.get("ownership")
     if category == "defence" or tags.get("landuse") == "military":
         return "government_tagged", "mapped as military land"
-    if ownership in ("national", "state", "municipal", "public", "government") or op_type in ("government", "public", "military"):
+    if ownership in ("national", "state", "municipal", "public", "government") or op_type in ("government", "military"):
         return "government_tagged", f"tagged {'ownership=' + ownership if ownership else 'operator:type=' + op_type}"
     if tags.get("office") == "government" or tags.get("government"):
         return "government_tagged", "tagged as a government office"

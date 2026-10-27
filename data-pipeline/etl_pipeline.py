@@ -15,8 +15,9 @@ from typing import Any
 from uuid import uuid4
 
 import pandas as pd
+import shapely
 from jsonschema import Draft202012Validator, FormatChecker
-from shapely.geometry import shape
+from shapely.geometry import Point, shape
 
 from connectors import coast, flood_indicators, public_land
 from connectors.elevation_dem import ElevationClient, ElevationError
@@ -116,6 +117,15 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any], roads: Loca
     # From the drawn edge, too: a road along a big parcel's frontage is far from its centroid.
     road_edge = near("road", around=parcel)
     school_edge = near("school", around=parcel)
+    if google_school_hits:
+        # Google's schools are points, so measure them from the edge too: the boundary distance must belong to the
+        # nearest school from either source, or a school next to the plot is scored as one 400 m away.
+        forward, _, _, _ = LocalOSM._projector(lon, lat)
+        outline = shapely.transform(parcel, forward)
+        for hit in google_school_hits:
+            edge = float(outline.distance(shapely.transform(Point(hit["lon"], hit["lat"]), forward)))
+            if school_edge is None or edge < school_edge["distance_m"]:
+                school_edge = {**hit, "distance_m": round(edge, 2)}
     road_tags = (road or {}).get("tags", {})
     access_tag = road_tags.get("access")
     routes = GoogleRoutesClient()
@@ -129,6 +139,7 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any], roads: Loca
         "nearest_road_boundary_name": road_edge["name"] if road_edge else None,
         "nearest_road_boundary_type": road_edge["class"] if road_edge else None,
         "nearest_school_distance_from_boundary_m": school_edge["distance_m"] if school_edge else None,
+        "nearest_school_boundary_name": school_edge["name"] if school_edge else None,
         "nearest_road_distance_m": road["distance_m"] if road else None,
         "nearest_road_type": road["class"] if road else None,
         "nearest_road_name": road["name"] if road else None,

@@ -69,11 +69,21 @@
 /* ---- Printable report ---- */
 @media print{
   @page{margin:14mm}
-  :root{color-scheme:light}
+  :root{color-scheme:light;background:#fff!important}
   body,.report-shell{background:#fff!important;color:#101614!important}
   .report-topbar,.report-tools,.back-button,.tabs,.toast,.drawer-backdrop,.analysis-overlay{display:none!important}
   .report-content{max-width:none;padding:0}
-  .report-heading,.score-strip,.why-grid,.satellite-section,.evidence-section{break-inside:avoid;border-color:#c9d2ce!important}
+  /* .why-grid is taller than a page with its evidence list: kept whole, it left a page nearly blank. */
+  .report-heading,.score-strip,.satellite-section,.evidence-section{break-inside:avoid;border-color:#c9d2ce!important}
+  /* With "Background graphics" on, the dark screen panels printed as near-black boxes with dark text. Paper is white:
+     only the score bars, meters and legend dots keep their colour. */
+  .report-shell *:not(.bar):not(.bar i):not(.kpi-meter):not(.kpi-meter b):not(.dot){background-color:transparent!important;background-image:none!important}
+  .report-shell :is(div,li,td,th,label,summary,a,em,b,i,code,h3,h4,dt,dd){color:#1f2a27!important}
+  /* Controls are for the screen: the unit picker printed as "acres acres", forms and buttons as empty boxes. */
+  .area-unit,.report-content button,.analyst-form,.segmented{display:none!important}
+  .report-content input,.report-content select{appearance:none;border:none!important;background:none!important;padding:0!important;color:#101614!important}
+  .pay-actions a.quiet-button{border:none!important;padding:0!important;color:#101614!important}
+  .pay-actions a.quiet-button::after,.rera-portal a.quiet-button::after{content:" " attr(href);font-size:10px;word-break:break-all}
   .saved-card{background:#f4f7f5!important;border-color:#c9d2ce!important}
   h1,h2,strong,em,.section-label,.verdict-badge strong,.final-verdict strong,.contribution-list strong,.grounded-box .section-label{color:#101614!important}
   .muted,small,span,p{color:#3f4a46!important}

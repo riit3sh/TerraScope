@@ -100,9 +100,9 @@ def _feature_component(infrastructure: dict[str, Any], feature: str, cap: float,
     feature is left out of the score (it used to score 0 when the search covered the limit) and the report says so.
     """
     edge = infrastructure.get(f"nearest_{feature}_distance_from_boundary_m")
-    centroid = infrastructure.get(f"nearest_{feature}_route_distance_m")
-    if not isinstance(centroid, (int, float)):
-        centroid = infrastructure.get(f"nearest_{feature}_distance_m")
+    # Straight line only: a Google driving route starts wherever Google snaps the centroid, so it is neither a
+    # centroid distance nor comparable with the limits (shown separately in the facilities table).
+    centroid = infrastructure.get(f"nearest_{feature}_distance_m")
     distance, measured_from = (edge, "parcel boundary") if isinstance(edge, (int, float)) else (centroid, "parcel centroid")
     radius = infrastructure.get("search_radius_m")
     sub_score = _distance_score(distance, cap)

@@ -531,6 +531,12 @@
           ],
           "minimum": 0
         },
+        "nearest_school_boundary_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "layer_status": {
           "type": [
             "object",
@@ -1107,7 +1113,7 @@
             "string",
             "null"
           ],
-          "maxLength": 500
+          "maxLength": 1000
         },
         "citations": {
           "type": [
