@@ -402,7 +402,8 @@ async def ask_land_analyst(parcel_id: str, request: AskRequest) -> dict[str, Any
             response = await client.post(
                 f"{ml_models_url()}/internal/ml/ask",
                 json={"snapshot": snapshot, "question": request.question},
-                timeout=httpx.Timeout(connect=2.0, read=20.0, write=5.0, pool=5.0),
+                # ml-models may wait out a short Groq rate-limit reset before answering.
+                timeout=httpx.Timeout(connect=2.0, read=45.0, write=5.0, pool=5.0),
             )
             if not response.is_success:
                 raise _downstream_error(response, "ml-models Land Analyst")

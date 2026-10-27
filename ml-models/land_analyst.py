@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import os
 import json
+import math
+import re
+import time
 from typing import Any
 
 import requests
@@ -14,12 +17,64 @@ MODEL_NAME = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 # AI output is optional decoration on a deterministic verdict, so a slow Groq
 # must degrade, never stall the report.
 EXPLANATION_TIMEOUT_SECONDS = float(os.getenv("GROQ_EXPLANATION_TIMEOUT_SECONDS", "12"))
+# Free Groq tiers allow ~8k tokens a minute, so two calls close together get a 429.
+# Wait out a short reset (Groq reports it); a longer one is reported to the user instead.
+MAX_RATE_LIMIT_WAIT_SECONDS = float(os.getenv("GROQ_MAX_RATE_LIMIT_WAIT_SECONDS", "25"))
+# Large raw series in the snapshot; their findings are already in the evidence summaries.
+_BULKY_SATELLITE_KEYS = ("observations", "collection", "change_method")
+EVIDENCE_SUMMARY_CHARS = 350
+
+
+class GroqRateLimited(RuntimeError):
+    """Groq's per-minute quota is used up; retrying later will work."""
 
 
 def _extract_text(response: dict[str, Any]) -> str:
     choices = response.get("choices") or []
     message = choices[0].get("message", {}) if choices else {}
     return str(message.get("content", ""))
+
+
+def _reset_seconds(response: requests.Response) -> float:
+    """Seconds until Groq's quota resets, from retry-after or x-ratelimit-reset-tokens ('1m2.5s', '577ms')."""
+    retry_after = response.headers.get("retry-after")
+    if retry_after and retry_after.replace(".", "", 1).isdigit():
+        return float(retry_after)
+    match = re.fullmatch(r"(?:(\d+)m)?(?:([\d.]+)s)?(?:([\d.]+)ms)?", response.headers.get("x-ratelimit-reset-tokens", ""))
+    if match and any(match.groups()):
+        minutes, seconds, millis = (float(part) if part else 0.0 for part in match.groups())
+        return minutes * 60 + seconds + millis / 1000
+    return 5.0
+
+
+def _groq_json(api_key: str, payload: dict[str, Any], max_wait: float = MAX_RATE_LIMIT_WAIT_SECONDS) -> dict[str, Any]:
+    """POST to Groq and return the parsed JSON object it wrote, retrying a short 429 wait and one empty/invalid answer."""
+    waited = 0.0
+    bad_answers = 0
+    while True:
+        response = requests.post(
+            GROQ_API_URL,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json=payload,
+            timeout=EXPLANATION_TIMEOUT_SECONDS,
+        )
+        if response.status_code == 429:
+            wait = _reset_seconds(response) + 0.5
+            if waited + wait > max_wait:
+                raise GroqRateLimited(f"TerraScope Land Analyst is busy (AI rate limit). Try again in about {math.ceil(wait)} seconds.")
+            time.sleep(wait)
+            waited += wait
+            continue
+        response.raise_for_status()
+        try:
+            parsed = json.loads(_extract_text(response.json()))
+            if isinstance(parsed, dict):
+                return parsed
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+        bad_answers += 1
+        if bad_answers > 1:
+            raise RuntimeError("Land Analyst returned an invalid response")
 
 
 def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
@@ -108,32 +163,24 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
         + "\n\n"
         f"FACTS:\n{json.dumps(factual_context, ensure_ascii=True, default=str)}"
     )
-    response = requests.post(
-        GROQ_API_URL,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": MODEL_NAME, "max_completion_tokens": 1200, "temperature": 0,
-              "include_reasoning": False, "reasoning_effort": "low",
-              "response_format": {"type": "json_object"},
-              "messages": [{"role": "user", "content": prompt}]},
-        timeout=EXPLANATION_TIMEOUT_SECONDS,
-    )
-    response.raise_for_status()
-    answer_text = _extract_text(response.json()).strip()
-    citations: list[dict[str, str]]
     try:
-        structured = json.loads(answer_text)
-        if not isinstance(structured, dict):
-            raise ValueError("not an object")
-        answer_text = str(structured.get("answer_text") or "").strip()
-        citations = [
-            {"claim": str(item.get("claim") or "").strip(), "source_reference": str(item.get("source_reference") or "").strip()}
-            for item in (structured.get("citations") or [])
-            if isinstance(item, dict)
-        ]
-    except (json.JSONDecodeError, TypeError, ValueError):
+        structured = _groq_json(api_key, {"model": MODEL_NAME, "max_completion_tokens": 1200, "temperature": 0,
+                                          "include_reasoning": False, "reasoning_effort": "low",
+                                          "response_format": {"type": "json_object"},
+                                          "messages": [{"role": "user", "content": prompt}]},
+                                 max_wait=0)  # never hold up a report; the deterministic summary is shown instead
+    except GroqRateLimited:
+        raise
+    except RuntimeError:
         # A non-JSON answer is not safe to present as grounded; keep the
         # deterministic explanation instead of trying to infer citations.
         raise RuntimeError("Groq explanation was not valid JSON; deterministic explanation retained.")
+    answer_text = str(structured.get("answer_text") or "").strip()
+    citations: list[dict[str, str]] = [
+        {"claim": str(item.get("claim") or "").strip(), "source_reference": str(item.get("source_reference") or "").strip()}
+        for item in (structured.get("citations") or [])
+        if isinstance(item, dict)
+    ]
     normalized_citations = []
     for citation in citations:
         reference = citation["source_reference"].casefold()
@@ -162,11 +209,16 @@ def ask_land_question(snapshot: dict[str, Any], question: str) -> dict[str, Any]
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key or api_key == "demo-groq-api-key":
         raise RuntimeError("A real GROQ_API_KEY is required for TerraScope Land Analyst.")
+    # Keep the prompt near 1.5k tokens: Groq's per-minute quota counts every question.
     evidence = [
-        {key: row.get(key) for key in ("source_reference", "title", "summary", "observed_at", "freshness") if row.get(key) is not None}
+        {**{key: row.get(key) for key in ("source_reference", "title", "observed_at") if row.get(key) is not None},
+         "summary": str(row.get("summary") or "")[:EVIDENCE_SUMMARY_CHARS]}
         for row in snapshot.get("evidence", []) if isinstance(row, dict)
     ]
     facts = {key: snapshot.get(key) for key in ("location", "geometry_metadata", "infrastructure", "risk", "satellite", "land_records", "rera", "opportunity", "evaluation", "verdict")}
+    if isinstance(facts["satellite"], dict):
+        facts["satellite"] = {key: value for key, value in facts["satellite"].items() if key not in _BULKY_SATELLITE_KEYS}
+    facts = {key: value for key, value in facts.items() if value not in (None, {}, [])}
     facts["evidence"] = evidence
     allowed = [str(row.get("source_reference")) for row in evidence if row.get("source_reference")]
     prompt = (
@@ -178,17 +230,9 @@ def ask_land_question(snapshot: dict[str, Any], question: str) -> dict[str, Any]
         "{\"answer_text\":\"...\",\"citations\":[{\"claim\":\"...\",\"source_reference\":\"...\"}]}\n\n"
         f"Allowed source references: {json.dumps(allowed)}\nQuestion: {question}\nFacts: {json.dumps(facts, ensure_ascii=True, default=str)}"
     )
-    response = requests.post(
-        GROQ_API_URL,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        json={"model": MODEL_NAME, "max_completion_tokens": 500, "temperature": 0, "include_reasoning": False,
-              "reasoning_effort": "low", "response_format": {"type": "json_object"}, "messages": [{"role": "user", "content": prompt}]},
-        timeout=EXPLANATION_TIMEOUT_SECONDS,
-    )
-    response.raise_for_status()
-    payload = json.loads(_extract_text(response.json()))
-    if not isinstance(payload, dict):
-        raise RuntimeError("Land Analyst returned an invalid response")
+    payload = _groq_json(api_key, {"model": MODEL_NAME, "max_completion_tokens": 500, "temperature": 0, "include_reasoning": False,
+                                   "reasoning_effort": "low", "response_format": {"type": "json_object"},
+                                   "messages": [{"role": "user", "content": prompt}]})
     citations = []
     for item in payload.get("citations") or []:
         if not isinstance(item, dict):

@@ -112,7 +112,7 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any], roads: Loca
     google_school_hits = google_places.nearby(lat, lon, "school", POI_SEARCH_M)
     google_hospital_hits = google_places.nearby(lat, lon, "hospital", POI_SEARCH_M)
     if google_school_hits:
-        school = min(google_school_hits, key=lambda hit: ((hit["lat"] - lat) ** 2 + (hit["lon"] - lon) ** 2))
+        school = min(google_school_hits, key=lambda hit: hit["distance_m"])
     # From the drawn edge, too: a road along a big parcel's frontage is far from its centroid.
     road_edge = near("road", around=parcel)
     school_edge = near("school", around=parcel)
@@ -123,7 +123,7 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any], roads: Loca
     school_route = routes.route((lon, lat), (school["lon"], school["lat"])) if school and school.get("lon") is not None else None
     hospital = near("hospital")
     if google_hospital_hits:
-        hospital = min(google_hospital_hits, key=lambda hit: ((hit["lat"] - lat) ** 2 + (hit["lon"] - lon) ** 2))
+        hospital = min(google_hospital_hits, key=lambda hit: hit["distance_m"])
     return {
         "nearest_road_distance_from_boundary_m": road_edge["distance_m"] if road_edge else None,
         "nearest_road_boundary_name": road_edge["name"] if road_edge else None,
