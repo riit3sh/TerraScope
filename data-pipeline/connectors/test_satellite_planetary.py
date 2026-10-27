@@ -444,3 +444,27 @@ def test_no_scene_read_starts_after_the_evidence_deadline(cache_dir, monkeypatch
     with pytest.raises(satellite_planetary.SatelliteError):
         client.get_change_series(POLYGON, START, END)
     assert fake.reads == [] and client.last_diagnostics["observations_failed"] == 8
+
+
+def test_a_stalled_scene_read_does_not_hold_up_the_series(cache_dir, monkeypatch):
+    """Seen 2026-10-28: one blob-storage connection stalled and the analysis waited ~20 s for GDAL to give up."""
+    import threading
+    scenes = _every_five_days()
+    picks = _first_choices(monkeypatch, scenes)
+    monkeypatch.setattr(satellite_planetary, "SCENE_BUDGET_S", 0.5)
+    client = PlanetaryComputerClient()
+    fake = _Fake(monkeypatch, client, scenes)
+    normal, release = client._observation, threading.Event()
+
+    def stalls_once(item, geometry, token):
+        if item["id"] == picks[0]:
+            release.wait(5)
+        return normal(item, geometry, token)
+
+    monkeypatch.setattr(client, "_observation", stalls_once)
+    started = time.monotonic()
+    series = client.get_change_series(POLYGON, START, END)
+    release.set()
+    assert time.monotonic() - started < 2
+    assert len(series) == 7 and picks[0] not in [row["scene_id"] for row in series]
+    assert client.last_diagnostics["scenes_late"] == 1 and client.last_diagnostics["observations_failed"] == 1

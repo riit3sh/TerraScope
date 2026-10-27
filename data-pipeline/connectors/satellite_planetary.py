@@ -20,6 +20,7 @@ import sqlite3
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeout
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -160,6 +161,10 @@ class SatelliteError(RuntimeError):
 # back-to-back analyses stacked those reads until the link saturated and even geocoding and DEM
 # reads failed (measured 2026-10-12: Planetary Computer 6-20 s per request, then 1 s once stopped).
 _SCENE_SLOTS = threading.BoundedSemaphore(int(os.getenv("SENTINEL_MAX_CONCURRENT_SCENES", "12")))
+# Wall-clock budget for reading scenes. Most scenes read in 2-5 s, but one blob-storage connection that stalls
+# makes GDAL wait out its connect timeout and retries (~25 s, measured 2026-10-28) and the whole analysis waited
+# for it. Past the budget the series is built from the scenes already read; late reads finish and are cached.
+SCENE_BUDGET_S = float(os.getenv("SENTINEL_SCENE_BUDGET_SECONDS", "12"))
 
 
 def _date_slices(start: date, end: date, days: int) -> list[tuple[str, str]]:
@@ -495,7 +500,8 @@ class PlanetaryComputerClient:
 
         options = {anchor: ranked(anchor) for anchor in anchors}
         measured: dict[str, dict[str, Any] | None] = {}  # scene id -> observation, or None when unusable
-        counts = {"failed": 0, "from_cache": 0}
+        counts = {"failed": 0, "from_cache": 0, "late": 0}
+        budget_end = time.monotonic() + SCENE_BUDGET_S
 
         def measure(items: list[dict[str, Any]]) -> None:
             to_read = []
@@ -515,21 +521,29 @@ class PlanetaryComputerClient:
                 with _SCENE_SLOTS:
                     if self.give_up_at is not None and time.monotonic() > self.give_up_at:
                         raise TimeoutError("the evidence deadline passed before this scene was read")
-                    return self._observation(item, geojson_polygon, token)
+                    observation = self._observation(item, geojson_polygon, token)
+                # Cached here, not by the caller, so a read that finishes after the budget still helps the next run.
+                if cache:
+                    cache.put("scenes", self._scene_key(item, geojson_polygon), observation or {"unusable": True})
+                return observation
 
-            with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-                futures = {pool.submit(read, item): item for item in to_read}
-                for future in as_completed(futures):
+            pool = ThreadPoolExecutor(max_workers=max(1, workers))
+            futures = {pool.submit(read, item): item for item in to_read}
+            try:
+                for future in as_completed(futures, timeout=max(0.0, budget_end - time.monotonic())):
                     item = futures[future]
                     try:
-                        observation = future.result()
+                        measured[item["id"]] = future.result()
                     except Exception as error:  # one bad scene must not lose the series; never cached
                         LOGGER.warning("Sentinel-2 scene %s unreadable: %s", item.get("id"), error)
                         counts["failed"] += 1
-                        continue
-                    if cache:
-                        cache.put("scenes", self._scene_key(item, geojson_polygon), observation or {"unusable": True})
-                    measured[item["id"]] = observation
+            except FuturesTimeout:
+                late = [item for future, item in futures.items() if not future.done()]
+                counts["late"] += len(late)
+                LOGGER.warning("Sentinel-2: %d scene read(s) still running after the %.0f s budget; using the rest",
+                               len(late), SCENE_BUDGET_S)
+            finally:
+                pool.shutdown(wait=False, cancel_futures=True)
 
         def unique(items):
             seen: dict[str, dict[str, Any]] = {}
@@ -546,7 +560,7 @@ class PlanetaryComputerClient:
             :2 if candidates and (candidates[0]["properties"].get("eo:cloud_cover") or 0.0) > LOW_CLOUD_PCT else 1]))
         missing = [anchor for anchor, candidates in options.items()
                    if not any(self._usable(measured.get(item["id"])) for item in candidates[:2])]
-        if self.give_up_at is None or time.monotonic() < self.give_up_at:
+        if (self.give_up_at is None or time.monotonic() < self.give_up_at) and time.monotonic() < budget_end:
             measure(unique(item for anchor in missing for item in options[anchor][1:1 + ALTERNATES_PER_ANCHOR]))
         if cache:
             cache.prune()
@@ -565,12 +579,13 @@ class PlanetaryComputerClient:
 
         read = [value for value in measured.values()]
         self.last_diagnostics.update({
-            "scenes_read": len(read) + counts["failed"],
+            "scenes_read": len(read) + counts["failed"] + counts["late"],
             "observations_kept": len(observations),
             "observations_rejected": sum(1 for value in read if not self._usable(value)),
             "rejected_too_few_clear_pixels": sum(1 for value in read if value is None),
             "rejected_below_clear_fraction": sum(1 for value in read if value is not None and not self._usable(value)),
-            "observations_failed": counts["failed"],
+            "observations_failed": counts["failed"] + counts["late"],
+            "scenes_late": counts["late"],
             "scenes_not_covering_parcel": self.last_diagnostics["scenes_not_covering_parcel"],
             "scenes_from_cache": counts["from_cache"],
             "anchors_without_observation": [anchor.isoformat() for anchor, candidates in options.items()

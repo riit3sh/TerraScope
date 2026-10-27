@@ -73,3 +73,12 @@ def test_long_text_ends_on_a_whole_sentence():
     text = "First sentence is here. " * 50
     clipped = land_analyst._clip_sentences(text.strip(), 100)
     assert len(clipped) <= 100 and clipped.endswith(".")
+
+
+def test_an_uncited_answer_is_asked_again_once(monkeypatch):
+    monkeypatch.setenv("DEEPINFRA_API_KEY", "di-test")
+    answers = iter([{"answer_text": "Road access is good.", "citations": []},
+                    {"answer_text": "Road access is good.", "citations": [
+                        {"claim": "Nearest mapped road is 17 m away.", "source_reference": "OpenStreetMap, Geofabrik extract"}]}])
+    monkeypatch.setattr(land_analyst, "_groq_json", lambda provider, request, max_wait=0: next(answers))
+    assert land_analyst.generate_evaluation_explanation(SNAPSHOT)["citations"]

@@ -310,3 +310,20 @@
 .plot-ids{display:flex;flex-wrap:wrap;gap:10px 28px;margin:14px 0 0}.plot-ids dt{font:600 12px Manrope;color:#9aa8a3;margin-bottom:3px}.plot-ids dd{margin:0;font:14px Manrope;color:#eef4f1;user-select:all}.plot-ids small{display:block;max-width:380px;font:12.5px/1.5 Manrope;color:#9aa8a3;user-select:none}
 .analyst-panel{margin:18px 0 12px;padding:20px;border:1px solid #2d3b3c;border-left:3px solid #b8f36a;border-radius:10px;background:#111a1b}.analyst-panel h2{font-size:22px!important;margin:8px 0 5px!important}.analyst-form{display:flex;gap:10px;align-items:center;margin-top:14px}.analyst-form input{flex:1;min-width:0;background:#0d1415;border:1px solid #3a4a49;color:#eef4f1;border-radius:6px;padding:11px 13px;font:14px Manrope}.analyst-answer{margin-top:14px;padding:12px 14px;background:#162220;border:1px solid #3a4b44;border-radius:6px}.analyst-answer p{margin:0;color:#dfe8e3;font:14px/1.6 Manrope}.analyst-answer small{display:block;margin-top:8px;color:#9aa8a3;font:11px 'DM Mono';line-height:1.5}.error-text{color:#ff9b8e;font-size:13px}@media(max-width:600px){.analyst-form{align-items:stretch;flex-direction:column}.analyst-form input,.analyst-form button{width:100%}}
 .suggestions{max-height:360px;overflow-y:auto}.suggestion{border-left:3px solid transparent}.suggestion:hover,.suggestion:focus,.suggestion.active{border-left-color:#b8f36a}.suggestion-kind{color:#b8f36a!important;font:10px 'DM Mono'}
+
+/* ---- Report readability (2026-10-28) ----
+   Most report text was 10-13 px in mid-grey (e.g. 11 px #7e8c87) on the dark panels, so findings were easy to miss.
+   Floors for the report only: body 15 px in near-white, secondary 13.5 px in a light grey (both >= 7:1 on #111a1b),
+   mono labels 12 px, status badges 12 px semibold so what was and was not checked stands out. */
+.report-content :is(p, li, td, th, label, summary, dd):not(.decision-lede){font-size:15px;line-height:1.6}
+.report-content :is(p, li, td, dd):not(.decision-lede){color:#d3ded9}
+.report-content :is(.muted, .field-hint, small, .pay-intro, .chart-subtitle, .method-notes p){font-size:13.5px;line-height:1.55;color:#aebdb7}
+.report-content :is(.section-label, .field-label, .panel-kicker){font-size:12px;letter-spacing:.08em}
+.report-content .factor-badge{font:600 12px 'DM Mono';padding:4px 8px;letter-spacing:.04em}
+.report-content .freshness{font-size:11px}
+.report-content .status-pill,.report-content .pay-required{font-size:13.5px}
+.report-content td strong,.report-content th{color:#eef4f1}
+.report-content .evidence-row strong{font-size:15.5px}
+.report-content .analyst-answer p{font-size:15.5px}
+.report-content .analyst-answer small{font-size:12.5px;color:#aebdb7}
+@media print{.report-content :is(p, li, td, th, label, summary, dd){font-size:12.5px}.report-content :is(.muted, .field-hint, small){font-size:11.5px}}

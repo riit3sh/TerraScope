@@ -196,12 +196,15 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
         + "\n\n"
         f"FACTS:\n{json.dumps(factual_context, ensure_ascii=True, default=str)}"
     )
+    request = {"max_completion_tokens": 1200, "temperature": 0, "include_reasoning": False, "reasoning_effort": "low",
+               "response_format": {"type": "json_object"}, "messages": [{"role": "user", "content": prompt}]}
     try:
-        structured = _groq_json(provider, {"max_completion_tokens": 1200, "temperature": 0,
-                                       "include_reasoning": False, "reasoning_effort": "low",
-                                       "response_format": {"type": "json_object"},
-                                       "messages": [{"role": "user", "content": prompt}]},
-                              max_wait=0)  # never hold up a report; the deterministic summary is shown instead
+        # max_wait=0: never hold up a report; the deterministic summary is shown instead.
+        structured = _groq_json(provider, request, max_wait=0)
+        if not structured.get("citations"):
+            # About one answer in five came back with no citations at all (gpt-oss-20b, 2026-10-28); one retry
+            # (~2 s) almost always fixes it, and an uncited answer is still never shown.
+            structured = _groq_json(provider, request, max_wait=0)
     except GroqRateLimited:
         raise
     except RuntimeError:
@@ -274,8 +277,11 @@ def _words(text: str) -> set[str]:
 
 
 def _relevant(claim: str, rows: list[dict[str, Any]]) -> bool:
+    claim_words = _words(claim)
+    if not claim_words:  # an empty or numbers-only claim cannot be judged: keep the citation
+        return True
     row_text = " ".join(f"{row.get('title') or ''} {row.get('summary') or ''} {row.get('source_type') or ''}" for row in rows)
-    return bool(_words(claim) & _words(row_text))
+    return bool(claim_words & _words(row_text))
 
 
 def _claims_nothing_found(answer: str, title: str) -> bool:
