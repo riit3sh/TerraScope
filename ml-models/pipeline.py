@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from change_detection.statistical_change import detect_change_from_series
 from findings import build_findings
 from citations import evidence_citations
-from land_analyst import ask_land_question, generate_evaluation_explanation
+from land_analyst import ai_provider, ask_land_question, generate_evaluation_explanation
 from scoring_engine.scoring import compute_evaluation
 
 
@@ -203,11 +203,12 @@ class AskRequest(BaseModel):
 @app.get("/health")
 def health() -> dict[str, str]:
     # Safe operational visibility: report configuration presence, never the key.
+    provider = ai_provider()
     return {
         "service": "ml-models",
         "status": "ok",
-        "groq_configured": "true" if bool(os.getenv("GROQ_API_KEY")) else "false",
-        "groq_model": os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+        "ai_provider": provider["name"] if provider else "none",
+        "ai_model": provider["model"] if provider else "",
     }
 
 

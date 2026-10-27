@@ -1,4 +1,4 @@
-"""TerraScope Land Analyst: strict Groq explanations over collected parcel facts."""
+"""TerraScope Land Analyst: strict AI explanations over collected parcel facts (DeepInfra or Groq)."""
 
 from __future__ import annotations
 
@@ -13,8 +13,25 @@ import requests
 
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL_NAME = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-# AI output is optional decoration on a deterministic verdict, so a slow Groq
+DEEPINFRA_API_URL = "https://api.deepinfra.com/v1/openai/chat/completions"
+DEEPINFRA_DEFAULT_MODEL = "openai/gpt-oss-20b"  # ~2 s and accurate in a 2026-10-28 comparison on a saved report
+_PLACEHOLDER_KEYS = ("", "demo-groq-api-key")
+
+
+def ai_provider() -> dict[str, str] | None:
+    """The configured chat API: DeepInfra when DEEPINFRA_API_KEY is set, else Groq; None without a real key."""
+    deepinfra_key = os.getenv("DEEPINFRA_API_KEY", "").strip()
+    if deepinfra_key:
+        return {"name": "DeepInfra", "url": DEEPINFRA_API_URL, "key": deepinfra_key,
+                "model": os.getenv("DEEPINFRA_MODEL") or DEEPINFRA_DEFAULT_MODEL}
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+    if groq_key not in _PLACEHOLDER_KEYS:
+        return {"name": "Groq", "url": GROQ_API_URL, "key": groq_key,
+                "model": os.getenv("GROQ_MODEL") or "llama-3.3-70b-versatile"}
+    return None
+
+
+# AI output is optional decoration on a deterministic verdict, so a slow provider
 # must degrade, never stall the report.
 EXPLANATION_TIMEOUT_SECONDS = float(os.getenv("GROQ_EXPLANATION_TIMEOUT_SECONDS", "12"))
 # Free Groq tiers allow ~8k tokens a minute, so two calls close together get a 429.
@@ -49,14 +66,19 @@ def _reset_seconds(response: requests.Response) -> float:
     return 5.0
 
 
-def _groq_json(api_key: str, payload: dict[str, Any], max_wait: float = MAX_RATE_LIMIT_WAIT_SECONDS) -> dict[str, Any]:
-    """POST to Groq and return the parsed JSON object it wrote, retrying a short 429 wait and one empty/invalid answer."""
+def _groq_json(provider: dict[str, str], payload: dict[str, Any], max_wait: float = MAX_RATE_LIMIT_WAIT_SECONDS) -> dict[str, Any]:
+    """POST to the provider and return the parsed JSON object it wrote, retrying a short 429 wait and one empty/invalid answer."""
+    payload = {**payload, "model": provider["model"]}
+    if provider["name"] != "Groq":
+        payload.pop("include_reasoning", None)  # Groq-only; DeepInfra returns no reasoning text by default
+        if "gpt-oss" not in provider["model"]:
+            payload.pop("reasoning_effort", None)
     waited = 0.0
     bad_answers = 0
     while True:
         response = requests.post(
-            GROQ_API_URL,
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            provider["url"],
+            headers={"Authorization": f"Bearer {provider['key']}", "Content-Type": "application/json"},
             json=payload,
             timeout=EXPLANATION_TIMEOUT_SECONDS,
         )
@@ -81,9 +103,9 @@ def _groq_json(api_key: str, payload: dict[str, Any], max_wait: float = MAX_RATE
 
 def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Ask Groq to explain an already-computed evaluation using supplied facts only."""
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key or api_key == "demo-groq-api-key":
-        raise RuntimeError("A real GROQ_API_KEY is required for AI evaluation explanations.")
+    provider = ai_provider()
+    if provider is None:
+        raise RuntimeError("A real DEEPINFRA_API_KEY or GROQ_API_KEY is required for AI evaluation explanations.")
 
     breakdown = snapshot.get("score_breakdown") or {}
     factual_context = {
@@ -166,11 +188,11 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
         f"FACTS:\n{json.dumps(factual_context, ensure_ascii=True, default=str)}"
     )
     try:
-        structured = _groq_json(api_key, {"model": MODEL_NAME, "max_completion_tokens": 1200, "temperature": 0,
-                                          "include_reasoning": False, "reasoning_effort": "low",
-                                          "response_format": {"type": "json_object"},
-                                          "messages": [{"role": "user", "content": prompt}]},
-                                 max_wait=0)  # never hold up a report; the deterministic summary is shown instead
+        structured = _groq_json(provider, {"max_completion_tokens": 1200, "temperature": 0,
+                                       "include_reasoning": False, "reasoning_effort": "low",
+                                       "response_format": {"type": "json_object"},
+                                       "messages": [{"role": "user", "content": prompt}]},
+                              max_wait=0)  # never hold up a report; the deterministic summary is shown instead
     except GroqRateLimited:
         raise
     except RuntimeError:
@@ -208,9 +230,9 @@ def ask_land_question(snapshot: dict[str, Any], question: str) -> dict[str, Any]
     question = question.strip()
     if not question or len(question) > 500:
         raise ValueError("question must contain 1-500 characters")
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key or api_key == "demo-groq-api-key":
-        raise RuntimeError("A real GROQ_API_KEY is required for TerraScope Land Analyst.")
+    provider = ai_provider()
+    if provider is None:
+        raise RuntimeError("A real DEEPINFRA_API_KEY or GROQ_API_KEY is required for TerraScope Land Analyst.")
     # Keep the prompt near 1.5k tokens: Groq's per-minute quota counts every question.
     evidence = [
         {**{key: row.get(key) for key in ("source_reference", "title", "observed_at") if row.get(key) is not None},
@@ -239,13 +261,13 @@ def ask_land_question(snapshot: dict[str, Any], question: str) -> dict[str, Any]
         "{\"answer_text\":\"...\",\"citations\":[{\"claim\":\"...\",\"source_reference\":\"...\"}]}\n\n"
         f"Allowed source references: {json.dumps(allowed)}\nQuestion: {question}\nFacts: {json.dumps(facts, ensure_ascii=True, default=str)}"
     )
-    request = {"model": MODEL_NAME, "max_completion_tokens": 500, "temperature": 0, "include_reasoning": False,
+    request = {"max_completion_tokens": 500, "temperature": 0, "include_reasoning": False,
                "reasoning_effort": "low", "response_format": {"type": "json_object"},
                "messages": [{"role": "user", "content": prompt}]}
-    payload = _groq_json(api_key, request)
+    payload = _groq_json(provider, request)
     if not str(payload.get("answer_text") or "").strip():
         # An empty answer showed as a blank panel; ask once more, then say so plainly.
-        payload = _groq_json(api_key, request)
+        payload = _groq_json(provider, request)
         if not str(payload.get("answer_text") or "").strip():
             raise RuntimeError("TerraScope Land Analyst could not answer that; try rephrasing the question.")
     citations = []

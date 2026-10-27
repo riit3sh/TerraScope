@@ -252,7 +252,8 @@ supply them in `.env`:
 - **Satellite:** none needed. Sentinel-2 comes from Planetary Computer without an account.
   The default is `SATELLITE_PROVIDER=planetary`; AppEEARS is opt-in only when you explicitly
   set `SATELLITE_PROVIDER=appeears` and configure its credentials.
-- **AI explanations:** `GROQ_API_KEY` and optional `GROQ_MODEL` (default `openai/gpt-oss-20b`). Without it the report shows the rule-based
+- **AI explanations:** `DEEPINFRA_API_KEY` (optional `DEEPINFRA_MODEL`, default `openai/gpt-oss-20b`), or else `GROQ_API_KEY`
+  and optional `GROQ_MODEL` (default `openai/gpt-oss-20b`); DeepInfra wins when both are set. Without either the report shows the rule-based
   "Assessment summary", which still cites the evidence rows behind each figure. The label says **TerraScope Land Analyst**
   only when the Groq call actually succeeded. Existing saved reports do not
   change retroactively: re-evaluate the same evidence or run a new analysis after adding the key.

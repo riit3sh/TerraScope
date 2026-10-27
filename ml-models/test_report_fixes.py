@@ -29,6 +29,7 @@ SETTINGS = {
 @pytest.fixture(autouse=True)
 def no_ai(monkeypatch):
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    monkeypatch.delenv("DEEPINFRA_API_KEY", raising=False)
 
 
 def _with_preferences(**preferences):
