@@ -239,12 +239,16 @@ def _growth(rows: dict[str, dict[str, Any]], factors: dict[str, dict[str, Any]])
     if growth.get("score") is None:
         return _row("Area development", growth.get("basis") or "Area history unavailable.", "unknown", "unavailable",
                     "Analyse the boundary again to collect the 2017-2023 land-cover history.", evidence)
-    return _row("Area development", growth["basis"].split(". Further out")[0] + ".",
-                "ok" if growth["score"] >= 50 else "caution", "measured",
-                "Building around the plot is increasing; on a site visit, see what is being built nearby."
-                if growth["score"] >= 50 else
-                "Little building nearby: no sign yet of development reaching this area, so there is no hurry.",
-                evidence)
+    share = ((growth.get("details") or {}).get("trend") or {}).get("last_share")
+    if growth["score"] >= 50:
+        status, step = "ok", "Building around the plot is increasing; on a site visit, see what is being built nearby."
+    elif share is not None and share >= 0.5:
+        # Already mostly built, with little new building: a slow pace here means little open land, not no demand.
+        status, step = "ok", (f"Already {share:.0%} built within 1 km, with little new building since 2017: most nearby "
+                              "land is taken. On a site visit, see what the remaining open land is used for.")
+    else:
+        status, step = "caution", "Little building nearby: no sign yet of development reaching this area, so there is no hurry."
+    return _row("Area development", growth["basis"].split(". Further out")[0] + ".", status, "measured", step, evidence)
 
 
 def _plot_history(rows: dict[str, dict[str, Any]], record: dict[str, Any]) -> dict[str, Any] | None:

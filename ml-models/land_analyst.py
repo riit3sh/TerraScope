@@ -116,6 +116,7 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
         # spend its completion budget reasoning over implementation metadata and
         # return no explanation at all.
         "place": place_name(snapshot),
+        "main_reason": main_reason(snapshot),
         "location": snapshot.get("location"),
         "not_assessed": not_assessed,
         "area_m2": (snapshot.get("geometry_metadata") or {}).get("area_m2"),
@@ -185,6 +186,9 @@ def generate_evaluation_explanation(snapshot: dict[str, Any]) -> dict[str, Any]:
         "Cite each factual sentence with [source: X]. X MUST be copied exactly from one of the evidence_sources.source_reference values; "
         "do not cite a source type, a provider name, or a source that is not listed. "
         "If a fact is missing, say that the evidence is unavailable. "
+        "State the recommendation and its main_reason in plain words; never give a different reason for it. "
+        "Area growth is past building only: describe how built-up the area is and its pace as its basis says; never "
+        "call it growth potential or predict future growth. "
         "Everything in not_assessed was NOT checked: say it was not assessed; never say nothing was found, no hazard "
         "was found, or that it is safe. Refer to the plot by its place name (place), never by coordinates. "
         "A sentence about something with no evidence row (legal records, a check that was not assessed) gets no citation; "
@@ -299,6 +303,31 @@ def _clip_sentences(text: str, limit: int) -> str:
     cut = text[:limit]
     end = max(cut.rfind(". "), cut.rfind(".\n"), cut.rfind("? "), cut.rfind("! "))
     return cut[:end + 1] if end > 0 else cut[:cut.rfind(" ")].rstrip(",;:") + "…"
+
+
+def main_reason(snapshot: dict[str, Any]) -> str | None:
+    """Why the verdict is what it is, as the report's headline says it (frontend ReportSummary verdictHeadline)."""
+    verdict = snapshot.get("verdict") or {}
+    recommendation = verdict.get("recommendation")
+    government = verdict.get("government_land") or {}
+    factors = (snapshot.get("score_breakdown") or {}).get("factors") or []
+    missing = [f["factor"] for f in factors if isinstance(f, dict) and f.get("factor") in ("growth", "accessibility")
+               and f.get("status") == "unavailable"]
+    if recommendation == "RESTRICTED":
+        return "the boundary overlaps mapped restricted land, which TerraScope does not assess for purchase"
+    if recommendation == "AVOID":
+        return "a serious problem was found: " + str((verdict.get("red_flags") or ["see the red flags"])[0])
+    if recommendation in ("WAIT", "INSUFFICIENT_EVIDENCE") and missing:
+        return "TerraScope could not measure " + " or ".join(
+            "the area's development history" if f == "growth" else "road access" for f in missing)
+    if recommendation == "BUY":
+        return "the location is strong, but ownership, loans on the land and approvals are not yet verified"
+    if government.get("hold"):
+        return ("the drawn boundary overlaps or touches mapped public land (" + str(government.get("label") or "map only")
+                + "); this must be ruled out with official land records")
+    if recommendation == "WAIT":
+        return "the location evidence is not strong enough yet, and ownership and approvals are not verified"
+    return None
 
 
 def place_name(snapshot: dict[str, Any]) -> str | None:

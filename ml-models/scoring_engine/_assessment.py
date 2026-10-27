@@ -225,6 +225,23 @@ AREA_HISTORY_LIMITS = (
 )
 
 
+def built_level(share: float) -> str:
+    """How built-up the 1 km ring is, in words: the level, never the pace (SRM, 2026-10-28: a ring 67% built
+    was called "Little or no development" because only its pace was low)."""
+    if share >= DENSE_SHARE:
+        return "Densely built area"
+    if share >= 0.5:
+        return "Largely built-up area"
+    if share >= 0.25:
+        return "Partly built-up area"
+    return "Sparsely built area"
+
+
+def built_pace(slope: float) -> str:
+    return ("fast new building" if slope >= FAST_PTS_PER_YEAR else "steady new building" if slope >= STEADY_PTS_PER_YEAR
+            else "little new building")
+
+
 def points_a_year(slope: float) -> str:
     """'+1.9', '-0.3' or '0.0': rounded first, so a -0.04 or float-noise slope never prints as '-0.0'."""
     value = round(slope, 1) + 0.0
@@ -284,13 +301,13 @@ def assess_growth(record: dict[str, Any], growth_opportunity_score) -> dict[str,
             "checklist": [],
             "details": {"trend": near, "ring": "within 1 km"},
         }
-    pace = ("Fast development" if slope >= FAST_PTS_PER_YEAR else "Steady development" if slope >= STEADY_PTS_PER_YEAR
-            else "Little or no development")
+    # The headline names the level and the pace separately; the score still follows the pace only.
+    headline = f"{built_level(near['last_share'])} ({near['last_share']:.0%} within 1 km), {built_pace(slope)} since 2017"
     return {
         "factor": "growth",
         "score": round(max(0.0, min(100.0, 100.0 * slope / GROWTH_FULL_SCORE_PTS_PER_YEAR)), 2),
         "status": "indicative",
-        "basis": f"{pace} around the plot: {_built_change(near, 'within 1 km')}.{further}",
+        "basis": f"{headline}: {_built_change(near, 'within 1 km')}.{further}",
         "limitations": AREA_HISTORY_LIMITS,
         "checklist": [],
         "details": {"trend": near, "ring": "within 1 km"},

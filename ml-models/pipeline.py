@@ -150,6 +150,8 @@ def evaluate_snapshot(snapshot: dict[str, Any], evaluation: dict[str, Any]) -> d
         "pre_purchase_checks": result["pre_purchase_checks"],
         "would_change": result["would_change"],
         "findings": build_findings(evaluated, result["factors"]),
+        # The AI summary must give the verdict's real reason; a map-only public-land hold was invisible to it.
+        "government_land": result["government_land"],
     }
     # Every figure the assessment relies on, cited to the evidence row that holds it. No LLM needed.
     citations = evidence_citations(evaluated, result["factors"])

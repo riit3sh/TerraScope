@@ -82,3 +82,21 @@ def test_an_uncited_answer_is_asked_again_once(monkeypatch):
                         {"claim": "Nearest mapped road is 17 m away.", "source_reference": "OpenStreetMap, Geofabrik extract"}]}])
     monkeypatch.setattr(land_analyst, "_groq_json", lambda provider, request, max_wait=0: next(answers))
     assert land_analyst.generate_evaluation_explanation(SNAPSHOT)["citations"]
+
+
+def test_the_verdicts_main_reason_is_given_to_the_model(monkeypatch):
+    """SRM, 2026-10-28: a WAIT caused by a mapped public-land overlap was explained as 'pending stronger development'."""
+    snapshot = {**SNAPSHOT, "verdict": {"recommendation": "WAIT", "government_land": {
+        "hold": True, "label": "Potential government or public land (map only)"}}}
+    monkeypatch.setenv("DEEPINFRA_API_KEY", "di-test")
+    sent = {}
+
+    def fake(provider, request, max_wait=0):
+        sent["prompt"] = request["messages"][0]["content"]
+        return {"answer_text": "Road access is good.", "citations": [
+            {"claim": "Nearest mapped road is 17 m away.", "source_reference": "OpenStreetMap, Geofabrik extract"}]}
+
+    monkeypatch.setattr(land_analyst, "_groq_json", fake)
+    land_analyst.generate_evaluation_explanation(snapshot)
+    facts = json.loads(sent["prompt"].split("FACTS:\n", 1)[1])
+    assert "public land" in facts["main_reason"] and "never give a different reason" in sent["prompt"]
