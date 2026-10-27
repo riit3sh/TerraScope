@@ -152,9 +152,40 @@ def _downstream_error(response: httpx.Response, service: str) -> HTTPException:
     return HTTPException(status_code=status, detail=f"{service}: {detail}")
 
 
+async def _google_suggest(query: str, limit: int) -> list[dict[str, Any]]:
+    key = os.getenv("GOOGLE_MAPS_API_KEY", "").strip()
+    if os.getenv("GOOGLE_LOCATION_PROVIDER", "local").casefold() != "google" or not key:
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(
+                "https://places.googleapis.com/v1/places:autocomplete",
+                headers={"Content-Type": "application/json", "X-Goog-Api-Key": key,
+                         "X-Goog-FieldMask": "suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat"},
+                json={"input": query, "includedRegionCodes": ["in"], "includeQueryPredictions": False},
+            )
+            response.raise_for_status()
+            suggestions = []
+            for item in response.json().get("suggestions", [])[:limit]:
+                prediction = item.get("placePrediction") or {}
+                text = prediction.get("text") or {}
+                label = text.get("text")
+                if label:
+                    suggestions.append({"lat": 0, "lon": 0, "display_name": label,
+                                        "kind": "google-place", "precision": "place prediction",
+                                        "source": "Google Places API (New)", "place_id": prediction.get("placeId")})
+            return suggestions
+    except (httpx.HTTPError, KeyError, TypeError, ValueError) as error:
+        LOGGER.warning("Google Places suggestions unavailable; using local index: %s", error)
+        return []
+
+
 @router.get("/api/v1/search/suggest")
-def suggest_places(q: str, limit: int = 8) -> list[dict[str, Any]]:
-    """Autocomplete from the local GeoNames index. Never calls a web service."""
+async def suggest_places(q: str, limit: int = 8) -> list[dict[str, Any]]:
+    """Autocomplete from Google Places when enabled, with local GeoNames fallback."""
+    google = await _google_suggest(q.strip(), max(1, min(limit, 20))) if len(q.strip()) >= 2 else []
+    if google:
+        return google
     try:
         return places.suggest(q, max(1, min(limit, 20)))
     except places.PlaceIndexMissing as error:

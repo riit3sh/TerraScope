@@ -167,14 +167,14 @@ function FacilitiesTable({ record }: { record: ParcelRecord }) {
   const routed = i as typeof i & { nearest_road_route_distance_m?: number | null; nearest_school_route_distance_m?: number | null }
   const osm = (record.evidence || []).find(e => e.source_type === 'openstreetmap')
   const rows: [string, number | null | undefined, string | null | undefined, string][] = [
-    ['Road', i.nearest_road_distance_from_boundary_m ?? i.nearest_road_distance_m, [i.nearest_road_name, i.nearest_road_type].filter(Boolean).join(' · '), i.nearest_road_distance_from_boundary_m != null ? 'from the boundary' : 'from the centre'],
-    ['School', i.nearest_school_distance_from_boundary_m ?? i.nearest_school_distance_m, i.nearest_school_name, i.nearest_school_distance_from_boundary_m != null ? 'from the boundary' : 'from the centre'],
+    ['Road', routed.nearest_road_route_distance_m ?? i.nearest_road_distance_from_boundary_m ?? i.nearest_road_distance_m, [i.nearest_road_name, i.nearest_road_type].filter(Boolean).join(' · '), routed.nearest_road_route_distance_m != null ? 'Google driving route' : i.nearest_road_distance_from_boundary_m != null ? 'straight-line from boundary' : 'straight-line from centre'],
+    ['School', routed.nearest_school_route_distance_m ?? i.nearest_school_distance_from_boundary_m ?? i.nearest_school_distance_m, i.nearest_school_name, routed.nearest_school_route_distance_m != null ? 'Google driving route' : i.nearest_school_distance_from_boundary_m != null ? 'straight-line from boundary' : 'straight-line from centre'],
     ['Hospital', i.nearest_hospital_distance_m, i.nearest_hospital_name, 'from the centre'],
     ['Bus stop or station', i.nearest_bus_distance_m, [i.nearest_bus_name, i.nearest_bus_type?.replace('_', ' ')].filter(Boolean).join(' · '), 'from the centre'],
     ['Railway station', i.nearest_rail_station_distance_m, [i.nearest_rail_station_name, i.nearest_rail_station_type].filter(Boolean).join(' · '), 'from the centre'],
   ]
   const collected = i.search_radius_m != null
-  return <section className="facilities-section"><div className="section-label">NEARBY FACILITIES · STRAIGHT-LINE DISTANCES FROM OPENSTREETMAP</div>
+  return <section className="facilities-section"><div className="section-label">NEARBY FACILITIES · MAP PROXIMITY + ROUTES WHEN AVAILABLE</div>
     {collected ? <div className="flood-table-wrap"><table className="flood-table"><thead><tr><th>Facility</th><th>Distance</th><th>Name / type</th><th>Measured</th></tr></thead><tbody>{rows.map(([name, d, label, from]) => <tr key={name}><td>{name}</td><td>{d == null ? (i.layer_status?.[LAYER_OF[name]] === 'not_installed' ? 'not installed for this region (unknown)' : `none mapped within ${m(i.search_radius_m)}`) : m(d)}</td><td>{d == null ? '—' : label || 'unnamed'}</td><td>{d == null ? '—' : from}</td></tr>)}</tbody></table></div>
       : <p className="muted">{osm?.summary || 'No facility data was collected for this parcel.'}</p>}
     {Object.entries(i.layer_status || {}).some(([, s]) => s === 'not_installed') && <p className="older-note" role="note"><TriangleAlert size={15} /><span>Not installed for this region: {Object.entries(i.layer_status || {}).filter(([, s]) => s === 'not_installed').map(([l]) => l.replace('_', ' ')).join(', ')}. These are unknown, not absent; accessibility is not assessed without roads.</span></p>}

@@ -48,7 +48,7 @@ async function failure(response: Response, fallback: string): Promise<Error> {
   return new Error(text || `${fallback} (${response.status})`)
 }
 async function request<T>(path: string, init?: RequestInit): Promise<T> { const response = await fetch(`${API_URL}${path}`, { headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) }, ...init }); if (!response.ok) throw await failure(response, 'Request failed'); return response.json() as Promise<T> }
-export type PlaceSuggestion = { lat: number; lon: number; display_name: string; kind?: string|null; precision?: string|null; source?: string|null }
+export type PlaceSuggestion = { lat: number; lon: number; display_name: string; kind?: string|null; precision?: string|null; source?: string|null; place_id?: string|null }
 /** Autocomplete: the local GeoNames index only. Typing never reaches a public geocoder. */
 export function suggestPlaces(query: string, signal?: AbortSignal) { return request<PlaceSuggestion[]>(`/api/v1/search/suggest?q=${encodeURIComponent(query.trim())}`, { signal }) }
 /** Explicit search (Enter / Search button): local index first, then one rate-limited Nominatim lookup. */

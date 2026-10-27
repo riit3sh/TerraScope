@@ -23,6 +23,7 @@ from connectors.elevation_dem import ElevationClient, ElevationError
 from connectors import land_cover_history, river_flood
 from connectors.local_osm import LocalOSM
 from connectors.google_routes import GoogleRoutesClient
+from connectors.google_places import GooglePlacesClient
 from connectors.regions import LocalDataMissing, data_root, india_coverage, region_for, slug
 from connectors.osm_infrastructure import InfrastructureClient, InfrastructureError
 from connectors.rera_ingest import load_rera_seed_dataset, match_parcel_to_rera
@@ -107,6 +108,11 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any], roads: Loca
 
     road = near("road")
     school = near("school")
+    google_places = GooglePlacesClient()
+    google_school_hits = google_places.nearby(lat, lon, "school", POI_SEARCH_M)
+    google_hospital_hits = google_places.nearby(lat, lon, "hospital", POI_SEARCH_M)
+    if google_school_hits:
+        school = min(google_school_hits, key=lambda hit: ((hit["lat"] - lat) ** 2 + (hit["lon"] - lon) ** 2))
     # From the drawn edge, too: a road along a big parcel's frontage is far from its centroid.
     road_edge = near("road", around=parcel)
     school_edge = near("school", around=parcel)
@@ -115,6 +121,9 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any], roads: Loca
     routes = GoogleRoutesClient()
     road_route = routes.route((lon, lat), (road["lon"], road["lat"])) if road and road.get("lon") is not None else None
     school_route = routes.route((lon, lat), (school["lon"], school["lat"])) if school and school.get("lon") is not None else None
+    hospital = near("hospital")
+    if google_hospital_hits:
+        hospital = min(google_hospital_hits, key=lambda hit: ((hit["lat"] - lat) ** 2 + (hit["lon"] - lon) ** 2))
     return {
         "nearest_road_distance_from_boundary_m": road_edge["distance_m"] if road_edge else None,
         "nearest_road_boundary_name": road_edge["name"] if road_edge else None,
@@ -132,12 +141,12 @@ def _local_amenities(osm: LocalOSM, geojson_polygon: dict[str, Any], roads: Loca
         "nearest_school_route_distance_m": school_route["distance_m"] if school_route else None,
         "nearest_school_route_duration_s": school_route["duration_s"] if school_route else None,
         **_hit_fields("nearest_school", school, with_point=True),
-        **_hit_fields("nearest_hospital", near("hospital")),
+        **_hit_fields("nearest_hospital", hospital),
         **_hit_fields("nearest_bus", near("bus"), with_class=True),
         **_hit_fields("nearest_rail_station", near("rail_station"), with_class=True),
         "search_radius_m": POI_SEARCH_M,
         "layer_status": layer_status,
-        "distance_measurement": "straight_line_to_nearest_point_on_osm_geometry",
+        "distance_measurement": "straight_line_to_nearest_point_on_osm_geometry_or_google_place",
         "road_access_verified": False,
         "road_access_note": (
             "Proximity only. Straight-line distances to the nearest point on an OpenStreetMap way, from the "
